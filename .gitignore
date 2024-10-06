@@ -1,6 +1,6 @@
 __pycache__/
 .pytest_cache/
 .venv/
-dataset/
+datasets/
 .venv
 .DS_Store
