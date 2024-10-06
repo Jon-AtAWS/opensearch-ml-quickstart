@@ -74,9 +74,11 @@ The simplest way to use the toolkit is to load data into OpenSearch running loca
     python main.py --model_type local --host_type os -c adapters --delete_existing --number_of_docs 10   
     ```
 
-   If this is your first time running, it will take a minute for the model to load and deploy. If you're watching the log output, you'll see it busy waiting.
+   NOTE: If this is your first time running, it will take a minute for the model to load and deploy. If you're watching the log output, you'll see it busy waiting.
 
+This will load 10 items from the "adapters" category, using the default index, and ingest pipeline names (`amazon_pqa`). You can set `number_of_docs` to `-1` if you want to load the whole category. You can omit the `-c adapters` to load the whole data set (or include a comma-separated list for more than 1 category)
 
+Since the above command line does not specify --cleanup, 
 ```
 python3 src/main.py -h
 ```
