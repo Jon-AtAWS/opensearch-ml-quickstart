@@ -221,41 +221,46 @@ def get_args():
                     "amazon opensearch serivce. You can use local model and remote models "
                     "from bedrock or sagemaker.",
     )
-    parser.add_argument("-t", "--task", default="knn_768", action="store")
-    parser.add_argument("-c", "--categories", default="all", action="store")
-    parser.add_argument("-i", "--index_name", default="amazon_pqa", action="store")
-    parser.add_argument("-p", "--pipeline_name", default="amazon_pqa", action="store")
-    parser.add_argument("-d", "--delete_existing", default=False, action="store_true")
-    parser.add_argument("-n", "--number_of_docs", default=500, action="store", type=int)
     parser.add_argument(
-        "-mt",
-        "--model_type",
+        "-t", "--task",
+        default="knn_768", action="store")
+    parser.add_argument(
+        "-c", "--categories",
+        default="all", action="store")
+    parser.add_argument(
+        "-i", "--index_name",
+        default="amazon_pqa", action="store")
+    parser.add_argument(
+        "-p", "--pipeline_name",
+        default="amazon_pqa", action="store")
+    parser.add_argument(
+        "-d", "--delete_existing",
+        default=False, action="store_true")
+    parser.add_argument(
+        "-n", "--number_of_docs",
+        default=500, action="store", type=int)
+    parser.add_argument(
+        "-mt", "--model_type",
         choices=["local", "sagemaker", "bedrock"],
-        default="local",
-        action="store",
-    )
+        default="local", action="store")
     parser.add_argument(
-        "-ep",
-        "--env_path",
-        default=DEFAULT_ENV_PATH,
-        action="store",
-    )
+        "-ep", "--env_path",
+        default=DEFAULT_ENV_PATH, action="store")
     parser.add_argument(
-        "-ht", "--host_type", choices=["os", "aos"], default="os", action="store"
-    )
-    parser.add_argument("-cl", "--cleanup", default=False, action="store_true")
+        "-ht", "--host_type",
+        choices=["os", "aos"],
+        default="os", action="store")
     parser.add_argument(
-        "-dp",
-        "--dataset_path",
+        "-cl", "--cleanup",
+        default=False, action="store_true")
+    parser.add_argument(
+        "-dp", "--dataset_path",
         default=get_config("QANDA_FILE_READER_PATH"),
-        action="store",
-    )
+        action="store")
     parser.add_argument(
-        "-bmp",
-        "--base_mapping_path",
+        "-bmp", "--base_mapping_path",
         default=get_config("BASE_MAPPING_PATH"),
-        action="store_true",
-    )
+        action="store")
     args = parser.parse_args()
     return args
 
