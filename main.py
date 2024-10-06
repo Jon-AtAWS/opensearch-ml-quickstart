@@ -179,7 +179,6 @@ def load_dataset(
     delete_existing: bool,
     index_name: str,
     pipeline_name: str,
-    cleanup: bool,
 ):
     if delete_existing:
         logging.info(f"Deleting existing index {index_name}")
@@ -205,7 +204,7 @@ def load_dataset(
             config=config,
         )
 
-    if config["cleanup"] or cleanup:
+    if config["cleanup"]:
         client.cleanup_kNN(
             ml_model=ml_model,
             index_name=config["index_name"],
@@ -325,6 +324,7 @@ def main():
     )
 
     config['max_cat_docs'] = args.number_of_docs
+    config['cleanup'] = args.cleanup
 
     logging.info(f"Config: {json.dumps(config, indent=4)}")
 
@@ -336,7 +336,6 @@ def main():
         args.delete_existing,
         args.index_name,
         pipeline_name=args.pipeline_name,
-        cleanup=args.cleanup,
     )
 
 
