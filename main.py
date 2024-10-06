@@ -164,7 +164,7 @@ def load_category(client: OpenSearch, pqa_reader: QAndAFileReader, category, con
             logging.info(f"Sending {number_of_docs} docs")
             send_bulk_ignore_exceptions(client, docs)
             docs = []
-        if (config["max_cat_docs"] > 0) and (number_of_docs > config["max_cat_docs"]):
+        if (config["max_cat_docs"] > 0) and (number_of_docs >= config["max_cat_docs"]):
             break
     if len(docs) > 0:
         logging.info(f'Category "{category}" complete. Sending {number_of_docs} docs')

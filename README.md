@@ -58,7 +58,7 @@ You also set up access for your model in `.env`. If you are using a local model,
 
 ## Local
 
-The simplest way to use the toolkit is to load data into OpenSearch running locally, on Docker desktop.
+The simplest way to use the toolkit is to load data into OpenSearch running locally, on Docker desktop, and with a hugging face model loaded into the local, ML node.
 
 1. Start Docker Desktop
 2. Bring up the OpenSearch cluster with docker compose. Be sure to replace the `ExamplePassword!` below with a real password! Make a note of it, you'll need it in a second.
