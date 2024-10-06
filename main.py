@@ -78,7 +78,7 @@ def send_bulk_ignore_exceptions(client: OpenSearch, docs):
         status = helpers.bulk(
             client,
             docs,
-            chunk_size=32,
+            chunk_size=100,
             request_timeout=300,
             max_retries=10,
             raise_on_error=False,
@@ -164,9 +164,7 @@ def load_category(client: OpenSearch, pqa_reader: QAndAFileReader, category, con
             logging.info(f"Sending {number_of_docs} docs")
             send_bulk_ignore_exceptions(client, docs)
             docs = []
-        if (config["max_cat_docs"] > 0) and (
-            number_of_docs % config["max_cat_docs"] == 0
-        ):
+        if (config["max_cat_docs"] > 0) and (number_of_docs > config["max_cat_docs"]):
             break
     if len(docs) > 0:
         logging.info(f'Category "{category}" complete. Sending {number_of_docs} docs')
@@ -181,7 +179,6 @@ def load_dataset(
     delete_existing: bool,
     index_name: str,
     pipeline_name: str,
-    number_of_docs: int,
     cleanup: bool,
 ):
     if delete_existing:
@@ -201,7 +198,6 @@ def load_dataset(
     )
 
     for category in config["categories"]:
-        config["max_cat_docs"] = number_of_docs
         load_category(
             client=client.os_client,
             pqa_reader=pqa_reader,
@@ -220,7 +216,10 @@ def load_dataset(
 def get_args():
     parser = argparse.ArgumentParser(
         prog="main",
-        description="This toolkit loads AmazonPQA data into an OpenSearch KNN index. Your opensearch endpoint can be either opensource opensearch or amazon opensearch serivce. You can use local model and remote models from bedrock or sagemaker.",
+        description="This toolkit loads AmazonPQA data into an OpenSearch KNN index."
+                    "Your opensearch endpoint can be either opensource opensearch or "
+                    "amazon opensearch serivce. You can use local model and remote models "
+                    "from bedrock or sagemaker.",
     )
     parser.add_argument("-t", "--task", default="knn_768", action="store")
     parser.add_argument("-c", "--categories", default="all", action="store")
@@ -319,6 +318,9 @@ def main():
         index_config=config,
         model_config=model_config,
     )
+
+    config['max_cat_docs'] = args.number_of_docs
+
     logging.info(f"Config: {json.dumps(config, indent=4)}")
 
     load_dataset(
@@ -329,7 +331,6 @@ def main():
         args.delete_existing,
         args.index_name,
         pipeline_name=args.pipeline_name,
-        number_of_docs=args.number_of_docs,
         cleanup=args.cleanup,
     )
 

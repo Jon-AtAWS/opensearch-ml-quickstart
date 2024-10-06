@@ -54,13 +54,29 @@ You also set up access for your model in `.env`. If you are using a local model,
 3. Fill out the config files under src/configs: client_configs.py, data_configs.py and model_configs.py. You only need to fill in the configs for your model and host.
 
 
-# KNN data loading
+# Usage
 
-Here is an example command to register model and load knn data into the amazon_pqa index:
+## Local
 
-```
-python3 src/main.py -ht=os -mt=local
-```
+The simplest way to use the toolkit is to load data into OpenSearch running locally, on Docker desktop.
+
+1. Start Docker Desktop
+2. Bring up the OpenSearch cluster with docker compose. Be sure to replace the `ExamplePassword!` below with a real password! Make a note of it, you'll need it in a second.
+
+   1. `cd <root>`
+   2. `export OPENSEARCH_INITAL_ADMIN_PASSWORD="<ExamplePassword!>"`
+   3. `docker compose up`
+
+3. Open `<root>/configs/.env` and set `OS_PASSWORD` to the password you used starting Docker.
+4. Run main.py
+
+    ```
+    python3 src/main.py -ht=os -mt=local
+    ```
+
+   If this is your first time running, it will take a minute for the model to load and deploy. If you're watching the log output, you'll see it busy waiting.
+
+The a
 
 You can get details for each parameters via:
 
