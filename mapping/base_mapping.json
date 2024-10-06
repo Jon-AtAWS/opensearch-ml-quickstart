@@ -1,0 +1,37 @@
+{
+    "settings": {"index": {"number_of_shards": 1, "number_of_replicas": 2}},
+    "mappings": {
+        "properties": {
+            "answer_aggregated": {"type": "keyword"},
+            "answers": {
+                "properties": {
+                    "age": {"type": "long"},
+                    "answer_text": {"type": "text"},
+                    "gender": {"type": "keyword"},
+                    "name": {
+                        "type": "text",
+                        "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}
+                    },
+                    "product_rating": {"type": "long"},
+                    "user_lat": {"type": "float"},
+                    "user_lon": {"type": "float"}
+                }
+            },
+            "asin": {"type": "keyword"},
+            "brand_name": {
+                "type": "text",
+                "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}
+            },
+            "bullets": {"type": "text"},
+            "category_name": {"type": "keyword"},
+            "item_name": {
+                "type": "text",
+                "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}
+            },
+            "product_description": {"type": "text"},
+            "question_id": {"type": "keyword"},
+            "question_text": {"type": "text"},
+            "question_type": {"type": "keyword"}
+        }
+    }
+}
