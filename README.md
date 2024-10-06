@@ -68,17 +68,14 @@ The simplest way to use the toolkit is to load data into OpenSearch running loca
    3. `docker compose up`
 
 3. Open `<root>/configs/.env` and set `OS_PASSWORD` to the password you used starting Docker.
-4. Run main.py
+4. To run main.py, be sure your virtual environment is active (`source .venv/bin/activate`), then
 
     ```
-    python3 src/main.py -ht=os -mt=local
+    python main.py --model_type local --host_type os -c adapters --delete_existing --number_of_docs 10   
     ```
 
    If this is your first time running, it will take a minute for the model to load and deploy. If you're watching the log output, you'll see it busy waiting.
 
-The a
-
-You can get details for each parameters via:
 
 ```
 python3 src/main.py -h
