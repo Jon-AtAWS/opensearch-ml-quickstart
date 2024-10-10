@@ -27,7 +27,9 @@ class AosSagemakerMlModel(RemoteMlModel):
     ) -> None:
         self.helper = helper
         self._model_description = model_description
-        super().__init__(os_client, ml_commons_client, model_name, model_description, model_configs)
+        super().__init__(
+            os_client, ml_commons_client, model_name, model_description, model_configs
+        )
 
     @overrides
     def _validate_configs(self):
