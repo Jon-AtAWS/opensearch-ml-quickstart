@@ -76,11 +76,3 @@ class AosBedrockMlModel(RemoteMlModel):
             create_connector_payload,
             sleep_time_in_seconds=10,
         )
-
-    @overrides
-    def _deploy_model(self):
-        self.helper.create_and_deploy_model(
-            model_name=self._model_name,
-            description=self._model_description,
-            connector_id=self._connector_id,
-        )

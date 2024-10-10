@@ -58,25 +58,3 @@ class OsBedrockMlModel(RemoteMlModel):
         )
 
         self._connector_id = response["connector_id"]
-
-    @overrides
-    def _deploy_model(self):
-        model_deploy_payload = {
-            "name": self._model_name,
-            "function_name": "remote",
-            "description": f"Bedrock embedding model {self._model_name}",
-            "connector_id": self._connector_id,
-            "deploy": True,
-        }
-        response = self._os_client.http.post(
-            url=f"{ML_BASE_URI}/models/_register",
-            body=model_deploy_payload,
-        )
-        task_id = response["task_id"]
-
-        # validate model deployment task
-        time.sleep(1)
-        response = self._os_client.http.get(url=f"{ML_BASE_URI}/tasks/{task_id}")
-        state = response["state"]
-        if state != "COMPLETED":
-            raise Exception(f"Model deployment task {task_id} is not COMPLETED!")

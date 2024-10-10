@@ -1,6 +1,7 @@
 # Copyright opensearch-ml-quickstart contributors
 # SPDX-License-Identifier: Apache-2.0
 
+import time
 import logging
 from abc import abstractmethod
 from overrides import overrides
@@ -61,9 +62,26 @@ class RemoteMlModel(MlModel):
     def _set_up_connector(self):
         pass
 
-    @abstractmethod
     def _deploy_model(self):
-        pass
+        model_deploy_payload = {
+            "name": self._model_name,
+            "function_name": "remote",
+            "description": self._model_description,
+            "connector_id": self._connector_id,
+            "deploy": True,
+        }
+        response = self._os_client.http.post(
+            url=f"{ML_BASE_URI}/models/_register",
+            body=model_deploy_payload,
+        )
+        task_id = response["task_id"]
+
+        # validate model deployment task
+        time.sleep(1)
+        response = self._os_client.http.get(url=f"{ML_BASE_URI}/tasks/{task_id}")
+        state = response["state"]
+        if state != "COMPLETED":
+            raise Exception(f"Model deployment task {task_id} is not COMPLETED!")
 
     def _search_connectors(self, search_query):
         if not isinstance(search_query, dict):
