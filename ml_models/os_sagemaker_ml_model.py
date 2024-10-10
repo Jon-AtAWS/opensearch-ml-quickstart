@@ -13,16 +13,20 @@ from configs import validate_configs, ML_BASE_URI
 
 
 class OsSagemakerMlModel(RemoteMlModel):
-    DEFAULT_MODEL = "Sagemaker model"
+    DEFAULT_MODEL_NAME = "Sagemaker Model"
+    DEFAULT_MODEL_DESCRIPTION = "This is a Sagemaker model"
 
     def __init__(
         self,
         os_client: OpenSearch,
         ml_commons_client: MLCommonClient,
-        model_name=DEFAULT_MODEL,
+        model_name=DEFAULT_MODEL_NAME,
+        model_description=DEFAULT_MODEL_DESCRIPTION,
         model_configs=dict(),
     ) -> None:
-        super().__init__(os_client, ml_commons_client, model_name, model_configs)
+        super().__init__(
+            os_client, ml_commons_client, model_name, model_description, model_configs
+        )
 
     @overrides
     def _validate_configs(self):

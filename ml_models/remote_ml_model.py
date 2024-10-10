@@ -21,9 +21,12 @@ class RemoteMlModel(MlModel):
         os_client: OpenSearch,
         ml_commons_client: MLCommonClient,
         model_name=DEFAULT_MODEL_NAME,
+        model_description=DEFAULT_MODEL_DESCRIPTION,
         model_configs=dict(),
     ) -> None:
-        super().__init__(os_client, ml_commons_client, model_name, model_configs)
+        super().__init__(
+            os_client, ml_commons_client, model_name, model_description, model_configs
+        )
         self._connector_id = self._get_connector_id()
 
     def _get_connector_id(self):

@@ -12,18 +12,21 @@ from configs import DELETE_MODEL_WAIT_TIME, DELETE_MODEL_RETRY_TIME
 
 # parent abstract class for all ml models
 class MlModel(ABC):
-    DEFAULT_MODEL_NAME = "Ml model"
+    DEFAULT_MODEL_NAME = "Machine Learning Model"
+    DEFAULT_MODEL_DESCRIPTION = "This is a Machine Learning model"
 
     def __init__(
         self,
         os_client: OpenSearch,
         ml_commons_client: MLCommonClient,
         model_name=DEFAULT_MODEL_NAME,
+        model_description=DEFAULT_MODEL_DESCRIPTION,
         model_configs=dict(),
     ) -> None:
         self._os_client = os_client
         self._ml_commons_client = ml_commons_client
         self._model_name = model_name
+        self._model_description = model_description
         self.model_configs = model_configs
         self._model_id = self._get_model_id()
         logging.info(f"MlModel id {self._model_id}")
