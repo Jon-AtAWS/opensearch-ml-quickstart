@@ -10,7 +10,7 @@ from requests_aws4auth import AWS4Auth
 from requests.auth import HTTPBasicAuth
 
 
-# This Python code is compatible with AWS OpenSearch versions 2.9 and higher.
+# This Python code is compatible with AWS OpenSearch versions 2.13 and higher.
 class AiConnectorHelper:
     def __init__(
         self,
