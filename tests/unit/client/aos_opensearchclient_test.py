@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+from unittest.mock import patch
 from opensearch_py_ml.ml_commons import MLCommonClient
 
 from ml_models import AosBedrockMlModel, AosSagemakerMlModel
@@ -38,7 +39,8 @@ def test():
         delete_existing=False,
         ml_model=aos_bedrock_ml_model,
     )
-    client.cleanup_kNN(index_name="amazon_pqa", pipeline_name="amazon_pqa_pipeline")
+    with patch("builtins.input", return_value="y"):
+        client.cleanup_kNN(index_name="amazon_pqa", pipeline_name="amazon_pqa_pipeline")
 
     logging.info(f"Testing sagemaker model")
     logging.info("Setting up for kNN")
@@ -49,4 +51,5 @@ def test():
         delete_existing=False,
         ml_model=aos_sagemaker_ml_model,
     )
-    client.cleanup_kNN(index_name="amazon_pqa", pipeline_name="amazon_pqa_pipeline")
+    with patch("builtins.input", return_value="y"):
+        client.cleanup_kNN(index_name="amazon_pqa", pipeline_name="amazon_pqa_pipeline")
