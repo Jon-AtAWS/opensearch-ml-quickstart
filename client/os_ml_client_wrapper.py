@@ -10,7 +10,7 @@ from ml_models import MlModel, MlModelGroup
 
 class OsMlClientWrapper:
     """
-    OsMlClientWrapper is a wrapper on OpenSearchClient and MLClient. Both 
+    OsMlClientWrapper is a wrapper on OpenSearchClient and MLClient. Both
     clients connect to an opensearch host, sets up and cleans up knn.
     """
 
