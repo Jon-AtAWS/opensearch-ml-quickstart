@@ -6,7 +6,7 @@ from typing import Dict
 
 from configs import validate_configs, get_config
 from .ml_model_group import MlModelGroup
-from .ai_connector_helper import AiConnectorHelper
+from .aos_connector_helper import AosConnectorHelper
 
 
 def get_remote_model_configs(model_type: str, host_type: str) -> Dict[str, str]:

@@ -9,7 +9,7 @@ from .os_bedrock_ml_model import OsBedrockMlModel
 from .os_sagemaker_ml_model import OsSagemakerMlModel
 from .aos_bedrock_ml_model import AosBedrockMlModel
 from .aos_sagemaker_ml_model import AosSagemakerMlModel
-from .ai_connector_helper import AiConnectorHelper
+from .aos_connector_helper import AosConnectorHelper
 from .helper import (
     get_remote_model_configs,
     get_ml_model_group,
