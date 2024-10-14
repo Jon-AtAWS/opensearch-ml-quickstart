@@ -112,28 +112,24 @@ def get_ml_model(
     elif model_type == "sagemaker" and host_type == "os":
         ml_connector = AosSagemakerMlConnector(
             os_client=client.os_client,
-            connector_name=model_name,
             connector_configs=model_config,
         )
 
     elif model_type == "sagemaker" and host_type == "aos":
-        ml_connector = OsSagemakerMlConnector(
+        ml_connector = AosSagemakerMlConnector(
             os_client=client.os_client,
             aos_connector_helper = aos_connector_helper,
-            connector_name=model_name,
             connector_configs=model_config,
         )
     elif model_type == "bedrock" and host_type == "os":
         ml_connector = OsBedrockMlConnector(
             os_client=client.os_client,
-            connector_name=model_name,
             connector_configs=model_config,
         )
     elif model_type == "bedrock" and host_type == "aos":
         ml_connector = AosBedrockMlConnector(
             os_client=client.os_client,
             aos_connector_helper = aos_connector_helper,
-            connector_name=model_name,
             connector_configs=model_config,
         )
     return RemoteMlModel(
