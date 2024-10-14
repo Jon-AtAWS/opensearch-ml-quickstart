@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-import time
 from overrides import overrides
 from opensearchpy import OpenSearch
 from opensearch_py_ml.ml_commons import MLCommonClient
