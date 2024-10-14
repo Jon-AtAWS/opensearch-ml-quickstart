@@ -69,7 +69,7 @@ class MlConnector(ABC):
         return connector_create_payload
 
     @abstractmethod
-    def _fill_in_connector_create_payload(self):
+    def _fill_in_connector_create_payload(self, connector_create_payload):
         pass
 
     def _get_connector_create_payload(self):
