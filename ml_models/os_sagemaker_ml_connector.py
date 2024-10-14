@@ -7,9 +7,8 @@ from .os_ml_connector import OsMlConnector
 
 
 class OsSagemakerMlConnector(OsMlConnector):
-    # TODO: verify that default connector name takes effect
-    DEFAULT_CONNECTOR_NAME = "Sagemaker connector"
-    DEFAULT_CONNECTOR_DESCRIPTION = "This is a Sagemaker connector"
+    DEFAULT_CONNECTOR_NAME = "Amazon Sagemaker Connector"
+    DEFAULT_CONNECTOR_DESCRIPTION = "The connector to Sagemaker embedding model"
 
     @overrides
     def _get_connector_create_payload_filename(self):

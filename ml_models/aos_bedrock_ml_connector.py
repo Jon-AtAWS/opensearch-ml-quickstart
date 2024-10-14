@@ -7,9 +7,8 @@ from .aos_ml_connector import AosMlConnector
 
 
 class AosBedrockMlConnector(AosMlConnector):
-    # TODO: verify that default connector name takes effect
-    DEFAULT_CONNECTOR_NAME = "Bedrock connector"
-    DEFAULT_CONNECTOR_DESCRIPTION = "This is a Bedrock connector"
+    DEFAULT_CONNECTOR_NAME = "Amazon Bedrock Connector"
+    DEFAULT_CONNECTOR_DESCRIPTION = "The connector to Bedrock embedding model"
 
     @overrides
     def get_connector_role_inline_policy(self):

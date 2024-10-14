@@ -1,6 +1,6 @@
 {
-    "name": "Amazon Bedrock Connector: embedding",
-    "description": "The connector to the Bedrock remote embedding model",
+    "name": "%s",
+    "description": "%s",
     "version": 1,
     "protocol": "aws_sigv4",
     "parameters": {
