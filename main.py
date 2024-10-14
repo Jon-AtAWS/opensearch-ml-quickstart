@@ -18,11 +18,12 @@ from mapping import get_base_mapping, mapping_update
 from ml_models import (
     MlModel,
     LocalMlModel,
-    OsBedrockMlModel,
-    AosBedrockMlModel,
-    OsSagemakerMlModel,
-    AosSagemakerMlModel,
-    get_connector_helper,
+    RemoteMlModel,
+    OsBedrockMlConnector,
+    AosBedrockMlConnector,
+    OsSagemakerMlConnector,
+    AosSagemakerMlConnector,
+    get_aos_connector_helper,
     get_remote_model_configs,
 )
 
@@ -91,7 +92,7 @@ def send_bulk_ignore_exceptions(client: OpenSearch, docs):
 def get_ml_model(
     host_type, model_type, model_config: Dict[str, str], client: OsMlClientWrapper
 ) -> MlModel:
-    helper = None
+    aos_connector_helper = None
 
     model_name = model_config.get("model_name", None)
 
@@ -99,7 +100,7 @@ def get_ml_model(
         model_name = f"{host_type}_{model_type}"
 
     if host_type == "aos":
-        helper = get_connector_helper(get_client_configs("aos"))
+        aos_connector_helper = get_aos_connector_helper(get_client_configs("aos"))
 
     if model_type == "local":
         return LocalMlModel(
@@ -109,35 +110,39 @@ def get_ml_model(
             model_configs=model_config,
         )
     elif model_type == "sagemaker" and host_type == "os":
-        return OsSagemakerMlModel(
+        ml_connector = AosSagemakerMlConnector(
             os_client=client.os_client,
-            ml_commons_client=client.ml_commons_client,
-            model_name=model_name,
-            model_configs=model_config,
+            connector_name=model_name,
+            connector_configs=model_config,
         )
+
     elif model_type == "sagemaker" and host_type == "aos":
-        return AosSagemakerMlModel(
+        ml_connector = OsSagemakerMlConnector(
             os_client=client.os_client,
-            ml_commons_client=client.ml_commons_client,
-            helper=helper,
-            model_name=model_name,
-            model_configs=model_config,
+            aos_connector_helper = aos_connector_helper,
+            connector_name=model_name,
+            connector_configs=model_config,
         )
     elif model_type == "bedrock" and host_type == "os":
-        return OsBedrockMlModel(
+        ml_connector = OsBedrockMlConnector(
             os_client=client.os_client,
-            ml_commons_client=client.ml_commons_client,
-            model_name=model_name,
-            model_configs=model_config,
+            connector_name=model_name,
+            connector_configs=model_config,
         )
     elif model_type == "bedrock" and host_type == "aos":
-        return AosBedrockMlModel(
+        ml_connector = AosBedrockMlConnector(
             os_client=client.os_client,
-            ml_commons_client=client.ml_commons_client,
-            helper=helper,
-            model_name=model_name,
-            model_configs=model_config,
+            aos_connector_helper = aos_connector_helper,
+            connector_name=model_name,
+            connector_configs=model_config,
         )
+    return RemoteMlModel(
+        os_client=client.os_client,
+        ml_commons_client=client.ml_commons_client,
+        ml_connector = ml_connector,
+        model_name=model_name,
+        model_configs=model_config,
+    )
 
 
 def load_category(client: OpenSearch, pqa_reader: QAndAFileReader, category, config):
