@@ -5,7 +5,7 @@ from overrides import overrides
 
 from .aos_ml_connector import AosMlConnector
 
-class AosSagemakerMlModel(AosMlConnector):
+class AosSagemakerMlConnector(AosMlConnector):
     DEFAULT_MODEL_NAME = "Sagemaker Model"
     DEFAULT_MODEL_DESCRIPTION = "This is a Sagemaker model"
 
