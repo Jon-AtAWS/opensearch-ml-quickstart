@@ -26,5 +26,5 @@ class AosBedrockMlConnector(AosMlConnector):
         }
 
     @overrides
-    def _get_connector_create_payload(self):
+    def _get_connector_create_payload_filename(self):
         return "aos_bedrock.json"

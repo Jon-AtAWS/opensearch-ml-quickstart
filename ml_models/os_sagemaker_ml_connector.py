@@ -12,5 +12,5 @@ class OsSagemakerMlConnector(OsMlConnector):
     DEFAULT_CONNECTOR_DESCRIPTION = "This is a Sagemaker connector"
 
     @overrides
-    def _get_connector_create_payload(self):
+    def _get_connector_create_payload_filename(self):
         return "os_sagemaker.json"
