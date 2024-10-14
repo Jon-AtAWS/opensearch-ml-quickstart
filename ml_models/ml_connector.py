@@ -18,13 +18,13 @@ class MlConnector(ABC):
     def __init__(
         self,
         os_client: OpenSearch,
-        connector_name=DEFAULT_CONNECTOR_NAME,
-        connector_description=DEFAULT_CONNECTOR_DESCRIPTION,
+        connector_name=None,
+        connector_description=None,
         connector_configs=dict(),
     ) -> None:
         self._os_client = os_client
-        self._connector_name = connector_name
-        self._connector_description = connector_description
+        self._connector_name = connector_name if connector_name else self.DEFAULT_CONNECTOR_NAME
+        self._connector_description = connector_description if connector_description else self.DEFAULT_CONNECTOR_DESCRIPTION
         self._connector_configs = connector_configs
         self._connector_id = self._get_connector_id()
         logging.info(f"Connector id {self._connector_id}")
@@ -103,7 +103,6 @@ class MlConnector(ABC):
         try:
             search_query = {"size": 10000, "_source": {"includes": ["name"]}}
             search_result = self._search_connectors(search_query)
-            logging.info(f"MlConnector _find_connectors search_result {search_result}")
             if not search_result:
                 return []
             if "hits" not in search_result or "hits" not in search_result["hits"]:

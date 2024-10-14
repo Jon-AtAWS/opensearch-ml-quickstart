@@ -11,21 +11,18 @@ from .aos_connector_helper import AosConnectorHelper
 
 
 class AosMlConnector(MlConnector):
-    DEFAULT_CONNECTOR_NAME = "Machine Learning connector"
-    DEFAULT_CONNECTOR_DESCRIPTION = "This is a Machine Learning connector"
 
     def __init__(
         self,
         os_client: OpenSearch,
         aos_connector_helper: AosConnectorHelper,
-        connector_name=DEFAULT_CONNECTOR_NAME,
-        connector_description=DEFAULT_CONNECTOR_DESCRIPTION,
+        connector_name=None,
+        connector_description=None,
         connector_configs=dict(),
     ) -> None:
         # TODO: as a best practice, move the parent class consturctor function first
         self._aos_connector_helper = aos_connector_helper
         super().__init__(os_client, connector_name, connector_description, connector_configs)
-        
 
     @overrides
     def _validate_configs(self):
