@@ -110,7 +110,7 @@ def get_ml_model(
             model_configs=model_config,
         )
     elif model_type == "sagemaker" and host_type == "os":
-        ml_connector = AosSagemakerMlConnector(
+        ml_connector = OsSagemakerMlConnector(
             os_client=client.os_client,
             connector_configs=model_config,
         )
