@@ -72,7 +72,7 @@ def read_json_file(file_path):
         return json.load(file)
 
 
-def get_connector_helper(configs) -> AosConnectorHelper:
+def get_aos_connector_helper(configs) -> AosConnectorHelper:
     required_args = ["region", "username", "password", "domain_name", "aws_user_name"]
     validate_configs(configs, required_args)
     region = configs["region"]

@@ -14,5 +14,5 @@ from .helper import (
     get_remote_model_configs,
     get_ml_model_group,
     get_ml_model_group,
-    get_connector_helper,
+    get_aos_connector_helper,
 )
