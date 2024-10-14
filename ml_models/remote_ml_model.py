@@ -26,10 +26,11 @@ class RemoteMlModel(MlModel):
         model_description=DEFAULT_MODEL_DESCRIPTION,
         model_configs=dict(),
     ) -> None:
+        # TODO: as a best practice, move the parent class consturctor function first
+        self._ml_connector = ml_connector
         super().__init__(
             os_client, ml_commons_client, model_name, model_description, model_configs
         )
-        self.ml_connector = ml_connector
 
     @overrides
     def _register_model(self):
@@ -45,7 +46,7 @@ class RemoteMlModel(MlModel):
             "name": self._model_name,
             "function_name": "remote",
             "description": self._model_description,
-            "connector_id": self.ml_connector.connector_id(),
+            "connector_id": self._ml_connector.connector_id(),
             "deploy": True,
         }
         response = self._os_client.http.post(
