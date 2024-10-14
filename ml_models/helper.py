@@ -72,7 +72,7 @@ def read_json_file(file_path):
         return json.load(file)
 
 
-def get_connector_helper(configs) -> AiConnectorHelper:
+def get_connector_helper(configs) -> AosConnectorHelper:
     required_args = ["region", "username", "password", "domain_name", "aws_user_name"]
     validate_configs(configs, required_args)
     region = configs["region"]
@@ -80,7 +80,7 @@ def get_connector_helper(configs) -> AiConnectorHelper:
     password = configs["password"]
     domain_name = configs["domain_name"]
     aws_username = configs["aws_user_name"]
-    return AiConnectorHelper(region, domain_name, username, password, aws_username)
+    return AosConnectorHelper(region, domain_name, username, password, aws_username)
 
 
 def get_ml_model_group(os_client, ml_commons_client) -> MlModelGroup:
