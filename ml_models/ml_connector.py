@@ -33,13 +33,13 @@ class MlConnector(ABC):
         connector_ids = self._find_connectors(self._connector_name)
         if len(connector_ids) == 0:
             logging.info(f"Creating connector {self._connector_name}")
-            self._register_model()
+            self.set_up()
 
         # in case of duplicate connector names, find the first connector id
-        model_ids = self._find_connectors(self._connector_name)
-        if len(model_ids) == 0:
-            raise Exception("Failed to find the registered model")
-        return model_ids[0]
+        connector_ids = self._find_connectors(self._connector_name)
+        if len(connector_ids) == 0:
+            raise Exception("Failed to find the created connector")
+        return connector_ids[0]
 
     def __str__(self) -> str:
         return f"<Connector {self._connector_name} {self._connector_id}>"
@@ -74,7 +74,9 @@ class MlConnector(ABC):
 
     def _get_connector_create_payload(self):
         connector_create_payload = self._read_connector_create_payload()
-        connector_create_payload = self._fill_in_connector_create_payload()
+        connector_create_payload = self._fill_in_connector_create_payload(
+            connector_create_payload
+        )
         return connector_create_payload
 
     @abstractmethod
@@ -96,11 +98,10 @@ class MlConnector(ABC):
             url=f"{ML_BASE_URI}/connectors/_search", body=search_query
         )
 
-    # TODO: Find connector with the connector name
-    def _find_connectors(self, connector_name):
-        # returns all connector ids
+    # name == None to return all connector ids
+    def _find_connectors(self, connector_name=None):
         try:
-            search_query = {"size": 10000, "query": {"match_all": {}}}
+            search_query = {"size": 10000, "_source": {"includes": ["name"]}}
             search_result = self._search_connectors(search_query)
             logging.info(f"MlConnector _find_connectors search_result {search_result}")
             if not search_result:
@@ -109,7 +110,9 @@ class MlConnector(ABC):
                 return []
             ret = []
             for hit in search_result["hits"]["hits"]:
-                ret.append(hit["_id"])
+                source = hit["_source"]
+                if not connector_name or hit["_source"]["name"] == connector_name:
+                    ret.append(hit["_id"])
             return ret
         except Exception as e:
             logging.error(f"MlConnector _find_connectors failed due to exception: {e}")
