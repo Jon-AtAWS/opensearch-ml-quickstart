@@ -5,6 +5,7 @@ from overrides import overrides
 
 from .aos_ml_connector import AosMlConnector
 
+
 class AosSagemakerMlConnector(AosMlConnector):
     DEFAULT_CONNECTOR_NAME = "Amazon Sagemaker Connector"
     DEFAULT_CONNECTOR_DESCRIPTION = "The connector to Sagemaker embedding model"
@@ -22,7 +23,7 @@ class AosSagemakerMlConnector(AosMlConnector):
                 }
             ],
         }
-    
+
     @overrides
     def _get_connector_create_payload_filename(self):
         return "aos_sagemaker.json"

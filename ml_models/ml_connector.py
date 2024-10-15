@@ -23,8 +23,14 @@ class MlConnector(ABC):
         connector_configs=dict(),
     ) -> None:
         self._os_client = os_client
-        self._connector_name = connector_name if connector_name else self.DEFAULT_CONNECTOR_NAME
-        self._connector_description = connector_description if connector_description else self.DEFAULT_CONNECTOR_DESCRIPTION
+        self._connector_name = (
+            connector_name if connector_name else self.DEFAULT_CONNECTOR_NAME
+        )
+        self._connector_description = (
+            connector_description
+            if connector_description
+            else self.DEFAULT_CONNECTOR_DESCRIPTION
+        )
         self._connector_configs = connector_configs
         self._connector_id = self._get_connector_id()
         logging.info(f"Connector id {self._connector_id}")

@@ -4,14 +4,13 @@
 from abc import abstractmethod
 from overrides import overrides
 from opensearchpy import OpenSearch
- 
+
 from configs import validate_configs
 from .ml_connector import MlConnector
 from .aos_connector_helper import AosConnectorHelper
 
 
 class AosMlConnector(MlConnector):
-
     def __init__(
         self,
         os_client: OpenSearch,
@@ -22,7 +21,9 @@ class AosMlConnector(MlConnector):
     ) -> None:
         # TODO: as a best practice, move the parent class consturctor function first
         self._aos_connector_helper = aos_connector_helper
-        super().__init__(os_client, connector_name, connector_description, connector_configs)
+        super().__init__(
+            os_client, connector_name, connector_description, connector_configs
+        )
 
     @overrides
     def _validate_configs(self):
@@ -43,7 +44,9 @@ class AosMlConnector(MlConnector):
     def _create_connector_with_payload(self, connector_create_payload):
         connector_role_inline_policy = self.get_connector_role_inline_policy()
         connector_role_name = self._connector_configs["connector_role_name"]
-        create_connector_role_name = self._connector_configs["create_connector_role_name"]
+        create_connector_role_name = self._connector_configs[
+            "create_connector_role_name"
+        ]
 
         self._connector_id = self._aos_connector_helper.create_connector_with_role(
             connector_role_inline_policy,
@@ -66,4 +69,3 @@ class AosMlConnector(MlConnector):
         connector_create_payload["version"] = connector_version
 
         return connector_create_payload
-        

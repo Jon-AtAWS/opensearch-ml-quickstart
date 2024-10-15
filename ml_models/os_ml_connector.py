@@ -8,7 +8,6 @@ from configs import validate_configs, ML_BASE_URI
 
 
 class OsMlConnector(MlConnector):
-
     @overrides
     def _validate_configs(self):
         required_args = ["access_key", "secret_key", "region", "url"]

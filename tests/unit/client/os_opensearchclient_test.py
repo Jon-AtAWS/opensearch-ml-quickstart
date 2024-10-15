@@ -41,7 +41,9 @@ def test():
     with patch("builtins.input", return_value="y"):
         client.cleanup_kNN(index_name="amazon_pqa", pipeline_name="amazon_pqa_pipeline")
 
-    os_bedrock_configs = get_remote_connector_configs(host_type="os", connector_type="bedrock")
+    os_bedrock_configs = get_remote_connector_configs(
+        host_type="os", connector_type="bedrock"
+    )
     os_sagemaker_configs = get_remote_connector_configs(
         host_type="os", connector_type="sagemaker"
     )
@@ -54,10 +56,16 @@ def test():
         connector_configs=os_sagemaker_configs,
     )
     aos_bedrock_ml_model = RemoteMlModel(
-        os_client, ml_commons_client, model_name = "aos_bedrock_model", ml_connector=os_bedrock_ml_connector
+        os_client,
+        ml_commons_client,
+        model_name="aos_bedrock_model",
+        ml_connector=os_bedrock_ml_connector,
     )
     aos_sagemaker_ml_model = RemoteMlModel(
-        os_client, ml_commons_client, model_name = "aos_sagemaker_model", ml_connector=os_sagemaker_ml_connector
+        os_client,
+        ml_commons_client,
+        model_name="aos_sagemaker_model",
+        ml_connector=os_sagemaker_ml_connector,
     )
 
     logging.info(f"Testing bedrock model")

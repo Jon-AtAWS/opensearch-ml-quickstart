@@ -15,10 +15,11 @@ def test():
     ml_commons_client = MLCommonClient(os_client=os_client)
 
     logging.info("Creating os bedrock ml Model...")
-    os_bedrock_configs = get_remote_connector_configs(host_type="os", connector_type="bedrock")
+    os_bedrock_configs = get_remote_connector_configs(
+        host_type="os", connector_type="bedrock"
+    )
     ml_connector = OsBedrockMlConnector(
-        os_client=os_client,
-        connector_configs=os_bedrock_configs
+        os_client=os_client, connector_configs=os_bedrock_configs
     )
     model = RemoteMlModel(
         os_client=os_client,

@@ -181,18 +181,18 @@ def get_ml_models_and_configs(
     aos_sagemaker_ml_connector = AosSagemakerMlConnector(
         os_client=aos_client.os_client,
         aos_connector_helper=aos_connector_helper,
-        connector_configs= model_configs[2],
+        connector_configs=model_configs[2],
     )
 
     os_bedrock_ml_connector = OsBedrockMlConnector(
         os_client=os_client.os_client,
-        connector_configs= model_configs[3],
+        connector_configs=model_configs[3],
     )
 
     aos_bedrock_ml_connector = AosBedrockMlConnector(
         os_client=aos_client.os_client,
         aos_connector_helper=aos_connector_helper,
-        connector_configs= model_configs[4],
+        connector_configs=model_configs[4],
     )
 
     ml_models.append(
@@ -254,11 +254,7 @@ def run_test(task: Dict[str, str]) -> Dict:
         for ml_model, ml_model_config, model_type in zip(
             ml_models, ml_model_configs, model_types
         ):
-            client = (
-                aos_client
-                if ml_model_config["host_type"] == "aos"
-                else os_client
-            )
+            client = aos_client if ml_model_config["host_type"] == "aos" else os_client
             index_settings = create_index_settings(
                 base_mapping_path=get_config("BASE_MAPPING_PATH"),
                 task=task,
@@ -306,7 +302,7 @@ def run_test(task: Dict[str, str]) -> Dict:
 
 def test():
     accumulated_results = dict()
-    test_tasks = {TEST_TASK_NAME: tasks[TEST_TASK_NAME]} 
+    test_tasks = {TEST_TASK_NAME: tasks[TEST_TASK_NAME]}
     for task_name, task in test_tasks.items():
         logging.info(f'Running task "{task_name}"')
         results = run_test(task)

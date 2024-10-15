@@ -6,7 +6,12 @@ from unittest.mock import patch
 from opensearch_py_ml.ml_commons import MLCommonClient
 
 from client import get_client, get_client_configs
-from ml_models import get_aos_connector_helper, get_remote_connector_configs, AosBedrockMlConnector, RemoteMlModel
+from ml_models import (
+    get_aos_connector_helper,
+    get_remote_connector_configs,
+    AosBedrockMlConnector,
+    RemoteMlModel,
+)
 
 
 def test():

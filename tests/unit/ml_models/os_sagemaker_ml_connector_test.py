@@ -6,7 +6,11 @@ from unittest.mock import patch
 from opensearch_py_ml.ml_commons import MLCommonClient
 
 from client import get_client
-from ml_models import get_remote_connector_configs, OsSagemakerMlConnector, RemoteMlModel
+from ml_models import (
+    get_remote_connector_configs,
+    OsSagemakerMlConnector,
+    RemoteMlModel,
+)
 
 
 def test():
@@ -19,8 +23,7 @@ def test():
         host_type="os", connector_type="sagemaker"
     )
     ml_connector = OsSagemakerMlConnector(
-        os_client=os_client,
-        connector_configs=os_sagemaker_configs
+        os_client=os_client, connector_configs=os_sagemaker_configs
     )
     model = RemoteMlModel(
         os_client=os_client,

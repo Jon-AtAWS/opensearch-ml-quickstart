@@ -26,19 +26,26 @@ def test():
     aos_bedrock_ml_connector = AosBedrockMlConnector(
         os_client=os_client,
         connector_configs=aos_bedrock_configs,
-        aos_connector_helper=aos_connector_helper
+        aos_connector_helper=aos_connector_helper,
     )
     aos_sagemaker_ml_connector = AosSagemakerMlConnector(
         os_client=os_client,
         connector_configs=aos_sagemaker_configs,
-        aos_connector_helper=aos_connector_helper
+        aos_connector_helper=aos_connector_helper,
     )
     aos_bedrock_ml_model = RemoteMlModel(
-        os_client, ml_commons_client, model_name = "aos_bedrock_model",
-        model_configs=aos_bedrock_configs, ml_connector=aos_bedrock_ml_connector
+        os_client,
+        ml_commons_client,
+        model_name="aos_bedrock_model",
+        model_configs=aos_bedrock_configs,
+        ml_connector=aos_bedrock_ml_connector,
     )
     aos_sagemaker_ml_model = RemoteMlModel(
-        os_client, ml_commons_client, model_name = "aos_sagemaker_model",model_configs=aos_sagemaker_configs, ml_connector=aos_sagemaker_ml_connector
+        os_client,
+        ml_commons_client,
+        model_name="aos_sagemaker_model",
+        model_configs=aos_sagemaker_configs,
+        ml_connector=aos_sagemaker_ml_connector,
     )
 
     logging.info(f"Testing bedrock model")
