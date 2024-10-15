@@ -66,7 +66,7 @@ def test():
         index_name="amazon_pqa",
         index_settings={"settings": {"number_of_shards": 1}},
         pipeline_name="amazon_pqa_pipeline",
-        delete_existing=False,
+        delete_existing=True,
         ml_model=aos_bedrock_ml_model,
     )
     with patch("builtins.input", return_value="y"):
@@ -78,7 +78,7 @@ def test():
         index_name="amazon_pqa",
         index_settings={"settings": {"number_of_shards": 1}},
         pipeline_name="amazon_pqa_pipeline",
-        delete_existing=False,
+        delete_existing=True,
         ml_model=aos_sagemaker_ml_model,
     )
     with patch("builtins.input", return_value="y"):
