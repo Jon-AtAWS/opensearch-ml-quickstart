@@ -8,10 +8,11 @@ from opensearch_py_ml.ml_commons import MLCommonClient
 from client import get_client, OsMlClientWrapper
 from ml_models import (
     get_ml_model_group,
-    get_remote_model_configs,
+    get_remote_connector_configs,
     LocalMlModel,
-    OsBedrockMlModel,
-    OsSagemakerMlModel,
+    OsBedrockMlConnector,
+    OsSagemakerMlConnector,
+    RemoteMlModel,
 )
 
 
@@ -40,15 +41,31 @@ def test():
     with patch("builtins.input", return_value="y"):
         client.cleanup_kNN(index_name="amazon_pqa", pipeline_name="amazon_pqa_pipeline")
 
-    os_bedrock_configs = get_remote_model_configs(host_type="os", model_type="bedrock")
-    os_sagemaker_configs = get_remote_model_configs(
-        host_type="os", model_type="sagemaker"
+    os_bedrock_configs = get_remote_connector_configs(
+        host_type="os", connector_type="bedrock"
     )
-    aos_bedrock_ml_model = OsBedrockMlModel(
-        os_client, ml_commons_client, model_configs=os_bedrock_configs
+    os_sagemaker_configs = get_remote_connector_configs(
+        host_type="os", connector_type="sagemaker"
     )
-    aos_sagemaker_ml_model = OsSagemakerMlModel(
-        os_client, ml_commons_client, model_configs=os_sagemaker_configs
+    os_bedrock_ml_connector = OsBedrockMlConnector(
+        os_client=os_client,
+        connector_configs=os_bedrock_configs,
+    )
+    os_sagemaker_ml_connector = OsSagemakerMlConnector(
+        os_client=os_client,
+        connector_configs=os_sagemaker_configs,
+    )
+    aos_bedrock_ml_model = RemoteMlModel(
+        os_client,
+        ml_commons_client,
+        model_name="aos_bedrock_model",
+        ml_connector=os_bedrock_ml_connector,
+    )
+    aos_sagemaker_ml_model = RemoteMlModel(
+        os_client,
+        ml_commons_client,
+        model_name="aos_sagemaker_model",
+        ml_connector=os_sagemaker_ml_connector,
     )
 
     logging.info(f"Testing bedrock model")
@@ -57,7 +74,7 @@ def test():
         index_name="amazon_pqa",
         index_settings={"settings": {"number_of_shards": 1}},
         pipeline_name="amazon_pqa_pipeline",
-        delete_existing=False,
+        delete_existing=True,
         ml_model=aos_bedrock_ml_model,
     )
     with patch("builtins.input", return_value="y"):
@@ -69,7 +86,7 @@ def test():
         index_name="amazon_pqa",
         index_settings={"settings": {"number_of_shards": 1}},
         pipeline_name="amazon_pqa_pipeline",
-        delete_existing=False,
+        delete_existing=True,
         ml_model=aos_sagemaker_ml_model,
     )
     with patch("builtins.input", return_value="y"):

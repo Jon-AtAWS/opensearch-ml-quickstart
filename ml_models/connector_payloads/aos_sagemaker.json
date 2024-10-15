@@ -1,6 +1,6 @@
 {
-    "name": "Sagemaker embedding model connector",
-    "description": "Connector for my Sagemaker embedding model",
+    "name": "%s",
+    "description": "%s",
     "version": "%s",
     "protocol": "aws_sigv4",
     "parameters": {

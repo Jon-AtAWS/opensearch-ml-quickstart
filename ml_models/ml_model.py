@@ -106,7 +106,7 @@ class MlModel(ABC):
             return
 
         try:
-            logging.info(f"Uneploying model {model_id}")
+            logging.info(f"Undeploying model {model_id}")
             self._ml_commons_client.undeploy_model(model_id)
             logging.info(f"Undeployed model {model_id}")
         except Exception as e:
