@@ -9,13 +9,13 @@ from .ml_model_group import MlModelGroup
 from .aos_connector_helper import AosConnectorHelper
 
 
-def get_remote_model_configs(model_type: str, host_type: str) -> Dict[str, str]:
-    if model_type not in {"sagemaker", "bedrock"}:
-        raise ValueError(f"model_type must be either sagemaker or bedrock")
+def get_remote_connector_configs(connector_type: str, host_type: str) -> Dict[str, str]:
+    if connector_type not in {"sagemaker", "bedrock"}:
+        raise ValueError(f"connector_type must be either sagemaker or bedrock")
     if host_type not in {"os", "aos"}:
         raise ValueError(f"host_type must either be os or aos")
 
-    if model_type == "sagemaker" and host_type == "os":
+    if connector_type == "sagemaker" and host_type == "os":
         configs = {
             "access_key": get_config("OS_SAGEMAKER_ACCESS_KEY"),
             "secret_key": get_config("OS_SAGEMAKER_SECRET_KEY"),
@@ -26,7 +26,7 @@ def get_remote_model_configs(model_type: str, host_type: str) -> Dict[str, str]:
         }
         validate_configs(configs, list(configs.keys()))
         return configs
-    elif model_type == "sagemaker" and host_type == "aos":
+    elif connector_type == "sagemaker" and host_type == "aos":
         configs = {
             "arn": get_config("AOS_SAGEMAKER_ARN"),
             "connector_role_name": get_config("AOS_SAGEMAKER_CONNECTOR_ROLE_NAME"),
@@ -40,7 +40,7 @@ def get_remote_model_configs(model_type: str, host_type: str) -> Dict[str, str]:
         }
         validate_configs(configs, list(configs.keys()))
         return configs
-    elif model_type == "bedrock" and host_type == "os":
+    elif connector_type == "bedrock" and host_type == "os":
         configs = {
             "access_key": get_config("OS_BEDROCK_ACCESS_KEY"),
             "secret_key": get_config("OS_BEDROCK_SECRET_KEY"),
