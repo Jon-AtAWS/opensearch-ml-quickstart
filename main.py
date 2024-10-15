@@ -24,7 +24,7 @@ from ml_models import (
     OsSagemakerMlConnector,
     AosSagemakerMlConnector,
     get_aos_connector_helper,
-    get_remote_model_configs,
+    get_remote_connector_configs,
 )
 
 logging.basicConfig(
@@ -295,8 +295,8 @@ def main():
             "model_group_id": client.ml_model_group.model_group_id(),
         }
         if args.model_type == "local"
-        else get_remote_model_configs(
-            host_type=args.host_type, model_type=args.model_type
+        else get_remote_connector_configs(
+            host_type=args.host_type, connector_type=args.model_type
         )
     )
     model_config["model_name"] = model_name
@@ -315,7 +315,7 @@ def main():
     )
 
     config["max_cat_docs"] = args.number_of_docs
-    config["cleanup"] = args.cleanup
+    config["cleanup"] = config["cleanup"] or args.cleanup
 
     logging.info(f"Config: {json.dumps(config, indent=4)}")
 
