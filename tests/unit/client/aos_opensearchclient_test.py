@@ -6,7 +6,7 @@ from unittest.mock import patch
 from opensearch_py_ml.ml_commons import MLCommonClient
 
 from client import get_client, get_client_configs, OsMlClientWrapper
-from ml_models import get_remote_model_configs, get_aos_connector_helper
+from ml_models import get_remote_connector_configs, get_aos_connector_helper
 from ml_models import AosBedrockMlConnector, AosSagemakerMlConnector, RemoteMlModel
 
 
@@ -17,11 +17,11 @@ def test():
     ml_commons_client = MLCommonClient(os_client=os_client)
 
     aos_connector_helper = get_aos_connector_helper(get_client_configs("aos"))
-    aos_bedrock_configs = get_remote_model_configs(
-        host_type="aos", model_type="bedrock"
+    aos_bedrock_configs = get_remote_connector_configs(
+        host_type="aos", connector_type="bedrock"
     )
-    aos_sagemaker_configs = get_remote_model_configs(
-        host_type="aos", model_type="sagemaker"
+    aos_sagemaker_configs = get_remote_connector_configs(
+        host_type="aos", connector_type="sagemaker"
     )
     aos_bedrock_ml_connector = AosBedrockMlConnector(
         os_client=os_client,

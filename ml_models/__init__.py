@@ -11,7 +11,7 @@ from .aos_bedrock_ml_connector import AosBedrockMlConnector
 from .aos_sagemaker_ml_connector import AosSagemakerMlConnector
 from .aos_connector_helper import AosConnectorHelper
 from .helper import (
-    get_remote_model_configs,
+    get_remote_connector_configs,
     get_ml_model_group,
     get_ml_model_group,
     get_aos_connector_helper,

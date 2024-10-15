@@ -8,7 +8,7 @@ from opensearch_py_ml.ml_commons import MLCommonClient
 from client import get_client, OsMlClientWrapper
 from ml_models import (
     get_ml_model_group,
-    get_remote_model_configs,
+    get_remote_connector_configs,
     LocalMlModel,
     OsBedrockMlConnector,
     OsSagemakerMlConnector,
@@ -41,9 +41,9 @@ def test():
     with patch("builtins.input", return_value="y"):
         client.cleanup_kNN(index_name="amazon_pqa", pipeline_name="amazon_pqa_pipeline")
 
-    os_bedrock_configs = get_remote_model_configs(host_type="os", model_type="bedrock")
-    os_sagemaker_configs = get_remote_model_configs(
-        host_type="os", model_type="sagemaker"
+    os_bedrock_configs = get_remote_connector_configs(host_type="os", connector_type="bedrock")
+    os_sagemaker_configs = get_remote_connector_configs(
+        host_type="os", connector_type="sagemaker"
     )
     os_bedrock_ml_connector = OsBedrockMlConnector(
         os_client=os_client,

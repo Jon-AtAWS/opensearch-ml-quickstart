@@ -8,7 +8,7 @@ from opensearch_py_ml.ml_commons import MLCommonClient
 from client import get_client, get_client_configs
 from ml_models import (
     get_aos_connector_helper,
-    get_remote_model_configs,
+    get_remote_connector_configs,
     AosSagemakerMlConnector,
     RemoteMlModel,
 )
@@ -21,8 +21,8 @@ def test():
 
     logging.info("Creating aos sagemaker ml model...")
     aos_connector_helper = get_aos_connector_helper(get_client_configs("aos"))
-    aos_sagemaker_configs = get_remote_model_configs(
-        host_type="aos", model_type="sagemaker"
+    aos_sagemaker_configs = get_remote_connector_configs(
+        host_type="aos", connector_type="sagemaker"
     )
     ml_connector = AosSagemakerMlConnector(
         os_client=os_client,

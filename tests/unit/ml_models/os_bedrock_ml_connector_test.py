@@ -6,7 +6,7 @@ from unittest.mock import patch
 from opensearch_py_ml.ml_commons import MLCommonClient
 
 from client import get_client
-from ml_models import get_remote_model_configs, OsBedrockMlConnector, RemoteMlModel
+from ml_models import get_remote_connector_configs, OsBedrockMlConnector, RemoteMlModel
 
 
 def test():
@@ -15,7 +15,7 @@ def test():
     ml_commons_client = MLCommonClient(os_client=os_client)
 
     logging.info("Creating os bedrock ml Model...")
-    os_bedrock_configs = get_remote_model_configs(host_type="os", model_type="bedrock")
+    os_bedrock_configs = get_remote_connector_configs(host_type="os", connector_type="bedrock")
     ml_connector = OsBedrockMlConnector(
         os_client=os_client,
         connector_configs=os_bedrock_configs
