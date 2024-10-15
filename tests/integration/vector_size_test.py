@@ -12,18 +12,19 @@ from mapping import get_base_mapping, mapping_update
 from client import get_index_size, get_client, get_client_configs, OsMlClientWrapper
 from data_process import QAndAFileReader
 from ml_models import (
-    MlModel,
     LocalMlModel,
-    OsBedrockMlModel,
-    OsSagemakerMlModel,
-    AosBedrockMlModel,
-    AosSagemakerMlModel,
-    get_connector_helper,
-    get_remote_model_configs,
+    RemoteMlModel,
+    OsBedrockMlConnector,
+    OsSagemakerMlConnector,
+    AosBedrockMlConnector,
+    AosSagemakerMlConnector,
+    get_aos_connector_helper,
+    get_remote_connector_configs,
 )
 
 INDEX_NAME = "amazon_pqa_test"
 PIPELINE_NAME = "amazon_pqa_test"
+TEST_TASK_NAME = "knn_768"
 client_types = ["os", "aos"]
 model_types = ["os_local", "os_sagemaker", "aos_sagemaker", "os_bedrock", "aos_bedrock"]
 
@@ -132,58 +133,6 @@ def load_to_opensearch(
     return results
 
 
-def get_ml_model(
-    host_type, model_type, model_config: Dict[str, str], client: OsMlClientWrapper
-) -> MlModel:
-    helper = None
-
-    model_name = model_config.get("model_name", None)
-
-    if model_type != "local":
-        model_name = f"{host_type}_{model_type}"
-
-    if host_type == "aos":
-        helper = get_connector_helper(get_client_configs("aos"))
-
-    if model_type == "local":
-        return LocalMlModel(
-            os_client=client.os_client,
-            ml_commons_client=client.ml_commons_client,
-            model_name=model_name,
-            model_configs=model_config,
-        )
-    elif model_type == "sagemaker" and host_type == "os":
-        return OsSagemakerMlModel(
-            os_client=client.os_client,
-            ml_commons_client=client.ml_commons_client,
-            model_name=model_name,
-            model_configs=model_config,
-        )
-    elif model_type == "sagemaker" and host_type == "aos":
-        return AosSagemakerMlModel(
-            os_client=client.os_client,
-            ml_commons_client=client.ml_commons_client,
-            helper=helper,
-            model_name=model_name,
-            model_configs=model_config,
-        )
-    elif model_type == "bedrock" and host_type == "os":
-        return OsBedrockMlModel(
-            os_client=client.os_client,
-            ml_commons_client=client.ml_commons_client,
-            model_name=model_name,
-            model_configs=model_config,
-        )
-    elif model_type == "bedrock" and host_type == "aos":
-        return AosBedrockMlModel(
-            os_client=client.os_client,
-            ml_commons_client=client.ml_commons_client,
-            helper=helper,
-            model_name=model_name,
-            model_configs=model_config,
-        )
-
-
 def get_ml_models_and_configs(
     os_client: OsMlClientWrapper,
     aos_client: OsMlClientWrapper,
@@ -193,7 +142,7 @@ def get_ml_models_and_configs(
     local_model_name = model_configs["model_name"]
     bedrock_model_name = f"{local_model_name}_bedrock"
     sagemaker_model_name = f"{local_model_name}_sagemaker"
-    helper = get_connector_helper(get_client_configs("aos"))
+    aos_connector_helper = get_aos_connector_helper(get_client_configs("aos"))
 
     # local os
     local_model_configs = {
@@ -204,63 +153,88 @@ def get_ml_models_and_configs(
 
     model_configs = [
         local_model_configs,
-        get_remote_model_configs(host_type="os", model_type="sagemaker"),
-        get_remote_model_configs(host_type="aos", model_type="sagemaker"),
-        get_remote_model_configs(host_type="os", model_type="bedrock"),
-        get_remote_model_configs(host_type="aos", model_type="bedrock"),
+        get_remote_connector_configs(host_type="os", connector_type="sagemaker"),
+        get_remote_connector_configs(host_type="aos", connector_type="sagemaker"),
+        get_remote_connector_configs(host_type="os", connector_type="bedrock"),
+        get_remote_connector_configs(host_type="aos", connector_type="bedrock"),
     ]
+    model_configs[0]["host_type"] = "os"
+    model_configs[1]["host_type"] = "os"
+    model_configs[2]["host_type"] = "aos"
+    model_configs[3]["host_type"] = "os"
+    model_configs[4]["host_type"] = "aos"
 
     ml_models.append(
         LocalMlModel(
             os_client=os_client.os_client,
             ml_commons_client=os_client.ml_commons_client,
             model_name=local_model_name,
-            model_configs=local_model_configs,
+            model_configs=model_configs[0],
         )
     )
 
+    os_sagemaker_ml_connector = OsSagemakerMlConnector(
+        os_client=os_client.os_client,
+        connector_configs=model_configs[1],
+    )
+
+    aos_sagemaker_ml_connector = AosSagemakerMlConnector(
+        os_client=aos_client.os_client,
+        aos_connector_helper=aos_connector_helper,
+        connector_configs= model_configs[2],
+    )
+
+    os_bedrock_ml_connector = OsBedrockMlConnector(
+        os_client=os_client.os_client,
+        connector_configs= model_configs[3],
+    )
+
+    aos_bedrock_ml_connector = AosBedrockMlConnector(
+        os_client=aos_client.os_client,
+        aos_connector_helper=aos_connector_helper,
+        connector_configs= model_configs[4],
+    )
+
     ml_models.append(
-        OsSagemakerMlModel(
+        RemoteMlModel(
             os_client=os_client.os_client,
             ml_commons_client=os_client.ml_commons_client,
+            ml_connector=os_sagemaker_ml_connector,
             model_name=sagemaker_model_name,
-            model_configs=model_configs[1],
         )
     )
 
     ml_models.append(
-        AosSagemakerMlModel(
+        RemoteMlModel(
             os_client=aos_client.os_client,
             ml_commons_client=aos_client.ml_commons_client,
-            helper=helper,
+            ml_connector=aos_sagemaker_ml_connector,
             model_name=sagemaker_model_name,
-            model_configs=model_configs[2],
         )
     )
 
     ml_models.append(
-        OsBedrockMlModel(
+        RemoteMlModel(
             os_client=os_client.os_client,
             ml_commons_client=os_client.ml_commons_client,
+            ml_connector=os_bedrock_ml_connector,
             model_name=bedrock_model_name,
-            model_configs=model_configs[3],
         )
     )
 
     ml_models.append(
-        AosBedrockMlModel(
+        RemoteMlModel(
             os_client=aos_client.os_client,
             ml_commons_client=aos_client.ml_commons_client,
-            helper=helper,
+            ml_connector=aos_bedrock_ml_connector,
             model_name=bedrock_model_name,
-            model_configs=model_configs[4],
         )
     )
 
     return ml_models, model_configs
 
 
-def run_test(task) -> Dict:
+def run_test(task: Dict[str, str]) -> Dict:
     cleanup = task["cleanup"]
     with_knn = task["with_knn"]
     categories = task["categories"]
@@ -282,8 +256,7 @@ def run_test(task) -> Dict:
         ):
             client = (
                 aos_client
-                if isinstance(ml_model, AosBedrockMlModel)
-                or isinstance(ml_model, AosSagemakerMlModel)
+                if ml_model_config["host_type"] == "aos"
                 else os_client
             )
             index_settings = create_index_settings(
@@ -333,7 +306,8 @@ def run_test(task) -> Dict:
 
 def test():
     accumulated_results = dict()
-    for task_name, task in tasks.items():
+    test_tasks = {TEST_TASK_NAME: tasks[TEST_TASK_NAME]} 
+    for task_name, task in test_tasks.items():
         logging.info(f'Running task "{task_name}"')
         results = run_test(task)
         accumulated_results[task_name] = results
