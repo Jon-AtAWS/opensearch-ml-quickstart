@@ -10,8 +10,9 @@ from ml_models import (
     get_ml_model_group,
     get_remote_model_configs,
     LocalMlModel,
-    OsBedrockMlModel,
-    OsSagemakerMlModel,
+    OsBedrockMlConnector,
+    OsSagemakerMlConnector,
+    RemoteMlModel,
 )
 
 
@@ -44,11 +45,19 @@ def test():
     os_sagemaker_configs = get_remote_model_configs(
         host_type="os", model_type="sagemaker"
     )
-    aos_bedrock_ml_model = OsBedrockMlModel(
-        os_client, ml_commons_client, model_configs=os_bedrock_configs
+    os_bedrock_ml_connector = OsBedrockMlConnector(
+        os_client=os_client,
+        connector_configs=os_bedrock_configs,
     )
-    aos_sagemaker_ml_model = OsSagemakerMlModel(
-        os_client, ml_commons_client, model_configs=os_sagemaker_configs
+    os_sagemaker_ml_connector = OsSagemakerMlConnector(
+        os_client=os_client,
+        connector_configs=os_sagemaker_configs,
+    )
+    aos_bedrock_ml_model = RemoteMlModel(
+        os_client, ml_commons_client, ml_connector=os_bedrock_ml_connector
+    )
+    aos_sagemaker_ml_model = RemoteMlModel(
+        os_client, ml_commons_client, ml_connector=os_sagemaker_ml_connector
     )
 
     logging.info(f"Testing bedrock model")

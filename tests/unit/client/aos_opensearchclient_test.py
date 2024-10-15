@@ -5,9 +5,9 @@ import logging
 from unittest.mock import patch
 from opensearch_py_ml.ml_commons import MLCommonClient
 
-from ml_models import AosBedrockMlModel, AosSagemakerMlModel
 from client import get_client, get_client_configs, OsMlClientWrapper
-from ml_models import get_remote_model_configs, get_connector_helper
+from ml_models import get_remote_model_configs, get_aos_connector_helper
+from ml_models import AosBedrockMlConnector, AosSagemakerMlConnector, RemoteMlModel
 
 
 def test():
@@ -16,18 +16,28 @@ def test():
     client = OsMlClientWrapper(os_client)
     ml_commons_client = MLCommonClient(os_client=os_client)
 
-    helper = get_connector_helper(get_client_configs("aos"))
+    aos_connector_helper = get_aos_connector_helper(get_client_configs("aos"))
     aos_bedrock_configs = get_remote_model_configs(
         host_type="aos", model_type="bedrock"
     )
     aos_sagemaker_configs = get_remote_model_configs(
         host_type="aos", model_type="sagemaker"
     )
-    aos_bedrock_ml_model = AosBedrockMlModel(
-        os_client, ml_commons_client, model_configs=aos_bedrock_configs, helper=helper
+    aos_bedrock_ml_connector = AosBedrockMlConnector(
+        os_client=os_client,
+        connector_configs=aos_bedrock_configs,
+        aos_connector_helper=aos_connector_helper
     )
-    aos_sagemaker_ml_model = AosSagemakerMlModel(
-        os_client, ml_commons_client, model_configs=aos_sagemaker_configs, helper=helper
+    aos_sagemaker_ml_connector = AosSagemakerMlConnector(
+        os_client=os_client,
+        connector_configs=aos_sagemaker_configs,
+        aos_connector_helper=aos_connector_helper
+    )
+    aos_bedrock_ml_model = RemoteMlModel(
+        os_client, ml_commons_client, model_configs=aos_bedrock_configs, ml_connector=aos_bedrock_ml_connector
+    )
+    aos_sagemaker_ml_model = RemoteMlModel(
+        os_client, ml_commons_client, model_configs=aos_sagemaker_configs, ml_connector=aos_sagemaker_ml_connector
     )
 
     logging.info(f"Testing bedrock model")
