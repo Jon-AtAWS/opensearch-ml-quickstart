@@ -39,7 +39,7 @@ class RemoteMlModel(MlModel):
     @overrides
     def clean_up(self):
         super().clean_up()
-        self.ml_connector.clean_up()
+        self._ml_connector.clean_up()
 
     def _deploy_model(self):
         model_deploy_payload = {
