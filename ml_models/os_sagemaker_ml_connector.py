@@ -12,4 +12,4 @@ class OsSagemakerMlConnector(OsMlConnector):
 
     @overrides
     def _get_connector_create_payload_filename(self):
-        return "os_sagemaker.json"
+        return "sagemaker.json"

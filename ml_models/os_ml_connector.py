@@ -23,18 +23,19 @@ class OsMlConnector(MlConnector):
 
     @overrides
     def _fill_in_connector_create_payload(self, connector_create_payload):
-        url = self._connector_configs["url"]
+        model = self._connector_configs["model"]
         region = self._connector_configs["region"]
-        access_key = self._connector_configs["access_key"]
-        secret_key = self._connector_configs["secret_key"]
         connector_version = self._connector_configs["connector_version"]
+        credential = {
+            "access_key": self._connector_configs["access_key"],
+            "secret_key": self._connector_configs["secret_key"],
+        }
 
         connector_create_payload["name"] = self._connector_name
         connector_create_payload["description"] = self._connector_description
         connector_create_payload["version"] = connector_version
+        connector_create_payload["parameters"]["model"] = model
         connector_create_payload["parameters"]["region"] = region
-        connector_create_payload["credential"]["access_key"] = access_key
-        connector_create_payload["credential"]["secret_key"] = secret_key
-        connector_create_payload["actions"][0]["url"] = url
+        connector_create_payload["credential"] = credential
 
         return connector_create_payload

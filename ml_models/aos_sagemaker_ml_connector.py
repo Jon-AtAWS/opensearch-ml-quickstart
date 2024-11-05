@@ -18,12 +18,12 @@ class AosSagemakerMlConnector(AosMlConnector):
             "Statement": [
                 {
                     "Effect": "Allow",
-                    "Action": ["sagemaker:InvokeEndpoint"],
                     "Resource": [arn],
+                    "Action": ["sagemaker:InvokeEndpoint"],
                 }
             ],
         }
 
     @overrides
     def _get_connector_create_payload_filename(self):
-        return "aos_sagemaker.json"
+        return "sagemaker.json"

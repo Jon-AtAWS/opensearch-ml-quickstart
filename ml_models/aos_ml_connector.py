@@ -58,13 +58,13 @@ class AosMlConnector(MlConnector):
 
     @overrides
     def _fill_in_connector_create_payload(self, connector_create_payload):
-        url = self._connector_configs["url"]
+        model = self._connector_configs["model"]
         region = self._connector_configs["region"]
         connector_version = self._connector_configs["connector_version"]
 
         connector_create_payload["name"] = self._connector_name
         connector_create_payload["description"] = self._connector_description
-        connector_create_payload["actions"][0]["url"] = url
+        connector_create_payload["parameters"]["model"] = model
         connector_create_payload["parameters"]["region"] = region
         connector_create_payload["version"] = connector_version
 

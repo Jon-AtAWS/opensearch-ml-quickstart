@@ -17,13 +17,13 @@ class AosBedrockMlConnector(AosMlConnector):
             "Version": "2012-10-17",
             "Statement": [
                 {
-                    "Action": ["bedrock:InvokeModel"],
                     "Effect": "Allow",
-                    "Resource": arn,
+                    "Resource": [arn],
+                    "Action": ["bedrock:InvokeModel"],
                 }
             ],
         }
 
     @overrides
     def _get_connector_create_payload_filename(self):
-        return "aos_bedrock.json"
+        return "bedrock.json"
