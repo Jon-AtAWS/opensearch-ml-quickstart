@@ -5,9 +5,10 @@ import os
 import logging
 from abc import ABC, abstractmethod
 from opensearchpy import OpenSearch
+from tenacity import retry, stop_after_attempt, wait_fixed
 
-from configs import ML_BASE_URI
 from .helper import read_json_file
+from configs import ML_BASE_URI, DELETE_RESOURCE_WAIT_TIME, DELETE_RESOURCE_RETRY_TIME
 
 
 # parent abstract class for all connectors
@@ -124,6 +125,10 @@ class MlConnector(ABC):
             # return an empty list with any exception
             return []
 
+    @retry(
+        stop=stop_after_attempt(DELETE_RESOURCE_RETRY_TIME),
+        wait=wait_fixed(DELETE_RESOURCE_WAIT_TIME),
+    )
     def _delete_connector(self, connector_id):
         user_input = (
             input(f"Do you want to delete the connector {connector_id}? (y/n): ")

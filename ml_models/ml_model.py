@@ -7,7 +7,7 @@ from opensearchpy import OpenSearch
 from opensearch_py_ml.ml_commons import MLCommonClient
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-from configs import DELETE_MODEL_WAIT_TIME, DELETE_MODEL_RETRY_TIME
+from configs import DELETE_RESOURCE_WAIT_TIME, DELETE_RESOURCE_RETRY_TIME
 
 
 # parent abstract class for all ml models
@@ -91,8 +91,8 @@ class MlModel(ABC):
             return []
 
     @retry(
-        stop=stop_after_attempt(DELETE_MODEL_RETRY_TIME),
-        wait=wait_fixed(DELETE_MODEL_WAIT_TIME),
+        stop=stop_after_attempt(DELETE_RESOURCE_RETRY_TIME),
+        wait=wait_fixed(DELETE_RESOURCE_WAIT_TIME),
     )
     def _undeploy_and_delete_model(self, model_id):
         user_input = (

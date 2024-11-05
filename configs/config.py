@@ -7,10 +7,10 @@ DEFAULT_ENV_PATH = "./configs/.env"
 # Open Search
 MINIMUM_OPENSEARCH_VERSION = "2.13.0"
 
-# ML models
+# ML connectors, models and model_groups
 ML_BASE_URI = "/_plugins/_ml"
-DELETE_MODEL_WAIT_TIME = 5
-DELETE_MODEL_RETRY_TIME = 5
+DELETE_RESOURCE_WAIT_TIME = 5
+DELETE_RESOURCE_RETRY_TIME = 5
 
 DEFAULT_LOCAL_MODEL_NAME = (
     "huggingface/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"

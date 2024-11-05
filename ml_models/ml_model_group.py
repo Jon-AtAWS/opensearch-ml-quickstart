@@ -4,8 +4,9 @@
 import logging
 from opensearchpy import OpenSearch
 from opensearch_py_ml import ml_commons
+from tenacity import retry, stop_after_attempt, wait_fixed
 
-from configs import ML_BASE_URI
+from configs import ML_BASE_URI, DELETE_RESOURCE_WAIT_TIME, DELETE_RESOURCE_RETRY_TIME
 
 
 class MlModelGroup:
@@ -84,6 +85,10 @@ class MlModelGroup:
                 return model_group["_id"]
         return None
 
+    @retry(
+        stop=stop_after_attempt(DELETE_RESOURCE_RETRY_TIME),
+        wait=wait_fixed(DELETE_RESOURCE_WAIT_TIME),
+    )
     def _delete_model_group(self, model_group_id):
         user_input = (
             input(f"Do you want to delete the model group {model_group_id}? (y/n): ")
