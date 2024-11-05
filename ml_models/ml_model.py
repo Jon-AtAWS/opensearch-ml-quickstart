@@ -7,7 +7,7 @@ from opensearchpy import OpenSearch
 from opensearch_py_ml.ml_commons import MLCommonClient
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-from configs import DELETE_MODEL_WAIT_TIME, DELETE_MODEL_RETRY_TIME
+from configs import DELETE_RESOURCE_WAIT_TIME, DELETE_RESOURCE_RETRY_TIME
 
 
 # parent abstract class for all ml models
@@ -91,8 +91,8 @@ class MlModel(ABC):
             return []
 
     @retry(
-        stop=stop_after_attempt(DELETE_MODEL_RETRY_TIME),
-        wait=wait_fixed(DELETE_MODEL_WAIT_TIME),
+        stop=stop_after_attempt(DELETE_RESOURCE_RETRY_TIME),
+        wait=wait_fixed(DELETE_RESOURCE_WAIT_TIME),
     )
     def _undeploy_and_delete_model(self, model_id):
         user_input = (
@@ -106,7 +106,7 @@ class MlModel(ABC):
             return
 
         try:
-            logging.info(f"Uneploying model {model_id}")
+            logging.info(f"Undeploying model {model_id}")
             self._ml_commons_client.undeploy_model(model_id)
             logging.info(f"Undeployed model {model_id}")
         except Exception as e:
@@ -120,9 +120,3 @@ class MlModel(ABC):
         except Exception as e:
             logging.error(f"Deleting model {model_id} failed due to exception {e}")
             raise e
-
-    def unload_and_delete_all_loaded_models(self):
-        logging.info("Deleting all loaded models")
-        model_ids = self.find_models()
-        for model_id in model_ids:
-            self._undeploy_and_delete_model(model_id)
