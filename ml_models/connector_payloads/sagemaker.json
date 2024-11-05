@@ -5,8 +5,7 @@
     "protocol": "aws_sigv4",
     "parameters": {
       "region": "%s",
-      "service_name": "sagemaker",
-      "model": "%s"
+      "service_name": "sagemaker"
     },
     "actions": [
       {
@@ -15,7 +14,7 @@
         "headers": {
           "content-type": "application/json"
         },
-        "url": "https://runtime.sagemaker.${parameters.region}.amazonaws.com/endpoints/${parameters.model}/invocations",
+        "url": "%s",
         "request_body": "${parameters.input}",
         "pre_process_function": "connector.pre_process.default.embedding",
         "post_process_function": "connector.post_process.default.embedding"
