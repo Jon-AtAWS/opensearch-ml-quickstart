@@ -88,7 +88,7 @@ def run_test(is_os_client: bool, model_type):
             f"-ht={host_type}",
             "-c=headlight bulbs",
             "-d",
-            "cl",
+            "-cl",
         ],
         stdin=subprocess.PIPE,
         cwd=os.path.curdir,
