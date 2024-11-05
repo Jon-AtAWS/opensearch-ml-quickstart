@@ -1,0 +1,24 @@
+{
+    "name": "Amazon Sagemaker Connector: embedding",
+    "description": "The connector to Sagemaker embedding model",
+    "version": 1,
+    "protocol": "aws_sigv4",
+    "parameters": {
+      "region": "%s",
+      "service_name": "sagemaker",
+      "model": "%s"
+    },
+    "actions": [
+      {
+        "action_type": "predict",
+        "method": "POST",
+        "headers": {
+          "content-type": "application/json"
+        },
+        "url": "https://runtime.sagemaker.${parameters.region}.amazonaws.com/endpoints/${parameters.model}/invocations",
+        "request_body": "${parameters.input}",
+        "pre_process_function": "connector.pre_process.default.embedding",
+        "post_process_function": "connector.post_process.default.embedding"
+      }
+    ]
+  }
