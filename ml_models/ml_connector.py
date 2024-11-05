@@ -143,9 +143,3 @@ class MlConnector(ABC):
             logging.error(
                 f"Deleting connector {connector_id} failed due to exception {e}"
             )
-
-    def delete_all_connectors(self):
-        logging.info("Deleting all connectors")
-        connector_ids = self._find_connectors()
-        for connector_id in connector_ids:
-            self._delete_connector(connector_id)

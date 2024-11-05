@@ -120,9 +120,3 @@ class MlModel(ABC):
         except Exception as e:
             logging.error(f"Deleting model {model_id} failed due to exception {e}")
             raise e
-
-    def unload_and_delete_all_loaded_models(self):
-        logging.info("Deleting all loaded models")
-        model_ids = self.find_models()
-        for model_id in model_ids:
-            self._undeploy_and_delete_model(model_id)

@@ -61,14 +61,3 @@ class RemoteMlModel(MlModel):
         state = response["state"]
         if state != "COMPLETED":
             raise Exception(f"Model deployment task {task_id} is not COMPLETED!")
-
-    @overrides
-    def unload_and_delete_all_loaded_models(self):
-        super().unload_and_delete_all_loaded_models()
-        self.ml_connector.delete_all_connectors()
-
-        logging.info("Deleting the model group")
-        ml_model_group = MlModelGroup(
-            self._os_client, self._ml_commons_client, self._model_name
-        )
-        ml_model_group.clean_up()
