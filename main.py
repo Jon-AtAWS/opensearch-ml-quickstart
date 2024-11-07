@@ -292,7 +292,6 @@ def main():
     model_config = (
         {
             "model_version": config["model_version"],
-            "model_group_id": client.ml_model_group.model_group_id(),
         }
         if args.model_type == "local"
         else get_remote_connector_configs(
@@ -300,6 +299,7 @@ def main():
         )
     )
     model_config["model_name"] = model_name
+    model_config["model_group_id"] = client.ml_model_group.model_group_id()
 
     ml_model = get_ml_model(
         host_type=args.host_type,

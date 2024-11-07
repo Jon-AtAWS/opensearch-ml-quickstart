@@ -2,15 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import time
-import logging
 from overrides import overrides
 from opensearchpy import OpenSearch
 from opensearch_py_ml.ml_commons import MLCommonClient
 
 from .ml_model import MlModel
 from .ml_connector import MlConnector
-from .ml_model_group import MlModelGroup
-from configs import ML_BASE_URI
+from configs import parse_arg_from_configs, ML_BASE_URI
 
 
 class RemoteMlModel(MlModel):
@@ -42,11 +40,13 @@ class RemoteMlModel(MlModel):
         self._ml_connector.clean_up()
 
     def _deploy_model(self):
+        model_group_id = parse_arg_from_configs(self.model_configs, "model_group_id")
         model_deploy_payload = {
             "name": self._model_name,
             "function_name": "remote",
             "description": self._model_description,
             "connector_id": self._ml_connector.connector_id(),
+            "model_group_id": model_group_id,
             "deploy": True,
         }
         response = self._os_client.http.post(
