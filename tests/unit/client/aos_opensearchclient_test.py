@@ -15,6 +15,7 @@ def test():
     os_client = get_client("aos")
     client = OsMlClientWrapper(os_client)
     ml_commons_client = MLCommonClient(os_client=os_client)
+    model_group_id = client.ml_model_group.model_group_id()
 
     aos_connector_helper = get_aos_connector_helper(get_client_configs("aos"))
     aos_bedrock_configs = get_remote_connector_configs(
@@ -36,6 +37,7 @@ def test():
     aos_bedrock_ml_model = RemoteMlModel(
         os_client,
         ml_commons_client,
+        model_group_id=model_group_id,
         model_name="aos_bedrock_model",
         model_configs=aos_bedrock_configs,
         ml_connector=aos_bedrock_ml_connector,
@@ -43,6 +45,7 @@ def test():
     aos_sagemaker_ml_model = RemoteMlModel(
         os_client,
         ml_commons_client,
+        model_group_id=model_group_id,
         model_name="aos_sagemaker_model",
         model_configs=aos_sagemaker_configs,
         ml_connector=aos_sagemaker_ml_connector,

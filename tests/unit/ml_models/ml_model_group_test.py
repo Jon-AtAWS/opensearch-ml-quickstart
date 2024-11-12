@@ -24,6 +24,7 @@ def test():
         os_client=os_client,
         ml_commons_client=ml_commons_client,
         model_name="huggingface/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+        model_group_id=model_group_id,
         model_configs={"model_group_id": model_group_id},
     )
 

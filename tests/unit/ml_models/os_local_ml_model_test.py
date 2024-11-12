@@ -23,6 +23,7 @@ def test():
     model = LocalMlModel(
         os_client=os_client,
         ml_commons_client=ml_commons_client,
+        model_group_id=model_group_id,
         model_configs=model_configs,
     )
 
