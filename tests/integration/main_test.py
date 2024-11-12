@@ -132,9 +132,10 @@ def run_test(is_os_client: bool, model_type):
     time.sleep(5)
     validate_clean_up(client, INDEX_NAME)
     curr_connector_cnt, curr_model_cnt, curr_model_group_cnt = get_resources_cnt(client)
-    assert prev_connector_cnt == curr_connector_cnt
-    assert prev_model_cnt == curr_model_cnt
-    assert prev_model_group_cnt == curr_model_group_cnt
+    # some resources may already exist and then gets deleted by cleanup
+    assert prev_connector_cnt >= curr_connector_cnt
+    assert prev_model_cnt >= curr_model_cnt
+    assert prev_model_group_cnt >= curr_model_group_cnt
 
 
 def test():
