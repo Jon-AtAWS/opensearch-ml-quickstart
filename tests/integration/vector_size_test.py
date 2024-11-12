@@ -284,7 +284,9 @@ def run_test(task: Dict[str, str]) -> Dict:
             )
             if cleanup:
                 with patch("builtins.input", return_value="y"):
-                    client.cleanup_kNN(index_name=INDEX_NAME, pipeline_name=PIPELINE_NAME)
+                    client.cleanup_kNN(
+                        index_name=INDEX_NAME, pipeline_name=PIPELINE_NAME
+                    )
     else:
         logging.info("Setting up without KNN")
         clients = [os_client, aos_client]
