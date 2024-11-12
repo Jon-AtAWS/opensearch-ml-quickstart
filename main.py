@@ -146,8 +146,8 @@ def get_ml_model(
 
 def load_category(client: OpenSearch, pqa_reader: QAndAFileReader, category, config):
     logging.info(f'Loading category "{category}"')
-    number_of_docs = 0
     docs = []
+    number_of_docs = 0
     for doc in pqa_reader.questions_for_category(
         pqa_reader.amazon_pqa_category_name_to_constant(category), enriched=True
     ):
@@ -168,8 +168,6 @@ def load_category(client: OpenSearch, pqa_reader: QAndAFileReader, category, con
             logging.info(f"Sending {number_of_docs} docs")
             send_bulk_ignore_exceptions(client, docs)
             docs = []
-        if (config["max_cat_docs"] > 0) and (number_of_docs >= config["max_cat_docs"]):
-            break
     if len(docs) > 0:
         logging.info(f'Category "{category}" complete. Sending {number_of_docs} docs')
         send_bulk_ignore_exceptions(client, docs)
@@ -264,7 +262,9 @@ def main():
         raise ValueError(f"local model on aos is not supported")
 
     client = OsMlClientWrapper(get_client(args.host_type))
-    pqa_reader = QAndAFileReader(directory=args.dataset_path)
+    pqa_reader = QAndAFileReader(
+        directory=args.dataset_path, max_number_of_docs=args.number_of_docs
+    )
 
     if args.task not in tasks.keys():
         raise ValueError(
@@ -315,8 +315,6 @@ def main():
         index_config=config,
         model_config=model_config,
     )
-
-    config["max_cat_docs"] = args.number_of_docs
     config["cleanup"] = config["cleanup"] or args.cleanup
 
     logging.info(f"Config: {json.dumps(config, indent=4)}")
