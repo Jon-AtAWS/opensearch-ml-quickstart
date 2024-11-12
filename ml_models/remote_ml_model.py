@@ -20,6 +20,7 @@ class RemoteMlModel(MlModel):
         os_client: OpenSearch,
         ml_commons_client: MLCommonClient,
         ml_connector: MlConnector,
+        model_group_id,
         model_name=DEFAULT_MODEL_NAME,
         model_description=DEFAULT_MODEL_DESCRIPTION,
         model_configs=dict(),
@@ -27,7 +28,12 @@ class RemoteMlModel(MlModel):
         # TODO: as a best practice, move the parent class consturctor function first
         self._ml_connector = ml_connector
         super().__init__(
-            os_client, ml_commons_client, model_name, model_description, model_configs
+            os_client,
+            ml_commons_client,
+            model_group_id,
+            model_name,
+            model_description,
+            model_configs,
         )
 
     @overrides
@@ -40,13 +46,12 @@ class RemoteMlModel(MlModel):
         self._ml_connector.clean_up()
 
     def _deploy_model(self):
-        model_group_id = parse_arg_from_configs(self.model_configs, "model_group_id")
         model_deploy_payload = {
             "name": self._model_name,
             "function_name": "remote",
             "description": self._model_description,
             "connector_id": self._ml_connector.connector_id(),
-            "model_group_id": model_group_id,
+            "model_group_id": self._model_group_id,
             "deploy": True,
         }
         response = self._os_client.http.post(

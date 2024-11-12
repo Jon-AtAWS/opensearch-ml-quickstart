@@ -19,15 +19,17 @@ class MlModel(ABC):
         self,
         os_client: OpenSearch,
         ml_commons_client: MLCommonClient,
+        model_group_id,
         model_name=DEFAULT_MODEL_NAME,
         model_description=DEFAULT_MODEL_DESCRIPTION,
         model_configs=dict(),
     ) -> None:
         self._os_client = os_client
         self._ml_commons_client = ml_commons_client
+        self._model_group_id = model_group_id
         self._model_name = model_name
         self._model_description = model_description
-        self.model_configs = model_configs
+        self._model_configs = model_configs
         self._model_id = self._get_model_id()
         logging.info(f"MlModel id {self._model_id}")
 
