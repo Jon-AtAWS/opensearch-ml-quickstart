@@ -31,3 +31,4 @@ tenacity==8.5.0
 requests_aws4auth==1.2.3
 overrides==7.4.0
 python-dotenv==1.0.1
+black==24.10.0
