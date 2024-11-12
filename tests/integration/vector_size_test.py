@@ -5,6 +5,7 @@ import json
 import time
 import logging
 from typing import Dict
+from unittest.mock import patch
 from opensearchpy import helpers, OpenSearch
 
 from configs import get_config, tasks
@@ -143,13 +144,13 @@ def get_ml_models_and_configs(
     bedrock_model_name = f"{local_model_name}_bedrock"
     sagemaker_model_name = f"{local_model_name}_sagemaker"
     aos_connector_helper = get_aos_connector_helper(get_client_configs("aos"))
+    os_model_group_id = os_client.ml_model_group.model_group_id()
+    aos_model_group_id = aos_client.ml_model_group.model_group_id()
 
     # local os
-    local_model_configs = {
-        "model_group_id": os_client.ml_model_group.model_group_id(),
-    }
+    local_model_configs = {}
     if "model_version" in model_configs:
-        local_model_configs["model_version"] = (model_configs["model_version"],)
+        local_model_configs["model_version"] = model_configs["model_version"]
 
     model_configs = [
         local_model_configs,
@@ -168,6 +169,7 @@ def get_ml_models_and_configs(
         LocalMlModel(
             os_client=os_client.os_client,
             ml_commons_client=os_client.ml_commons_client,
+            model_group_id=os_model_group_id,
             model_name=local_model_name,
             model_configs=model_configs[0],
         )
@@ -200,6 +202,7 @@ def get_ml_models_and_configs(
             os_client=os_client.os_client,
             ml_commons_client=os_client.ml_commons_client,
             ml_connector=os_sagemaker_ml_connector,
+            model_group_id=os_model_group_id,
             model_name=sagemaker_model_name,
         )
     )
@@ -209,6 +212,7 @@ def get_ml_models_and_configs(
             os_client=aos_client.os_client,
             ml_commons_client=aos_client.ml_commons_client,
             ml_connector=aos_sagemaker_ml_connector,
+            model_group_id=aos_model_group_id,
             model_name=sagemaker_model_name,
         )
     )
@@ -218,6 +222,7 @@ def get_ml_models_and_configs(
             os_client=os_client.os_client,
             ml_commons_client=os_client.ml_commons_client,
             ml_connector=os_bedrock_ml_connector,
+            model_group_id=os_model_group_id,
             model_name=bedrock_model_name,
         )
     )
@@ -227,6 +232,7 @@ def get_ml_models_and_configs(
             os_client=aos_client.os_client,
             ml_commons_client=aos_client.ml_commons_client,
             ml_connector=aos_bedrock_ml_connector,
+            model_group_id=aos_model_group_id,
             model_name=bedrock_model_name,
         )
     )
@@ -276,9 +282,11 @@ def run_test(task: Dict[str, str]) -> Dict:
                 add_chunk=with_knn,
                 categories=categories,
             )
-        if cleanup:
-            os_client.cleanup_kNN(index_name=INDEX_NAME, pipeline_name=PIPELINE_NAME)
-            aos_client.cleanup_kNN(index_name=INDEX_NAME, pipeline_name=PIPELINE_NAME)
+            if cleanup:
+                with patch("builtins.input", return_value="y"):
+                    client.cleanup_kNN(
+                        index_name=INDEX_NAME, pipeline_name=PIPELINE_NAME
+                    )
     else:
         logging.info("Setting up without KNN")
         clients = [os_client, aos_client]

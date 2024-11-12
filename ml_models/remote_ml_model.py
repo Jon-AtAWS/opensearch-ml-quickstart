@@ -2,15 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import time
-import logging
 from overrides import overrides
 from opensearchpy import OpenSearch
 from opensearch_py_ml.ml_commons import MLCommonClient
 
 from .ml_model import MlModel
 from .ml_connector import MlConnector
-from .ml_model_group import MlModelGroup
-from configs import ML_BASE_URI
+from configs import parse_arg_from_configs, ML_BASE_URI
 
 
 class RemoteMlModel(MlModel):
@@ -22,6 +20,7 @@ class RemoteMlModel(MlModel):
         os_client: OpenSearch,
         ml_commons_client: MLCommonClient,
         ml_connector: MlConnector,
+        model_group_id,
         model_name=DEFAULT_MODEL_NAME,
         model_description=DEFAULT_MODEL_DESCRIPTION,
         model_configs=dict(),
@@ -29,7 +28,12 @@ class RemoteMlModel(MlModel):
         # TODO: as a best practice, move the parent class consturctor function first
         self._ml_connector = ml_connector
         super().__init__(
-            os_client, ml_commons_client, model_name, model_description, model_configs
+            os_client,
+            ml_commons_client,
+            model_group_id,
+            model_name,
+            model_description,
+            model_configs,
         )
 
     @overrides
@@ -47,6 +51,7 @@ class RemoteMlModel(MlModel):
             "function_name": "remote",
             "description": self._model_description,
             "connector_id": self._ml_connector.connector_id(),
+            "model_group_id": self._model_group_id,
             "deploy": True,
         }
         response = self._os_client.http.post(

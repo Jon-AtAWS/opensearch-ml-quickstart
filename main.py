@@ -95,6 +95,7 @@ def get_ml_model(
     aos_connector_helper = None
 
     model_name = model_config.get("model_name", None)
+    model_group_id = client.ml_model_group.model_group_id()
 
     if model_type != "local":
         model_name = f"{host_type}_{model_type}"
@@ -106,6 +107,7 @@ def get_ml_model(
         return LocalMlModel(
             os_client=client.os_client,
             ml_commons_client=client.ml_commons_client,
+            model_group_id=model_group_id,
             model_name=model_name,
             model_configs=model_config,
         )
@@ -136,6 +138,7 @@ def get_ml_model(
         os_client=client.os_client,
         ml_commons_client=client.ml_commons_client,
         ml_connector=ml_connector,
+        model_group_id=model_group_id,
         model_name=model_name,
         model_configs=model_config,
     )
@@ -292,7 +295,6 @@ def main():
     model_config = (
         {
             "model_version": config["model_version"],
-            "model_group_id": client.ml_model_group.model_group_id(),
         }
         if args.model_type == "local"
         else get_remote_connector_configs(

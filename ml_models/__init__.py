@@ -13,6 +13,5 @@ from .aos_connector_helper import AosConnectorHelper
 from .helper import (
     get_remote_connector_configs,
     get_ml_model_group,
-    get_ml_model_group,
     get_aos_connector_helper,
 )
