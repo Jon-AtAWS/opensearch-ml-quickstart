@@ -301,9 +301,9 @@ class QAndAFileReader:
         # According to https://stackoverflow.com/questions/1316887/what-is-the-most-efficient-string-concatenation-method-in-python
         # the most efficient method is f strings, not + or +=
         question["bullets"] = f'{question["bullet_point1"]} {question["bullet_point2"]}'
-        question[
-            "bullets"
-        ] = f'{question["bullets"]} {question["bullet_point3"]} {question["bullet_point4"]}'
+        question["bullets"] = (
+            f'{question["bullets"]} {question["bullet_point3"]} {question["bullet_point4"]}'
+        )
         question["bullets"] = f'{question["bullets"]} {question["bullet_point5"]}'
         for bullet in [
             "bullet_point1",

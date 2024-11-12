@@ -28,7 +28,12 @@ class LocalMlModel(MlModel):
         model_configs=dict(),
     ) -> None:
         super().__init__(
-            os_client, ml_commons_client, model_group_id, model_name, model_description, model_configs
+            os_client,
+            ml_commons_client,
+            model_group_id,
+            model_name,
+            model_description,
+            model_configs,
         )
 
     @overrides
