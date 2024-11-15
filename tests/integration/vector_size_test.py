@@ -86,7 +86,7 @@ def load_to_opensearch(
     max_cat_docs=10000,
     add_chunk=True,
 ):
-    reader = QAndAFileReader(directory=get_config("QANDA_FILE_READER_PATH"))
+    reader = QAndAFileReader(directory=get_config("QANDA_FILE_READER_PATH"), max_number_of_docs=max_cat_docs)
     results = {}
     bytes = 0
 
@@ -117,8 +117,6 @@ def load_to_opensearch(
                 logging.info(f"Sending {number_of_docs} docs")
                 send_bulk_ignore_exceptions(client.os_client, docs)
                 docs = []
-            if (max_cat_docs > 0) and (number_of_docs % max_cat_docs == 0):
-                break
         if len(docs) > 0:
             send_bulk_ignore_exceptions(client.os_client, docs)
         end_time = time.time()
