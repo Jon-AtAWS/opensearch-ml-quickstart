@@ -86,7 +86,9 @@ def load_to_opensearch(
     max_cat_docs=10000,
     add_chunk=True,
 ):
-    reader = QAndAFileReader(directory=get_config("QANDA_FILE_READER_PATH"), max_number_of_docs=max_cat_docs)
+    reader = QAndAFileReader(
+        directory=get_config("QANDA_FILE_READER_PATH"), max_number_of_docs=max_cat_docs
+    )
     results = {}
     bytes = 0
 
