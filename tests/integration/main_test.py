@@ -8,6 +8,7 @@ import subprocess
 from opensearchpy import OpenSearch
 
 from client import get_client
+from configs import ML_BASE_URI
 
 INDEX_NAME = "amazon_pqa"
 PIPELINE_NAME = "amazon_pqa"
@@ -45,9 +46,38 @@ def validate_clean_up(client: OpenSearch, index_name):
         assert get_pipeline_response == None
 
 
+# This function is used to validate cleaning up.
+# It get the number of connectors, model and model group from the cluster
+def get_resources_cnt(client: OpenSearch):
+    # connector
+    query = {"size": 10000}
+    connector_search_result = client.http.get(
+        url=f"{ML_BASE_URI}/connectors/_search", body=query
+    )
+    assert "hits" in connector_search_result
+    assert "hits" in connector_search_result["hits"]
+    connector_cnt = len(connector_search_result["hits"]["hits"])
+    # model
+    model_search_result = client.http.get(
+        url=f"{ML_BASE_URI}/models/_search", body=query
+    )
+    assert "hits" in model_search_result
+    assert "hits" in model_search_result["hits"]
+    model_cnt = len(model_search_result["hits"]["hits"])
+    # model group
+    model_group_search_result = client.http.get(
+        url=f"{ML_BASE_URI}/model_groups/_search", body=query
+    )
+    assert "hits" in model_group_search_result
+    assert "hits" in model_group_search_result["hits"]
+    model_group_cnt = len(model_group_search_result["hits"]["hits"])
+    return connector_cnt, model_cnt, model_group_cnt
+
+
 def run_test(is_os_client: bool, model_type):
     host_type = "os" if is_os_client else "aos"
     client = OS_CLIENT if is_os_client else AOS_CLIENT
+    prev_connector_cnt, prev_model_cnt, prev_model_group_cnt = get_resources_cnt(client)
     process = subprocess.Popen(
         args=[
             "python3",
@@ -79,6 +109,11 @@ def run_test(is_os_client: bool, model_type):
     process.communicate(input="y\ny\ny\n")
     time.sleep(5)
     validate_clean_up(client, INDEX_NAME)
+    curr_connector_cnt, curr_model_cnt, curr_model_group_cnt = get_resources_cnt(client)
+    # some resources may already exist and then gets deleted by cleanup
+    assert prev_connector_cnt >= curr_connector_cnt
+    assert prev_model_cnt >= curr_model_cnt
+    assert prev_model_group_cnt >= curr_model_group_cnt
     process = subprocess.Popen(
         args=[
             "python3",
@@ -88,7 +123,7 @@ def run_test(is_os_client: bool, model_type):
             f"-ht={host_type}",
             "-c=headlight bulbs",
             "-d",
-            "cl",
+            "-cl",
         ],
         stdin=subprocess.PIPE,
         cwd=os.path.curdir,
@@ -97,6 +132,11 @@ def run_test(is_os_client: bool, model_type):
     process.communicate(input="y\ny\ny\n")
     time.sleep(5)
     validate_clean_up(client, INDEX_NAME)
+    curr_connector_cnt, curr_model_cnt, curr_model_group_cnt = get_resources_cnt(client)
+    # some resources may already exist and then gets deleted by cleanup
+    assert prev_connector_cnt >= curr_connector_cnt
+    assert prev_model_cnt >= curr_model_cnt
+    assert prev_model_group_cnt >= curr_model_group_cnt
 
 
 def test():

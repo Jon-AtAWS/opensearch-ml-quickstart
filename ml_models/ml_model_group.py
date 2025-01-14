@@ -4,8 +4,9 @@
 import logging
 from opensearchpy import OpenSearch
 from opensearch_py_ml import ml_commons
+from tenacity import retry, stop_after_attempt, wait_fixed
 
-from configs import ML_BASE_URI
+from configs import ML_BASE_URI, DELETE_RESOURCE_WAIT_TIME, DELETE_RESOURCE_RETRY_TIME
 
 
 class MlModelGroup:
@@ -29,7 +30,12 @@ class MlModelGroup:
         return self.__str__()
 
     def clean_up(self):
-        self._delete_model_group()
+        if self._model_group_id:
+            self._delete_model_group(self._model_group_id)
+        else:
+            logging.info(
+                f"Model group {self.DEFAULT_GROUP_NAME} does not exist, cannot delete"
+            )
 
     def model_group_id(self):
         return self._model_group_id
@@ -79,32 +85,29 @@ class MlModelGroup:
                 return model_group["_id"]
         return None
 
-    def _delete_model_group(self):
-        if self._model_group_id:
-            user_input = (
-                input(
-                    f"Do you want to delete the model group {self._model_group_id}? (y/n): "
-                )
-                .strip()
-                .lower()
+    @retry(
+        stop=stop_after_attempt(DELETE_RESOURCE_RETRY_TIME),
+        wait=wait_fixed(DELETE_RESOURCE_WAIT_TIME),
+    )
+    def _delete_model_group(self, model_group_id):
+        user_input = (
+            input(f"Do you want to delete the model group {model_group_id}? (y/n): ")
+            .strip()
+            .lower()
+        )
+
+        if user_input != "y":
+            logging.info("Delete model group canceled.")
+            return
+
+        try:
+            logging.info(f"Deleting model group {model_group_id}")
+            self._os_client.http.delete(
+                url=f"{ML_BASE_URI}/model_groups/{model_group_id}",
+                body={},
             )
-
-            if user_input != "y":
-                logging.info("Delete model group canceled.")
-                return
-
-            try:
-                logging.info(f"Deleting model group {self._model_group_id}")
-                self._os_client.http.delete(
-                    url=f"{ML_BASE_URI}/model_groups/{self._model_group_id}",
-                    body={},
-                )
-                logging.info(f"Deleted model group {self._model_group_id}")
-            except Exception as e:
-                logging.error(
-                    f"Deleting model group {self._model_group_id} failed due to exception {e}"
-                )
-        else:
-            logging.info(
-                f"Model group {self.DEFAULT_GROUP_NAME} does not exist, cannot delete"
+            logging.info(f"Deleted model group {model_group_id}")
+        except Exception as e:
+            logging.error(
+                f"Deleting model group {model_group_id} failed due to exception {e}"
             )

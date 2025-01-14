@@ -24,7 +24,7 @@ The `MlModel` class provides an abstract base class for using ML models, with 2 
     
     - For self-managed OpenSearch you can run with Docker, or deploy onto compute. We've provided a `docker-compose.yml` in the `<root>` folder if you want to run locally on Docker. 
     
-    - The minium required OpenSearch version is **OpenSearch 2.13.0**. The code has been tested through version 2.16.0
+    - The minium required OpenSearch version is **OpenSearch 2.13.0**. The code has been tested through version 2.13.0, 2.16.0 and Amazon OpenSearch Service 2.13.0.
 
 2. If you are using a remote model, you need to configure an IAM user. The user should have permission to [access the Sagemaker](https://docs.aws.amazon.com/sagemaker/latest/dg/security-iam.html) or [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/security_iam_id-based-policy-examples.html) model. If you are using Bedrock, you need to [secure model access](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html) for the model you want to use.
 

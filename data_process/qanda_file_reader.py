@@ -216,12 +216,13 @@ class QAndAFileReader:
         "in-dash dvd and video receivers": "AMAZON_PQA_IN_DASH_DVD_AND_VIDEO_RECEIVERS",
     }
 
-    def __init__(self, directory):
+    def __init__(self, directory, max_number_of_docs=-1):
         self.asins = set()
         self.questions = set()
         self.amazon_pqa_constants = self.AMAZON_PQA_FILENAME_MAP.keys()
         self.directory = directory
         self.fake = faker.Faker()
+        self.max_number_of_docs = max_number_of_docs
 
     def amazon_pqa_category_name_to_constant(self, category_name):
         return self.AMAZON_PQA_CATEGORY_MAP[category_name]
@@ -328,6 +329,7 @@ class QAndAFileReader:
         return question
 
     def questions_for_category(self, pqa_constant, enriched=False):
+        number_of_docs = 0
         filename = self.AMAZON_PQA_FILENAME_MAP[pqa_constant]
         with open(self.directory + "/" + filename) as f:
             logging.info(f"Processing {filename}")
@@ -336,6 +338,11 @@ class QAndAFileReader:
                     yield self.enrich_question(pqa_constant, json.loads(line))
                 else:
                     yield json.loads(line)
+                number_of_docs += 1
+                if (self.max_number_of_docs > 0) and (
+                    number_of_docs >= self.max_number_of_docs
+                ):
+                    break
 
     def questions_for_all_categories(self, enriched=False):
         for pqa_constant in self.amazon_pqa_constants:

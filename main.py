@@ -18,12 +18,13 @@ from mapping import get_base_mapping, mapping_update
 from ml_models import (
     MlModel,
     LocalMlModel,
-    OsBedrockMlModel,
-    AosBedrockMlModel,
-    OsSagemakerMlModel,
-    AosSagemakerMlModel,
-    get_connector_helper,
-    get_remote_model_configs,
+    RemoteMlModel,
+    OsBedrockMlConnector,
+    AosBedrockMlConnector,
+    OsSagemakerMlConnector,
+    AosSagemakerMlConnector,
+    get_aos_connector_helper,
+    get_remote_connector_configs,
 )
 
 logging.basicConfig(
@@ -91,59 +92,62 @@ def send_bulk_ignore_exceptions(client: OpenSearch, docs):
 def get_ml_model(
     host_type, model_type, model_config: Dict[str, str], client: OsMlClientWrapper
 ) -> MlModel:
-    helper = None
+    aos_connector_helper = None
 
     model_name = model_config.get("model_name", None)
+    model_group_id = client.ml_model_group.model_group_id()
 
     if model_type != "local":
         model_name = f"{host_type}_{model_type}"
 
     if host_type == "aos":
-        helper = get_connector_helper(get_client_configs("aos"))
+        aos_connector_helper = get_aos_connector_helper(get_client_configs("aos"))
 
     if model_type == "local":
         return LocalMlModel(
             os_client=client.os_client,
             ml_commons_client=client.ml_commons_client,
+            model_group_id=model_group_id,
             model_name=model_name,
             model_configs=model_config,
         )
     elif model_type == "sagemaker" and host_type == "os":
-        return OsSagemakerMlModel(
+        ml_connector = OsSagemakerMlConnector(
             os_client=client.os_client,
-            ml_commons_client=client.ml_commons_client,
-            model_name=model_name,
-            model_configs=model_config,
+            connector_configs=model_config,
         )
+
     elif model_type == "sagemaker" and host_type == "aos":
-        return AosSagemakerMlModel(
+        ml_connector = AosSagemakerMlConnector(
             os_client=client.os_client,
-            ml_commons_client=client.ml_commons_client,
-            helper=helper,
-            model_name=model_name,
-            model_configs=model_config,
+            aos_connector_helper=aos_connector_helper,
+            connector_configs=model_config,
         )
     elif model_type == "bedrock" and host_type == "os":
-        return OsBedrockMlModel(
+        ml_connector = OsBedrockMlConnector(
             os_client=client.os_client,
-            ml_commons_client=client.ml_commons_client,
-            model_name=model_name,
-            model_configs=model_config,
+            connector_configs=model_config,
         )
     elif model_type == "bedrock" and host_type == "aos":
-        return AosBedrockMlModel(
+        ml_connector = AosBedrockMlConnector(
             os_client=client.os_client,
-            ml_commons_client=client.ml_commons_client,
-            helper=helper,
-            model_name=model_name,
-            model_configs=model_config,
+            aos_connector_helper=aos_connector_helper,
+            connector_configs=model_config,
         )
+    return RemoteMlModel(
+        os_client=client.os_client,
+        ml_commons_client=client.ml_commons_client,
+        ml_connector=ml_connector,
+        model_group_id=model_group_id,
+        model_name=model_name,
+        model_configs=model_config,
+    )
 
 
 def load_category(client: OpenSearch, pqa_reader: QAndAFileReader, category, config):
     logging.info(f'Loading category "{category}"')
-    number_of_docs = 0
     docs = []
+    number_of_docs = 0
     for doc in pqa_reader.questions_for_category(
         pqa_reader.amazon_pqa_category_name_to_constant(category), enriched=True
     ):
@@ -164,8 +168,6 @@ def load_category(client: OpenSearch, pqa_reader: QAndAFileReader, category, con
             logging.info(f"Sending {number_of_docs} docs")
             send_bulk_ignore_exceptions(client, docs)
             docs = []
-        if (config["max_cat_docs"] > 0) and (number_of_docs >= config["max_cat_docs"]):
-            break
     if len(docs) > 0:
         logging.info(f'Category "{category}" complete. Sending {number_of_docs} docs')
         send_bulk_ignore_exceptions(client, docs)
@@ -216,50 +218,40 @@ def get_args():
     parser = argparse.ArgumentParser(
         prog="main",
         description="This toolkit loads AmazonPQA data into an OpenSearch KNN index."
-                    "Your opensearch endpoint can be either opensource opensearch or "
-                    "amazon opensearch serivce. You can use local model and remote models "
-                    "from bedrock or sagemaker.",
+        "Your opensearch endpoint can be either opensource opensearch or "
+        "amazon opensearch serivce. You can use local model and remote models "
+        "from bedrock or sagemaker.",
+    )
+    parser.add_argument("-t", "--task", default="knn_768", action="store")
+    parser.add_argument("-c", "--categories", default="all", action="store")
+    parser.add_argument("-i", "--index_name", default="amazon_pqa", action="store")
+    parser.add_argument("-p", "--pipeline_name", default="amazon_pqa", action="store")
+    parser.add_argument("-d", "--delete_existing", default=False, action="store_true")
+    parser.add_argument("-n", "--number_of_docs", default=500, action="store", type=int)
+    parser.add_argument(
+        "-mt",
+        "--model_type",
+        choices=["local", "sagemaker", "bedrock"],
+        default="local",
+        action="store",
+    )
+    parser.add_argument("-ep", "--env_path", default=DEFAULT_ENV_PATH, action="store")
+    parser.add_argument(
+        "-ht", "--host_type", choices=["os", "aos"], default="os", action="store"
+    )
+    parser.add_argument("-cl", "--cleanup", default=False, action="store_true")
+    parser.add_argument(
+        "-dp",
+        "--dataset_path",
+        default=get_config("QANDA_FILE_READER_PATH"),
+        action="store",
     )
     parser.add_argument(
-        "-t", "--task",
-        default="knn_768", action="store")
-    parser.add_argument(
-        "-c", "--categories",
-        default="all", action="store")
-    parser.add_argument(
-        "-i", "--index_name",
-        default="amazon_pqa", action="store")
-    parser.add_argument(
-        "-p", "--pipeline_name",
-        default="amazon_pqa", action="store")
-    parser.add_argument(
-        "-d", "--delete_existing",
-        default=False, action="store_true")
-    parser.add_argument(
-        "-n", "--number_of_docs",
-        default=500, action="store", type=int)
-    parser.add_argument(
-        "-mt", "--model_type",
-        choices=["local", "sagemaker", "bedrock"],
-        default="local", action="store")
-    parser.add_argument(
-        "-ep", "--env_path",
-        default=DEFAULT_ENV_PATH, action="store")
-    parser.add_argument(
-        "-ht", "--host_type",
-        choices=["os", "aos"],
-        default="os", action="store")
-    parser.add_argument(
-        "-cl", "--cleanup",
-        default=False, action="store_true")
-    parser.add_argument(
-        "-dp", "--dataset_path",
-        default=get_config("QANDA_FILE_READER_PATH"),
-        action="store")
-    parser.add_argument(
-        "-bmp", "--base_mapping_path",
+        "-bmp",
+        "--base_mapping_path",
         default=get_config("BASE_MAPPING_PATH"),
-        action="store")
+        action="store",
+    )
     args = parser.parse_args()
     return args
 
@@ -270,7 +262,9 @@ def main():
         raise ValueError(f"local model on aos is not supported")
 
     client = OsMlClientWrapper(get_client(args.host_type))
-    pqa_reader = QAndAFileReader(directory=args.dataset_path)
+    pqa_reader = QAndAFileReader(
+        directory=args.dataset_path, max_number_of_docs=args.number_of_docs
+    )
 
     if args.task not in tasks.keys():
         raise ValueError(
@@ -301,11 +295,10 @@ def main():
     model_config = (
         {
             "model_version": config["model_version"],
-            "model_group_id": client.ml_model_group.model_group_id(),
         }
         if args.model_type == "local"
-        else get_remote_model_configs(
-            host_type=args.host_type, model_type=args.model_type
+        else get_remote_connector_configs(
+            host_type=args.host_type, connector_type=args.model_type
         )
     )
     model_config["model_name"] = model_name
@@ -322,9 +315,7 @@ def main():
         index_config=config,
         model_config=model_config,
     )
-
-    config['max_cat_docs'] = args.number_of_docs
-    config['cleanup'] = args.cleanup
+    config["cleanup"] = config["cleanup"] or args.cleanup
 
     logging.info(f"Config: {json.dumps(config, indent=4)}")
 
