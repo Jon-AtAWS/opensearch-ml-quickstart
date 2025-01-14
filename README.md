@@ -76,9 +76,10 @@ The simplest way to use the toolkit is to load data into OpenSearch running loca
 
    NOTE: If this is your first time running, it will take a minute for the model to load and deploy. If you're watching the log output, you'll see it busy waiting.
 
-This will load 10 items from the "adapters" category, using the default index, and ingest pipeline names (`amazon_pqa`). You can set `number_of_docs` to `-1` if you want to load the whole category. You can omit the `-c adapters` to load the whole data set (or include a comma-separated list for more than 1 category)
+This will load 10 items from the "adapters" category, using the default index, and ingest pipeline names (both: `amazon_pqa`). You can set `number_of_docs` to `-1` if you want to load the whole category. You can omit the `-c adapters` to load the whole data set (or include a comma-separated list for more than 1 category).
 
-Since the above command line does not specify --cleanup, 
+Since the above command line does not specify `--cleanup`, the toolkit leaves the index, model, and model group intact in the cluster. You can go to the Dev Tools tab in OpenSearch Dashboards and see the index is there with `GET /_cat/indices`
+
 ```
 python3 src/main.py -h
 ```
