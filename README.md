@@ -47,12 +47,57 @@ pip3 install -r requirements.txt
 
 Modify files in the `configs` directory with your own values
 
-In .env you set up credentials for contacting the OpenSearch domain or cluster. If you're running locally, you don't need to set up credentials for an Amazon OpenSearch Service domain, or vice-versa. 
+### configs/.env
 
-You also set up access for your model in `.env`. If you are using a local model, you don't need to set up credentials for SageMaker, or Bedrock, and vice versa.
+In .env you set up credentials for contacting the OpenSearch domain or cluster. If you're running locally, you don't need to set up credentials for an Amazon OpenSearch Service domain, or vice-versa.
+
+If you're running locally, set these values
+
+```
+OS_USERNAME=<A user with sufficient permissions>
+OS_PASSWORD=<User's password>
+```
+
+Additionally, if you are running OpenSearch at a different port, or using OpenSearch open source, set these variables.
+
+```
+OS_HOST_URL=localhost
+OS_PORT=9200
+```
+
+If you are running with Amazon OpenSearch Service managed clusters, set these variables. Note, opensearch-ml-quickstart does not work with Amazon OpenSearch Serverless at this time.
+
+```
+AOS_USERNAME=
+AOS_PASSWORD=
+AOS_DOMAIN_NAME=opensearch-ml-quickstart
+AOS_HOST_URL=
+AOS_PORT=None
+AOS_REGION=
+AOS_AWS_USER_NAME=
+```
+
+Set the location of the Amazon PQA Data if you downloaded it somewhere else.
+
+`QANDA_FILE_READER_PATH=Path/to/your/amazonpqa/data`
+
+Set up the connector constants for your connector host. If you are using a local model, you don't need to set up credentials for SageMaker, or Bedrock, and vice versa.
+
+If you are using Amazon Bedrock, make sure to set these values.
+
+```
+OS_BEDROCK_ACCESS_KEY= The AWS Access key for an account that can access bedrock
+OS_BEDROCK_SECRET_KEY= The AWS Secret key for that account
+OS_BEDROCK_REGION= Which region to connect to bedrock
+```
+
+Pick your dense vector embedding and put it here
+```
+OS_BEDROCK_URL=amazon.titan-embed-text-v1
+OS_BEDROCK_MODEL_DIMENSION=1536
+```
 
 3. Fill out the config files under src/configs: client_configs.py, data_configs.py and model_configs.py. You only need to fill in the configs for your model and host.
-
 
 # Usage
 
@@ -67,10 +112,11 @@ The simplest way to use the toolkit is to load data into OpenSearch running loca
    2. `export OPENSEARCH_INITAL_ADMIN_PASSWORD="<ExamplePassword!>"`
    3. `docker compose up`
 
-3. Open `<root>/configs/.env` and set `OS_PASSWORD` to the password you used starting Docker.
+3. Make sure that `OS_PASSWORD` in `<root>/configs/.env` is the same as your `OPENSEARCH_INITIAL_ADMIN_PASSWORD` when you started docker.
 4. To run main.py, be sure your virtual environment is active (`source .venv/bin/activate`), then
 
     ```
+    cd <root>
     python main.py --model_type local --host_type os -c adapters --delete_existing --number_of_docs 10   
     ```
 
@@ -80,17 +126,30 @@ This will load 10 items from the "adapters" category, using the default index, a
 
 Since the above command line does not specify `--cleanup`, the toolkit leaves the index, model, and model group intact in the cluster. You can go to the Dev Tools tab in OpenSearch Dashboards and see the index is there with `GET /_cat/indices`
 
-```
-python3 src/main.py -h
-```
-
-If you want to run different local models, you can add more configs in test_cases.py.
-
 # Working with remote models
+
+To work with a remote model, you'll need an AWS account, with sufficient permissions to access Amazon Bedrock (Bedrock) or Amazon SageMaker (SageMaker), and to add access for Bedrock models. You can use remote models either with OpenSearch running locally, or Amazon OpenSearch Service (OpenSearch Service) managed clusters. See below for instructions on setting up and running with an OpenSearch Service domain.
 
 ## Bedrock
 
-You configure OS_BEDROCK_URL in .env. The URL must be of the form: https://bedrock-runtime.`<region>`.amazonaws.com/model/`<model name>`/invoke. For example, to use Titan text embeddings, specify `https://bedrock-runtime.us-west-2.amazonaws.com/model/amazon.titan-embed-text-v1/invoke`
+First, set up model access for Amazon Bedrock in the AWS console. From the Bedrock console, scroll down to the **Bedrock Configurations** section in the left navigation panel. Click **Model Access**. Add access for your account (or verify that you have access) to the embeddings model of your choice.
+
+You configure OS_BEDROCK_URL in `<root>/conifgs/.env`.
+
+Set the access and secret key for the account connecting to Bedrock
+`OS_BEDROCK_ACCESS_KEY=<Your AWS Access Key>`
+`OS_BEDROCK_SECRET_KEY=<Your AWS Secret Access Key>`
+
+Set the destination region
+`OS_BEDROCK_REGION=<Destination bedrock region>`
+
+Set the URL where the quickstart will access Bedrock. The URL must be of the form: https://bedrock-runtime.`<region>`.amazonaws.com/model/`<model name>`/invoke. For example, to use Titan text embeddings, specify `https://bedrock-runtime.us-west-2.amazonaws.com/model/amazon.titan-embed-text-v1/invoke`.
+`OS_BEDROCK_URL=<Bedrock URL>`
+
+Depending on your model, set the number of vector dimensions for the generated embeddings. E.g., for Amazon Titan text embeddings, use 1536 dimensions.
+`OS_BEDROCK_MODEL_DIMENSION=1536`
+
+
 
 # Testing
 
@@ -113,3 +172,9 @@ pytest tests/integration/main_test.py
 ```
 
 Please note that you need to comment out some model type or host type if you have not specified all the copnfigs under `src/config`.
+
+# Troubleshooting
+
+## Documents not appearing in your index
+
+If you are using Amazon Bedrock to generate embeddings, you may be hitting limits on the number of calls that you can make. 
