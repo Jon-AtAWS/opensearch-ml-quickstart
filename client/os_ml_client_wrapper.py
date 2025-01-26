@@ -169,7 +169,14 @@ class OsMlClientWrapper:
                 f"Deleting pipeline {pipeline_name} failed due to exception {e}"
             )
 
-        try:
-            self.os_client.indices.delete(index_name)
-        except Exception as e:
-            logging.info(f"Deleting index {index_name} failed due to exception {e}")
+        user_input = (
+            input(f"Do you want to delete the index {index_name}? (y/n): ")
+            .strip()
+            .lower()
+        )
+        if user_input == "y":
+            logging.info(f"Deleting index {index_name}")
+            try:
+                self.os_client.indices.delete(index_name)
+            except Exception as e:
+                logging.info(f"Deleting index {index_name} failed due to exception {e}")
