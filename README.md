@@ -136,19 +136,43 @@ First, set up model access for Amazon Bedrock in the AWS console. From the Bedro
 
 You configure OS_BEDROCK_URL in `<root>/conifgs/.env`.
 
-Set the access and secret key for the account connecting to Bedrock
+Set the access and secret key for the account connecting to Bedrock<br>
 `OS_BEDROCK_ACCESS_KEY=<Your AWS Access Key>`
 `OS_BEDROCK_SECRET_KEY=<Your AWS Secret Access Key>`
 
-Set the destination region
+Set the destination region<br>
 `OS_BEDROCK_REGION=<Destination bedrock region>`
 
-Set the URL where the quickstart will access Bedrock. The URL must be of the form: https://bedrock-runtime.`<region>`.amazonaws.com/model/`<model name>`/invoke. For example, to use Titan text embeddings, specify `https://bedrock-runtime.us-west-2.amazonaws.com/model/amazon.titan-embed-text-v1/invoke`.
+Set the URL where the quickstart will access Bedrock. The URL must be of the form: https://bedrock-runtime.`<region>`.amazonaws.com/model/`<model name>`/invoke. For example, to use Titan text embeddings, specify `https://bedrock-runtime.us-west-2.amazonaws.com/model/amazon.titan-embed-text-v1/invoke`.<br>
 `OS_BEDROCK_URL=<Bedrock URL>`
 
-Depending on your model, set the number of vector dimensions for the generated embeddings. E.g., for Amazon Titan text embeddings, use 1536 dimensions.
+Depending on your model, set the number of vector dimensions for the generated embeddings. E.g., for Amazon Titan text embeddings, use 1536 dimensions.<br>
 `OS_BEDROCK_MODEL_DIMENSION=1536`
 
+# Working with Amazon OpenSearch Service
+
+You can use opensearch-ml-quickstart to connect to an Amazon OpenSearch Service domain. Opensearch-ml-quickstart does not work with Amazon OpenSearch Serverless collections, you must deploy a managed cluster.
+
+Follow (the developer guide's instructions)[https://docs.aws.amazon.com/opensearch-service/latest/developerguide/gsgcreate-domain.html] to create a domain, with these changes:
+
+1. Under **Network** choose **Public Access**
+2. Under **Fine-grained access control** choose **Create master user**
+   - Set a master user name and password. Record these for later use
+
+Set up variables in `<root>/configs/.env`
+
+Set the master user's login credentials<br>
+`AOS_USERNAME=<Your domain's 'Master user' user name>`
+`AOS_PASSWORD=<Your domain's 'Master user' password>`
+
+Set the domain name<br>
+`AOS_DOMAIN_NAME=<Your domain's name>`
+`AOS_REGION=<Your domain's region>`
+
+Set the domain's Domain Endpoint. You can find this on the OpenSearch Service console in the AWS console. Click on **Managed clusters > Domains > <your domain name>** in the left nav to get to your domain's dashboard. Locate the domain endpoint and copy-paste it<br>
+`AOS_HOST_URL=<Your domain's endpoint>`
+
+AOS_AWS_USER_NAME=
 
 
 # Testing
@@ -174,6 +198,12 @@ pytest tests/integration/main_test.py
 Please note that you need to comment out some model type or host type if you have not specified all the copnfigs under `src/config`.
 
 # Troubleshooting
+
+## is_datetime_or_timedelta
+
+See also (this GitHub issue)[https://github.com/opensearch-project/opensearch-py-ml/issues/263]
+
+Opensearch-py-ml requires pandas, which in turn requires this function. OpenSearch-ml-quickstart requires pandas version 2.0.3, and Python 3.10 (lower versions might also work). You can use (Anaconda)[https://www.anaconda.com/] to create a Python 3.10 environment, and then use that to create your virtual environment.
 
 ## Documents not appearing in your index
 
