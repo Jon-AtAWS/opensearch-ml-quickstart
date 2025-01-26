@@ -4,17 +4,17 @@ This tool kit provides a quickstart for working with OpenSearch and ML models, e
 
 You can run the code against a self-managed OpenSearch cluster, or an Amazon OpenSearch Service domain. And, you can use either a local or remote-hosted model. All of the model management is in the `<root>/ml_models` directory.
 
-We've provided code in the `<root>/data_process` directory that can read files from the open source [Amazon-PQA data set](https://registry.opendata.aws/amazon-pqa/). You'll need to navigate to the URL, download and unzip the data, storing all of the files in a local directory (we've provided the `datasets` directory for this purpose). The PQA data provides an excellent data set to explore lexical and semantic search. You can also find code in `qanda_file_reader.py` with generators for reading one or many categories, and code that enriches the documents with metadata and other product information. Use the data enrichment to experiment with hybrid lexical and semantic search.
+We've provided code in the `<root>/data_process` directory that can read files from the open source [Amazon-PQA data set](https://registry.opendata.aws/amazon-pqa/). You'll need to navigate to the URL, download and unzip the data, storing all of the files in a local directory (we've provided the `datasets` directory for this purpose, see the README there for further instructions). The PQA data provides an excellent data set to explore lexical and semantic search. You can also find code in `qanda_file_reader.py` with generators for reading one or many categories, and code that enriches the documents with metadata and other product information. Use the data enrichment to experiment with hybrid lexical and semantic search.
 
 We used the PQA data to provide a test bed for exploring different models, and different knn engine parameterizations. `<root>/main.py` runs through a set of tests, defined in `<root>/configs/tasks.py`. You can create tasks for local and remote models, loading some or all of the PQA data to test timing and search requests. See `<root>/client/os_ml_client_wrapper.py` for code that sets up OpenSearch's Neural plugin for ingest.
 
-The `MlModel` class provides an abstract base class for using ML models, with 2 direct descendants, `LocalMlModel`, and `RemoteMlModel`. If you're running self-managed, you can load models into your local cluster with the `LocalMlModel` class. Amazon OpenSearch Service does not support local models. If you are running self-managed you can create a connector to Amazon Bedrock, or Amazon Sagemaker with the `OsBedrockMlModel` and the `OsSagemakerMLModel` classes. For OpenSearch Service, you can use the `AosBedrockMlModel` and `AosSagemakerMlModel` classes. You can find the source for these classes in the `<root>/ml_models` folder.
+The `MlModel` class provides an abstract base class for using ML models, with 2 direct descendants, `LocalMlModel`, and `RemoteMlModel`. If you're running self-managed, you can load models into your local cluster with the `LocalMlModel` class. Amazon OpenSearch Service does not support local models. Use a connector to Amazon Bedrock, or Amazon Sagemaker with the `OsBedrockMlModel` and the `OsSagemakerMLModel` classes. For OpenSearch Service, you can use the `AosBedrockMlModel` and `AosSagemakerMlModel` classes. You can find the source for these classes in the `<root>/ml_models` folder.
 
 # Set up and run with the Amazon_PQA data set
 
 ## Prerequisites
 
-1. Python 3.x (The code has been tested against Python version 3.12). You can find downloads and installation instructions here: https://www.python.org/downloads/
+1. Python 3.10 is required. Currently there's a dependency for pandas 2.0.3 that requires Python 3.10. You can find downloads and installation instructions here: https://www.python.org/downloads/.
 
 1. The [Amazon_PQA data set](https://registry.opendata.aws/amazon-pqa/).
 
@@ -45,63 +45,11 @@ pip3 install -r requirements.txt
 
 ## Configure
 
-Modify files in the `configs` directory with your own values
-
-### configs/.env
-
-In .env you set up credentials for contacting the OpenSearch domain or cluster. If you're running locally, you don't need to set up credentials for an Amazon OpenSearch Service domain, or vice-versa.
-
-If you're running locally, set these values
-
-```
-OS_USERNAME=<A user with sufficient permissions>
-OS_PASSWORD=<User's password>
-```
-
-Additionally, if you are running OpenSearch at a different port, or using OpenSearch open source, set these variables.
-
-```
-OS_HOST_URL=localhost
-OS_PORT=9200
-```
-
-If you are running with Amazon OpenSearch Service managed clusters, set these variables. Note, opensearch-ml-quickstart does not work with Amazon OpenSearch Serverless at this time.
-
-```
-AOS_USERNAME=
-AOS_PASSWORD=
-AOS_DOMAIN_NAME=opensearch-ml-quickstart
-AOS_HOST_URL=
-AOS_PORT=None
-AOS_REGION=
-AOS_AWS_USER_NAME=
-```
-
-Set the location of the Amazon PQA Data if you downloaded it somewhere else.
-
-`QANDA_FILE_READER_PATH=Path/to/your/amazonpqa/data`
-
-Set up the connector constants for your connector host. If you are using a local model, you don't need to set up credentials for SageMaker, or Bedrock, and vice versa.
-
-If you are using Amazon Bedrock, make sure to set these values.
-
-```
-OS_BEDROCK_ACCESS_KEY= The AWS Access key for an account that can access bedrock
-OS_BEDROCK_SECRET_KEY= The AWS Secret key for that account
-OS_BEDROCK_REGION= Which region to connect to bedrock
-```
-
-Pick your dense vector embedding and put it here
-```
-OS_BEDROCK_URL=amazon.titan-embed-text-v1
-OS_BEDROCK_MODEL_DIMENSION=1536
-```
-
-3. Fill out the config files under src/configs: client_configs.py, data_configs.py and model_configs.py. You only need to fill in the configs for your model and host.
+Modify files in the `configs` directory with your own values. See below for the different cases of local/managed service, and local/remote models. Be sure to set a correct path for `QANDA_FILE_READER_PATH`
 
 # Usage
 
-## Local
+## Local OpenSearch, local model
 
 The simplest way to use the toolkit is to load data into OpenSearch running locally, on Docker desktop, and with a hugging face model loaded into the local, ML node.
 
@@ -153,27 +101,49 @@ Depending on your model, set the number of vector dimensions for the generated e
 
 You can use opensearch-ml-quickstart to connect to an Amazon OpenSearch Service domain. Opensearch-ml-quickstart does not work with Amazon OpenSearch Serverless collections, you must deploy a managed cluster.
 
-Follow (the developer guide's instructions)[https://docs.aws.amazon.com/opensearch-service/latest/developerguide/gsgcreate-domain.html] to create a domain, with these changes:
+## Create a domain
+
+Follow [the developer guide's instructions](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/gsgcreate-domain.html) to create a domain, with these changes:
 
 1. Under **Network** choose **Public Access**
 2. Under **Fine-grained access control** choose **Create master user**
    - Set a master user name and password. Record these for later use
 
-Set up variables in `<root>/configs/.env`
+## Set up variables in `<root>/configs/.env` for the domain
 
 Set the master user's login credentials<br>
-`AOS_USERNAME=<Your domain's 'Master user' user name>`
+`AOS_USERNAME=<Your domain's 'Master user' user name>`<br>
 `AOS_PASSWORD=<Your domain's 'Master user' password>`
 
 Set the domain name<br>
-`AOS_DOMAIN_NAME=<Your domain's name>`
+`AOS_DOMAIN_NAME=<Your domain's name>`<br>
 `AOS_REGION=<Your domain's region>`
 
 Set the domain's Domain Endpoint. You can find this on the OpenSearch Service console in the AWS console. Click on **Managed clusters > Domains > <your domain name>** in the left nav to get to your domain's dashboard. Locate the domain endpoint and copy-paste it<br>
 `AOS_HOST_URL=<Your domain's endpoint>`
 
-AOS_AWS_USER_NAME=
+Set the user name from the IAM user that created the domain and will connect to Bedrock.<br>
+`AOS_AWS_USER_NAME=<Your IAM user name>`
 
+## Set up variables in `<root>/configs/.env` to connect with the model 
+
+Set the region where you are connecting to Bedrock.<br>
+`AOS_BEDROCK_REGION=<AWS region like us-west-2>`
+
+Opensearch-ml-quickstart creates two roles for the connector. The first role the `AOS_BEDROCK_CREATE_CONNECTOR_ROLE` enables the quickstart to write to OpenSearch Service to create the connector, and to set up fine-grained access control to allow writes. The second role, `AOS_BEDROCK_CONNECTOR_ROLE`, enables OpenSearch Service to call Bedrock to create embeddings.<br>
+`AOS_BEDROCK_CONNECTOR_ROLE_NAME=<Name for the role created role for OpenSearch->Bedrock access>`<br>
+`AOS_BEDROCK_CREATE_CONNECTOR_ROLE_NAME=<Name for the role to create the connector>`
+
+Set the URL and model dimensions for bedrock<br>
+`AOS_BEDROCK_URL=<Set as above: https://bedrock-runtime.us-west-2.amazonaws.com/model/amazon.titan-embed-text-v1/invoke>`<br>
+`AOS_BEDROCK_MODEL_DIMENSION=<Integer: the number of dimensions in the embeddings>`
+
+Run the code
+
+```
+cd <root>
+python main.py --model_type bedrock --host_type aos -c adapters --delete_existing --number_of_docs 10   
+```
 
 # Testing
 
