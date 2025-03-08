@@ -321,6 +321,7 @@ def main():
         )
     )
     model_config["model_name"] = model_name
+    model_config["embedding_type"] = args.embedding_type
 
     ml_model = get_ml_model(
         host_type=args.host_type,
