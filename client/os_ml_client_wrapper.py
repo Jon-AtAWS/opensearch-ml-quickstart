@@ -74,7 +74,7 @@ class OsMlClientWrapper:
             pipeline_field_map=pipeline_field_map
         )
         logging.info(f"dense_pipeline_config: {pipeline_field_map}")
-        logging.info("Adding sparse pipeline...")
+        logging.info("Adding dense pipeline...")
         self.os_client.ingest.put_pipeline(pipeline_name, body=pipeline_config)
 
     def _add_sparse_pipeline(self, pipeline_name="", pipeline_field_map=None):
@@ -197,12 +197,20 @@ class OsMlClientWrapper:
             self.ml_model.clean_up()
         self.ml_model = None
         self.ml_model_group.clean_up()
-        try:
-            self.os_client.ingest.delete_pipeline(pipeline_name)
-        except Exception as e:
-            logging.info(
-                f"Deleting pipeline {pipeline_name} failed due to exception {e}"
-            )
+
+        user_input = (
+            input(f"Do you want to delete the pipeline {pipeline_name}? (y/n): ")
+            .strip()
+            .lower()
+        )
+        if user_input == "y":
+            logging.info(f"Deleting pipeline {pipeline_name}")
+            try:
+                self.os_client.ingest.delete_pipeline(pipeline_name)
+            except Exception as e:
+                logging.info(
+                    f"Deleting pipeline {pipeline_name} failed due to exception {e}"
+                )
 
         user_input = (
             input(f"Do you want to delete the index {index_name}? (y/n): ")

@@ -89,8 +89,7 @@ tasks = {
         "model_dimensions": 768,
     },
     "sparse_encoding_v1": {
-        "with_knn": False,
-        "with_sparse": True,
+        "with_knn": True,
         "categories": categories,
         "max_cat_docs": -1,
         "cleanup": False,
