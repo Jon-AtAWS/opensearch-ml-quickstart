@@ -33,7 +33,7 @@ class OsMlClientWrapper:
     def model_group_id(self):
         return self.ml_model_group.model_group_id()
 
-    def _pipeline_config(self, pipeline_field_map=None):
+    def _dense_pipeline_config(self, pipeline_field_map=None):
         if not pipeline_field_map:
             pipeline_field_map = self.DEFAULT_PIPELINE_FIELD_MAP
         config = {
@@ -50,12 +50,41 @@ class OsMlClientWrapper:
         logging.info(config)
         return config
 
-    def _add_neural_pipeline(self, pipeline_name="", pipeline_field_map=None):
+    def _sparse_pipeline_config(self, pipeline_field_map=None):
+        if not pipeline_field_map:
+            pipeline_field_map = self.DEFAULT_PIPELINE_FIELD_MAP
+        config = {
+            "description": "Pipeline for processing chunks",
+            "processors": [
+                {
+                    "sparse_encoding": {
+                        "model_id": f"{self.model_id()}",
+                        "field_map": pipeline_field_map,
+                    }
+                }
+            ],
+        }
+        logging.info(config)
+        return config
+
+    def _add_dense_pipeline(self, pipeline_name="", pipeline_field_map=None):
         if not pipeline_name:
-            raise ValueError("add_neural_pipeline: pipeline name must be specified")
-        pipeline_config = self._pipeline_config(pipeline_field_map=pipeline_field_map)
-        logging.info(f"pipeline_config: {pipeline_field_map}")
-        logging.info("Adding neural pipeline...")
+            raise ValueError("_add_dense_pipeline: pipeline name must be specified")
+        pipeline_config = self._dense_pipeline_config(
+            pipeline_field_map=pipeline_field_map
+        )
+        logging.info(f"dense_pipeline_config: {pipeline_field_map}")
+        logging.info("Adding sparse pipeline...")
+        self.os_client.ingest.put_pipeline(pipeline_name, body=pipeline_config)
+
+    def _add_sparse_pipeline(self, pipeline_name="", pipeline_field_map=None):
+        if not pipeline_name:
+            raise ValueError("_add_sparse_pipeline: pipeline name must be specified")
+        pipeline_config = self._sparse_pipeline_config(
+            pipeline_field_map=pipeline_field_map
+        )
+        logging.info(f"sparse_pipeline_config: {pipeline_field_map}")
+        logging.info("Adding sparse pipeline...")
         self.os_client.ingest.put_pipeline(pipeline_name, body=pipeline_config)
 
     def idempotent_create_index(self, index_name="", settings=None):
@@ -95,6 +124,7 @@ class OsMlClientWrapper:
         pipeline_name=None,
         pipeline_field_map=None,
         delete_existing=False,
+        embedding_type="dense",
     ):
         """
         Sets up a kNN index with ingestion pipeline and model.
@@ -142,9 +172,14 @@ class OsMlClientWrapper:
             )
         else:
             self.idempotent_create_index(index_name=index_name, settings=index_settings)
-        self._add_neural_pipeline(
-            pipeline_name=pipeline_name, pipeline_field_map=pipeline_field_map
-        )
+        if embedding_type == "sparse":
+            self._add_sparse_pipeline(
+                pipeline_name=pipeline_name, pipeline_field_map=pipeline_field_map
+            )
+        else:
+            self._add_dense_pipeline(
+                pipeline_name=pipeline_name, pipeline_field_map=pipeline_field_map
+            )
 
     def setup_without_kNN(self, index_name="", index_settings=""):
         """

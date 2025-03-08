@@ -63,6 +63,20 @@ def create_index_settings(base_mapping_path, index_config, model_config=dict()):
             },
         }
         mapping_update(settings, knn_settings)
+    elif "with_sparse" in index_config and index_config["with_sparse"]:
+        pipeline_name = index_config["pipeline_name"]
+        sparse_settings = {
+            "settings": {"index": {"knn": True}, "default_pipeline": pipeline_name},
+            "mappings": {
+                "properties": {
+                    "chunk": {"type": "text", "index": False},
+                    "chunk_embedding": {
+                        "type": "rank_features",
+                    },
+                }
+            },
+        }
+        mapping_update(settings, sparse_settings)
     if (
         "compression" in index_config
         and index_config["compression"] != "best_compression"
@@ -189,6 +203,9 @@ def load_dataset(
         )
 
     logging.info("Setting up for KNN")
+    embedding_type = (
+        "sparse" if "with_sparse" in config and config["with_sparse"] else "dense"
+    )
     client.setup_for_kNN(
         ml_model=ml_model,
         index_name=config["index_name"],
@@ -196,6 +213,7 @@ def load_dataset(
         index_settings=config["index_settings"],
         pipeline_field_map=config["pipeline_field_map"],
         delete_existing=delete_existing,
+        embedding_type=embedding_type,
     )
 
     for category in config["categories"]:
@@ -239,6 +257,7 @@ def get_args():
     parser.add_argument(
         "-ht", "--host_type", choices=["os", "aos"], default="os", action="store"
     )
+    parser.add_argument("-et", "--embedding_type", default="dense", action="store")
     parser.add_argument("-cl", "--cleanup", default=False, action="store_true")
     parser.add_argument(
         "-dp",
@@ -317,7 +336,7 @@ def main():
     )
     config["cleanup"] = config["cleanup"] or args.cleanup
 
-    logging.info(f"Config: {json.dumps(config, indent=4)}")
+    logging.info(f"Config:\n {json.dumps(config, indent=4)}")
 
     load_dataset(
         client,
