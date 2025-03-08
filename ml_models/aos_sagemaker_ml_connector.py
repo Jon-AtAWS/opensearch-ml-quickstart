@@ -26,4 +26,4 @@ class AosSagemakerMlConnector(AosMlConnector):
 
     @overrides
     def _get_connector_create_payload_filename(self):
-        return "sagemaker.json"
+        return "sagemaker_sparse.json" if self._embedding_type == "sparse" else "sagemaker_dense.json"

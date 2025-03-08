@@ -33,6 +33,7 @@ class MlConnector(ABC):
             else self.DEFAULT_CONNECTOR_DESCRIPTION
         )
         self._connector_configs = connector_configs
+        self._embedding_type = connector_configs.get("embedding_type", "dense")
         self._connector_id = self._get_connector_id()
         logging.info(f"Connector id {self._connector_id}")
 
