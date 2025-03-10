@@ -109,10 +109,12 @@ def get_ml_model(
     aos_connector_helper = None
 
     model_name = model_config.get("model_name", None)
+    embedding_type = model_config.get("embedding_type", "dense")
     model_group_id = client.ml_model_group.model_group_id()
 
     if model_type != "local":
-        model_name = f"{host_type}_{model_type}"
+        model_name = f"{host_type}_{model_type}_{embedding_type}"
+        connector_name = f"{host_type}_{model_type}_{embedding_type}"
 
     if host_type == "aos":
         aos_connector_helper = get_aos_connector_helper(get_client_configs("aos"))
@@ -128,23 +130,27 @@ def get_ml_model(
     elif model_type == "sagemaker" and host_type == "os":
         ml_connector = OsSagemakerMlConnector(
             os_client=client.os_client,
+            connector_name=connector_name,
             connector_configs=model_config,
         )
 
     elif model_type == "sagemaker" and host_type == "aos":
         ml_connector = AosSagemakerMlConnector(
             os_client=client.os_client,
+            connector_name=connector_name,
             aos_connector_helper=aos_connector_helper,
             connector_configs=model_config,
         )
     elif model_type == "bedrock" and host_type == "os":
         ml_connector = OsBedrockMlConnector(
             os_client=client.os_client,
+            connector_name=connector_name,
             connector_configs=model_config,
         )
     elif model_type == "bedrock" and host_type == "aos":
         ml_connector = AosBedrockMlConnector(
             os_client=client.os_client,
+            connector_name=connector_name,
             aos_connector_helper=aos_connector_helper,
             connector_configs=model_config,
         )
