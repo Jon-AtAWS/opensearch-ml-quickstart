@@ -38,7 +38,7 @@ def test():
         ml_commons_client=ml_commons_client,
         model_group_id=model_group_id,
         model_configs=model_configs,
-        model_name="amazon/neural-sparse/opensearch-neural-sparse-encoding-v1"
+        model_name="amazon/neural-sparse/opensearch-neural-sparse-encoding-v1",
     )
 
     logging.info("Cleaning up...")
