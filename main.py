@@ -96,7 +96,7 @@ def send_bulk_ignore_exceptions(client: OpenSearch, docs):
             chunk_size=100,
             request_timeout=300,
             max_retries=10,
-            raise_on_error=True,
+            raise_on_error=False,
         )
         return status
     except Exception as e:
