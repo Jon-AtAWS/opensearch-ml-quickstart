@@ -12,13 +12,13 @@ class AosBedrockMlConnector(AosMlConnector):
 
     @overrides
     def get_connector_role_inline_policy(self):
-        arn = self._connector_configs["arn"]
+        dense_arn = self._connector_configs["dense_arn"]
         return {
             "Version": "2012-10-17",
             "Statement": [
                 {
                     "Effect": "Allow",
-                    "Resource": [arn],
+                    "Resource": [dense_arn],
                     "Action": ["bedrock:InvokeModel"],
                 }
             ],
