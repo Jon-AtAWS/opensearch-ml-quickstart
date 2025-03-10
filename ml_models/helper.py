@@ -21,8 +21,9 @@ def get_remote_connector_configs(connector_type: str, host_type: str) -> Dict[st
             "secret_key": get_config("OS_SAGEMAKER_SECRET_KEY"),
             "region": get_config("OS_SAGEMAKER_REGION"),
             "connector_version": get_config("OS_SAGEMAKER_CONNECTOR_VERSION"),
-            "url": get_config("OS_SAGEMAKER_URL"),
-            "model_dimensions": get_config("OS_SAGEMAKER_MODEL_DIMENSION"),
+            "sparse_url": get_config("OS_SAGEMAKER_SPARSE_URL"),
+            "dense_url": get_config("OS_SAGEMAKER_DENSE_URL"),
+            "model_dimensions": get_config("OS_SAGEMAKER_DENSE_MODEL_DIMENSION"),
         }
         validate_configs(configs, list(configs.keys()))
         return configs
@@ -35,7 +36,8 @@ def get_remote_connector_configs(connector_type: str, host_type: str) -> Dict[st
             ),
             "region": get_config("AOS_SAGEMAKER_REGION"),
             "connector_version": get_config("AOS_SAGEMAKER_CONNECTOR_VERSION"),
-            "url": get_config("AOS_SAGEMAKER_URL"),
+            "sparse_url": get_config("AOS_SAGEMAKER_SPARSE_URL"),
+            "dense_url": get_config("AOS_SAGEMAKER_DENSE_URL"),
             "model_dimensions": get_config("AOS_SAGEMAKER_MODEL_DIMENSION"),
         }
         validate_configs(configs, list(configs.keys()))
@@ -46,7 +48,7 @@ def get_remote_connector_configs(connector_type: str, host_type: str) -> Dict[st
             "secret_key": get_config("OS_BEDROCK_SECRET_KEY"),
             "region": get_config("OS_BEDROCK_REGION"),
             "connector_version": get_config("OS_BEDROCK_CONNECTOR_VERSION"),
-            "url": get_config("OS_BEDROCK_URL"),
+            "dense_url": get_config("OS_BEDROCK_URL"),
             "model_dimensions": get_config("OS_BEDROCK_MODEL_DIMENSION"),
         }
         validate_configs(configs, list(configs.keys()))
@@ -61,7 +63,7 @@ def get_remote_connector_configs(connector_type: str, host_type: str) -> Dict[st
             "region": get_config("AOS_BEDROCK_REGION"),
             "connector_version": get_config("AOS_BEDROCK_CONNECTOR_VERSION"),
             "model_dimensions": get_config("AOS_BEDROCK_MODEL_DIMENSION"),
-            "url": get_config("AOS_BEDROCK_URL"),
+            "dense_url": get_config("AOS_BEDROCK_URL"),
         }
         validate_configs(configs, list(configs.keys()))
         return configs
