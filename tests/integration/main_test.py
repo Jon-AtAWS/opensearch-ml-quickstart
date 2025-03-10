@@ -74,17 +74,20 @@ def get_resources_cnt(client: OpenSearch):
     return connector_cnt, model_cnt, model_group_cnt
 
 
-def run_test(is_os_client: bool, model_type):
+def run_test(is_os_client: bool, model_type, embedding_type="dense"):
     host_type = "os" if is_os_client else "aos"
     client = OS_CLIENT if is_os_client else AOS_CLIENT
+    clean_up_task = "sparse_encoding_v1" if embedding_type == "sparse" else "knn_768"
+    no_clean_up_task = clean_up_task + "_no_cleanup"
     prev_connector_cnt, prev_model_cnt, prev_model_group_cnt = get_resources_cnt(client)
     process = subprocess.Popen(
         args=[
             "python3",
             "main.py",
-            "-t=knn_768_no_cleanup",
+            f"-t={no_clean_up_task}",
             f"-mt={model_type}",
             f"-ht={host_type}",
+            f"-et={embedding_type}",
             "-c=headlight bulbs",
             "-d",
         ],
@@ -96,9 +99,10 @@ def run_test(is_os_client: bool, model_type):
         args=[
             "python3",
             "main.py",
-            "-t=knn_768",
+            f"-t={clean_up_task}",
             f"-mt={model_type}",
             f"-ht={host_type}",
+            f"-et={embedding_type}",
             "-c=headlight bulbs",
             "-d",
         ],
@@ -106,7 +110,7 @@ def run_test(is_os_client: bool, model_type):
         cwd=os.path.curdir,
         text=True,
     )
-    process.communicate(input="y\ny\ny\n")
+    process.communicate(input="y\ny\ny\ny\n")
     time.sleep(5)
     validate_clean_up(client, INDEX_NAME)
     curr_connector_cnt, curr_model_cnt, curr_model_group_cnt = get_resources_cnt(client)
@@ -118,9 +122,10 @@ def run_test(is_os_client: bool, model_type):
         args=[
             "python3",
             "main.py",
-            "-t=knn_768",
+            f"-t={clean_up_task}",
             f"-mt={model_type}",
             f"-ht={host_type}",
+            f"-et={embedding_type}",
             "-c=headlight bulbs",
             "-d",
             "-cl",
@@ -129,7 +134,7 @@ def run_test(is_os_client: bool, model_type):
         cwd=os.path.curdir,
         text=True,
     )
-    process.communicate(input="y\ny\ny\n")
+    process.communicate(input="y\ny\ny\ny\n")
     time.sleep(5)
     validate_clean_up(client, INDEX_NAME)
     curr_connector_cnt, curr_model_cnt, curr_model_group_cnt = get_resources_cnt(client)
@@ -140,8 +145,10 @@ def run_test(is_os_client: bool, model_type):
 
 
 def test():
-    logging.info("Testing main with os local model...")
+    logging.info("Testing main with os local dense model...")
     run_test(True, "local")
+    logging.info("Testing main with os local sparse model...")
+    run_test(True, "local", "sparse")
     logging.info("Testing main with os bedrock model...")
     run_test(True, "bedrock")
     logging.info("Testing main with os sagemaker model...")

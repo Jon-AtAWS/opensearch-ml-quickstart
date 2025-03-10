@@ -26,11 +26,18 @@ def test():
     model_group = get_ml_model_group(os_client, ml_commons_client)
     model_group_id = model_group.model_group_id()
     local_model_configs = {"model_group_id": model_group_id}
-    local_ml_model = LocalMlModel(
+    local_dense_model = LocalMlModel(
         os_client,
         ml_commons_client,
         model_group_id=model_group_id,
         model_configs=local_model_configs,
+    )
+    local_sparse_model = LocalMlModel(
+        os_client,
+        ml_commons_client,
+        model_group_id=model_group_id,
+        model_configs=local_model_configs,
+        model_name="amazon/neural-sparse/opensearch-neural-sparse-encoding-v1",
     )
 
     os_bedrock_configs = get_remote_connector_configs(
@@ -62,14 +69,26 @@ def test():
         ml_connector=os_sagemaker_ml_connector,
     )
 
-    logging.info(f"Testing local model")
+    logging.info(f"Testing local dense model")
     logging.info("Setting up for kNN")
     client.setup_for_kNN(
         index_name="amazon_pqa",
         index_settings={"settings": {"number_of_shards": 1}},
         pipeline_name="amazon_pqa_pipeline",
         delete_existing=False,
-        ml_model=local_ml_model,
+        ml_model=local_dense_model,
+    )
+    with patch("builtins.input", return_value="y"):
+        client.cleanup_kNN(index_name="amazon_pqa", pipeline_name="amazon_pqa_pipeline")
+
+    logging.info(f"Testing local sparse model")
+    logging.info("Setting up for kNN")
+    client.setup_for_kNN(
+        index_name="amazon_pqa",
+        index_settings={"settings": {"number_of_shards": 1}},
+        pipeline_name="amazon_pqa_pipeline",
+        delete_existing=False,
+        ml_model=local_sparse_model,
     )
     with patch("builtins.input", return_value="y"):
         client.cleanup_kNN(index_name="amazon_pqa", pipeline_name="amazon_pqa_pipeline")

@@ -42,26 +42,40 @@ def create_index_settings(base_mapping_path, index_config, model_config=dict()):
     model_dimension = model_config.get(
         "model_dimensions", index_config["model_dimensions"]
     )
+    embedding_type = index_config.get("embedding_type", "dense")
     if index_config["with_knn"]:
         pipeline_name = index_config["pipeline_name"]
-        knn_settings = {
-            "settings": {"index": {"knn": True}, "default_pipeline": pipeline_name},
-            "mappings": {
-                "properties": {
-                    "chunk": {"type": "text", "index": False},
-                    "chunk_embedding": {
-                        "type": "knn_vector",
-                        "dimension": model_dimension,
-                        "method": {
-                            "name": "hnsw",
-                            "space_type": "l2",
-                            "engine": "nmslib",
-                            "parameters": {"ef_construction": 128, "m": 24},
+        if embedding_type == "dense":
+            knn_settings = {
+                "settings": {"index": {"knn": True}, "default_pipeline": pipeline_name},
+                "mappings": {
+                    "properties": {
+                        "chunk": {"type": "text", "index": False},
+                        "chunk_embedding": {
+                            "type": "knn_vector",
+                            "dimension": model_dimension,
+                            "method": {
+                                "name": "hnsw",
+                                "space_type": "l2",
+                                "engine": "nmslib",
+                                "parameters": {"ef_construction": 128, "m": 24},
+                            },
                         },
-                    },
-                }
-            },
-        }
+                    }
+                },
+            }
+        else:
+            knn_settings = {
+                "settings": {"index": {"knn": True}, "default_pipeline": pipeline_name},
+                "mappings": {
+                    "properties": {
+                        "chunk": {"type": "text", "index": False},
+                        "chunk_embedding": {
+                            "type": "rank_features",
+                        },
+                    }
+                },
+            }
         mapping_update(settings, knn_settings)
     if (
         "compression" in index_config
@@ -82,7 +96,7 @@ def send_bulk_ignore_exceptions(client: OpenSearch, docs):
             chunk_size=100,
             request_timeout=300,
             max_retries=10,
-            raise_on_error=False,
+            raise_on_error=True,
         )
         return status
     except Exception as e:
@@ -196,6 +210,7 @@ def load_dataset(
         index_settings=config["index_settings"],
         pipeline_field_map=config["pipeline_field_map"],
         delete_existing=delete_existing,
+        embedding_type=config["embedding_type"],
     )
 
     for category in config["categories"]:
@@ -225,7 +240,9 @@ def get_args():
     parser.add_argument("-t", "--task", default="knn_768", action="store")
     parser.add_argument("-c", "--categories", default="all", action="store")
     parser.add_argument("-i", "--index_name", default="amazon_pqa", action="store")
-    parser.add_argument("-p", "--pipeline_name", default="amazon_pqa", action="store")
+    parser.add_argument(
+        "-p", "--pipeline_name", default="amazon_pqa_pipeline", action="store"
+    )
     parser.add_argument("-d", "--delete_existing", default=False, action="store_true")
     parser.add_argument("-n", "--number_of_docs", default=500, action="store", type=int)
     parser.add_argument(
@@ -239,6 +256,7 @@ def get_args():
     parser.add_argument(
         "-ht", "--host_type", choices=["os", "aos"], default="os", action="store"
     )
+    parser.add_argument("-et", "--embedding_type", default="dense", action="store")
     parser.add_argument("-cl", "--cleanup", default=False, action="store_true")
     parser.add_argument(
         "-dp",
@@ -284,6 +302,7 @@ def main():
     config["categories"] = categories
     config["index_name"] = args.index_name
     config["pipeline_name"] = args.pipeline_name
+    config["embedding_type"] = args.embedding_type
 
     ml_model = None
     model_config = None
@@ -302,6 +321,7 @@ def main():
         )
     )
     model_config["model_name"] = model_name
+    model_config["embedding_type"] = args.embedding_type
 
     ml_model = get_ml_model(
         host_type=args.host_type,
@@ -317,7 +337,7 @@ def main():
     )
     config["cleanup"] = config["cleanup"] or args.cleanup
 
-    logging.info(f"Config: {json.dumps(config, indent=4)}")
+    logging.info(f"Config:\n {json.dumps(config, indent=4)}")
 
     load_dataset(
         client,

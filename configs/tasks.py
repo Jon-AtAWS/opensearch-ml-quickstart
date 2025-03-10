@@ -11,22 +11,6 @@ categories = [
     # "jeans",
 ]
 
-
-ml_models = [
-    ("huggingface/sentence-transformers/all-distilroberta-v1", 768),
-    ("huggingface/sentence-transformers/all-MiniLM-L", 384),
-    ("huggingface/sentence-transformers/all-MiniLM-L12-v2", 384),
-    ("huggingface/sentence-transformers/all-mpnet-base-v2", 768),
-    ("huggingface/sentence-transformers/msmarco-distilbert-base-tas-b", 768),
-    ("huggingface/sentence-transformers/multi-qa-MiniLM-L6-cos-v1", 384),
-    ("huggingface/sentence-transformers/multi-qa-mpnet-base-dot-v1", 384),
-    ("huggingface/sentence-transformers/paraphrase-MiniLM-L3-v2", 384),
-    ("huggingface/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2", 384),
-    ("huggingface/sentence-transformers/paraphrase-mpnet-base-v2", 768),
-    ("huggingface/sentence-transformers/distiluse-base-multilingual-cased-v1", 512),
-]
-
-
 PIPELINE_FIELD_MAP = {"chunk": "chunk_embedding"}
 
 # please refer to supported model versions in https://opensearch.org/docs/latest/ml-commons-plugin/pretrained-models/
@@ -101,6 +85,28 @@ tasks = {
         "compression": "best_compression",
         "pipeline_field_map": PIPELINE_FIELD_MAP,
         "model_name": "huggingface/sentence-transformers/msmarco-distilbert-base-tas-b",
+        "model_version": "1.0.2",
+        "model_dimensions": 768,
+    },
+    "sparse_encoding_v1": {
+        "with_knn": True,
+        "categories": categories,
+        "max_cat_docs": -1,
+        "cleanup": True,
+        "compression": "best_compression",
+        "pipeline_field_map": PIPELINE_FIELD_MAP,
+        "model_name": "amazon/neural-sparse/opensearch-neural-sparse-encoding-v1",
+        "model_version": "1.0.2",
+        "model_dimensions": 768,
+    },
+    "sparse_encoding_v1_no_cleanup": {
+        "with_knn": True,
+        "categories": categories,
+        "max_cat_docs": -1,
+        "cleanup": False,
+        "compression": "best_compression",
+        "pipeline_field_map": PIPELINE_FIELD_MAP,
+        "model_name": "amazon/neural-sparse/opensearch-neural-sparse-encoding-v1",
         "model_version": "1.0.2",
         "model_dimensions": 768,
     },

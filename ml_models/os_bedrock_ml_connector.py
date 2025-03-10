@@ -12,4 +12,4 @@ class OsBedrockMlConnector(OsMlConnector):
 
     @overrides
     def _get_connector_create_payload_filename(self):
-        return "bedrock.json"
+        return "bedrock_dense.json"
