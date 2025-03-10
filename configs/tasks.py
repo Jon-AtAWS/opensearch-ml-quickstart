@@ -96,7 +96,7 @@ tasks = {
         "compression": "best_compression",
         "pipeline_field_map": PIPELINE_FIELD_MAP,
         "model_name": "amazon/neural-sparse/opensearch-neural-sparse-encoding-v1",
-        "model_version": "1.0.2",
+        "model_version": "1.0.1",
         "model_dimensions": 768,
     },
     "sparse_encoding_v1_no_cleanup": {
@@ -107,7 +107,7 @@ tasks = {
         "compression": "best_compression",
         "pipeline_field_map": PIPELINE_FIELD_MAP,
         "model_name": "amazon/neural-sparse/opensearch-neural-sparse-encoding-v1",
-        "model_version": "1.0.2",
+        "model_version": "1.0.1",
         "model_dimensions": 768,
     },
 }
