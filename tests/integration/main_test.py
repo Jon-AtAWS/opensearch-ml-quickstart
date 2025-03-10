@@ -95,6 +95,7 @@ def run_test(is_os_client: bool, model_type, embedding_type="dense"):
     )
     process.communicate(input="")
     validate_embedding(client, INDEX_NAME)
+    print("validating clean_up_task without cl flag...")
     process = subprocess.Popen(
         args=[
             "python3",
@@ -110,7 +111,7 @@ def run_test(is_os_client: bool, model_type, embedding_type="dense"):
         cwd=os.path.curdir,
         text=True,
     )
-    process.communicate(input="y\ny\ny\ny\n")
+    process.communicate(input="y\ny\ny\ny\ny\n")
     time.sleep(5)
     validate_clean_up(client, INDEX_NAME)
     curr_connector_cnt, curr_model_cnt, curr_model_group_cnt = get_resources_cnt(client)
@@ -134,7 +135,7 @@ def run_test(is_os_client: bool, model_type, embedding_type="dense"):
         cwd=os.path.curdir,
         text=True,
     )
-    process.communicate(input="y\ny\ny\ny\n")
+    process.communicate(input="y\ny\ny\ny\ny\n")
     time.sleep(5)
     validate_clean_up(client, INDEX_NAME)
     curr_connector_cnt, curr_model_cnt, curr_model_group_cnt = get_resources_cnt(client)
@@ -151,13 +152,17 @@ def test():
     run_test(True, "local", "sparse")
     logging.info("Testing main with os bedrock model...")
     run_test(True, "bedrock")
-    logging.info("Testing main with os sagemaker model...")
+    logging.info("Testing main with os sagemaker dense model...")
     run_test(True, "sagemaker")
+    logging.info("Testing main with os sagemaker sparse model...")
+    run_test(True, "sagemaker", "sparse")
 
     logging.info("Testing main with aos bedrock model...")
     run_test(False, "bedrock")
-    logging.info("Testing main with aos sagemaker model...")
+    logging.info("Testing main with aos sagemaker dense model...")
     run_test(False, "sagemaker")
+    logging.info("Testing main with aos sagemaker sparse model...")
+    run_test(False, "sagemaker", "sparse")
 
 
 if __name__ == "__main__":

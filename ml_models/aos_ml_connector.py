@@ -58,7 +58,11 @@ class AosMlConnector(MlConnector):
 
     @overrides
     def _fill_in_connector_create_payload(self, connector_create_payload):
-        url = self._connector_configs["url"]
+        url = (
+            self._connector_configs["dense_url"]
+            if self._embedding_type == "dense"
+            else self._connector_configs["sparse_url"]
+        )
         region = self._connector_configs["region"]
         connector_version = self._connector_configs["connector_version"]
 

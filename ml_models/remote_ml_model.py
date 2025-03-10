@@ -12,8 +12,11 @@ from configs import parse_arg_from_configs, ML_BASE_URI
 
 
 class RemoteMlModel(MlModel):
-    DEFAULT_MODEL_NAME = "Remote Model"
-    DEFAULT_MODEL_DESCRIPTION = "This is a Remote model"
+    DEFAULT_DENSE_MODEL_NAME = "Remote Dense Model"
+    DEFAULT_DENSE_MODEL_DESCRIPTION = "This is a remote dense model"
+
+    DEFAULT_SPARSE_MODEL_NAME = "Remote Sparse Model"
+    DEFAULT_SPARSE_MODEL_DESCRIPTION = "This is a remote sparse model"
 
     def __init__(
         self,
@@ -21,12 +24,26 @@ class RemoteMlModel(MlModel):
         ml_commons_client: MLCommonClient,
         ml_connector: MlConnector,
         model_group_id,
-        model_name=DEFAULT_MODEL_NAME,
-        model_description=DEFAULT_MODEL_DESCRIPTION,
+        model_name=None,
+        model_description=None,
         model_configs=dict(),
     ) -> None:
         # TODO: as a best practice, move the parent class consturctor function first
         self._ml_connector = ml_connector
+        embedding_type = model_configs.get("embedding_type", "dense")
+        # Set default name and description based on embedding type
+        if embedding_type == "sparse":
+            default_name = self.DEFAULT_SPARSE_MODEL_NAME
+            default_description = self.DEFAULT_SPARSE_MODEL_DESCRIPTION
+        else:  # default to dense
+            default_name = self.DEFAULT_DENSE_MODEL_NAME
+            default_description = self.DEFAULT_DENSE_MODEL_DESCRIPTION
+
+        # Use provided values or defaults
+        model_name = model_name if model_name is not None else default_name
+        model_description = (
+            model_description if model_description is not None else default_description
+        )
         super().__init__(
             os_client,
             ml_commons_client,
