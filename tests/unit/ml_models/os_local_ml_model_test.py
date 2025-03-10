@@ -19,12 +19,26 @@ def test():
     logging.info(f"Model Group Id {model_group_id}")
     model_configs = {"model_group_id": model_group_id}
 
-    logging.info("Creating os local ml model...")
+    logging.info("Creating os local dense ml model...")
     model = LocalMlModel(
         os_client=os_client,
         ml_commons_client=ml_commons_client,
         model_group_id=model_group_id,
         model_configs=model_configs,
+    )
+
+    logging.info("Cleaning up...")
+    with patch("builtins.input", return_value="y"):
+        model.clean_up()
+        model_group.clean_up()
+
+    logging.info("Creating os local sparse ml model...")
+    model = LocalMlModel(
+        os_client=os_client,
+        ml_commons_client=ml_commons_client,
+        model_group_id=model_group_id,
+        model_configs=model_configs,
+        model_name="amazon/neural-sparse/opensearch-neural-sparse-encoding-v1"
     )
 
     logging.info("Cleaning up...")
