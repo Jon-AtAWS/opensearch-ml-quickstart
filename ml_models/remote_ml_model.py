@@ -38,10 +38,12 @@ class RemoteMlModel(MlModel):
         else:  # default to dense
             default_name = self.DEFAULT_DENSE_MODEL_NAME
             default_description = self.DEFAULT_DENSE_MODEL_DESCRIPTION
-            
+
         # Use provided values or defaults
         model_name = model_name if model_name is not None else default_name
-        model_description = model_description if model_description is not None else default_description
+        model_description = (
+            model_description if model_description is not None else default_description
+        )
         super().__init__(
             os_client,
             ml_commons_client,
