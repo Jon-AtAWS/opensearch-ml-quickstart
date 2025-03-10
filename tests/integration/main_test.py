@@ -110,7 +110,7 @@ def run_test(is_os_client: bool, model_type, embedding_type="dense"):
         cwd=os.path.curdir,
         text=True,
     )
-    process.communicate(input="y\ny\ny\n")
+    process.communicate(input="y\ny\ny\ny\n")
     time.sleep(5)
     validate_clean_up(client, INDEX_NAME)
     curr_connector_cnt, curr_model_cnt, curr_model_group_cnt = get_resources_cnt(client)
