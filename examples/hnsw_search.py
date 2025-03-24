@@ -8,17 +8,15 @@ import logging
 from typing import Dict
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from configs import get_config, DEFAULT_ENV_PATH, BASE_MAPPING_PATH
+from configs import get_config, BASE_MAPPING_PATH, PIPELINE_FIELD_MAP
 from client import (
     OsMlClientWrapper,
     get_client,
-    get_client_configs,
 )
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
 from ml_models import (get_remote_connector_configs, MlModel)
 from main import get_ml_model, load_category
-
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
@@ -26,58 +24,29 @@ logging.basicConfig(
     level=logging.INFO,
 )
 
-SPACE_SEPARATOR = " "
-SEPARATOR = SPACE_SEPARATOR
-
-
-def create_index_settings(base_mapping_path, index_config, model_config=dict()):
+def create_index_settings(base_mapping_path, index_config):
     settings = get_base_mapping(base_mapping_path)
-    model_dimension = model_config.get(
-        "model_dimensions", index_config["model_dimensions"]
-    )
-    embedding_type = index_config.get("embedding_type", "dense")
-    if index_config["with_knn"]:
-        pipeline_name = index_config["pipeline_name"]
-        if embedding_type == "dense":
-            knn_settings = {
-                "settings": {"index": {"knn": True}, "default_pipeline": pipeline_name},
-                "mappings": {
-                    "properties": {
-                        "chunk": {"type": "text", "index": False},
-                        "chunk_embedding": {
-                            "type": "knn_vector",
-                            "dimension": model_dimension,
-                            "method": {
-                                "name": "hnsw",
-                                "space_type": "l2",
-                                "engine": "nmslib",
-                                "parameters": {"ef_construction": 128, "m": 24},
-                            },
-                        },
-                    }
+    pipeline_name = index_config["pipeline_name"]
+    model_dimension = index_config["model_dimensions"]
+    knn_settings = {
+        "settings": {"index": {"knn": True}, "default_pipeline": pipeline_name},
+        "mappings": {
+            "properties": {
+                "chunk": {"type": "text", "index": False},
+                "chunk_embedding": {
+                    "type": "knn_vector",
+                    "dimension": model_dimension,
+                    "method": {
+                        "name": "hnsw",
+                        "space_type": "l2",
+                        "engine": "nmslib",
+                        "parameters": {"ef_construction": 128, "m": 24},
+                    },
                 },
             }
-        else:
-            knn_settings = {
-                "settings": {"index": {"knn": True}, "default_pipeline": pipeline_name},
-                "mappings": {
-                    "properties": {
-                        "chunk": {"type": "text", "index": False},
-                        "chunk_embedding": {
-                            "type": "rank_features",
-                        },
-                    }
-                },
-            }
-        mapping_update(settings, knn_settings)
-    if (
-        "compression" in index_config
-        and index_config["compression"] != "best_compression"
-    ):
-        compression_settings = {
-            "settings": {"index": {"codec": index_config["compression"]}}
-        }
-        mapping_update(settings, compression_settings)
+        },
+    }
+    mapping_update(settings, knn_settings)
     return settings
 
 
@@ -138,6 +107,7 @@ def main():
     categories = ["sheet and pillowcase sets"]
     config = {
         "with_knn": True,
+        "pipeline_field_map": PIPELINE_FIELD_MAP
     }
 
     pipeline_name = "amazon_pqa_pipeline"
@@ -153,6 +123,7 @@ def main():
     model_config = get_remote_connector_configs(host_type=host_type, connector_type=model_type)
     model_config["model_name"] = model_name
     model_config["embedding_type"] = embedding_type
+    config.update(model_config)
 
     ml_model = get_ml_model(
         host_type=host_type,
@@ -164,7 +135,6 @@ def main():
     config["index_settings"] = create_index_settings(
         base_mapping_path=BASE_MAPPING_PATH,
         index_config=config,
-        model_config=model_config,
     )
     config["cleanup"] = False
 
