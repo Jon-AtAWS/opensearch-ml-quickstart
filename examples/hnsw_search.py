@@ -15,7 +15,7 @@ from client import (
 )
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
-from ml_models import (get_remote_connector_configs, MlModel)
+from ml_models import get_remote_connector_configs, MlModel
 from main import get_ml_model, load_category
 
 logging.basicConfig(
@@ -23,6 +23,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d:%H:%M:%S",
     level=logging.INFO,
 )
+
 
 def create_index_settings(base_mapping_path, index_config):
     settings = get_base_mapping(base_mapping_path)
@@ -99,16 +100,13 @@ def main():
     dataset_path = get_config("QANDA_FILE_READER_PATH")
     number_of_docs = 500
     client = OsMlClientWrapper(get_client(host_type))
-    
+
     pqa_reader = QAndAFileReader(
         directory=dataset_path, max_number_of_docs=number_of_docs
     )
 
     categories = ["sheet and pillowcase sets"]
-    config = {
-        "with_knn": True,
-        "pipeline_field_map": PIPELINE_FIELD_MAP
-    }
+    config = {"with_knn": True, "pipeline_field_map": PIPELINE_FIELD_MAP}
 
     pipeline_name = "amazon_pqa_pipeline"
     embedding_type = "dense"
@@ -120,7 +118,9 @@ def main():
     ml_model = None
     model_name = f"{host_type}_{model_type}"
 
-    model_config = get_remote_connector_configs(host_type=host_type, connector_type=model_type)
+    model_config = get_remote_connector_configs(
+        host_type=host_type, connector_type=model_type
+    )
     model_config["model_name"] = model_name
     model_config["embedding_type"] = embedding_type
     config.update(model_config)
@@ -152,24 +152,19 @@ def main():
 
     query_text = input("Please input your search query text: ")
     search_query = {
-        "_source": {
-            "include": "chunk"
-        },
+        "_source": {"include": "chunk"},
         "query": {
             "neural": {
-            "chunk_embedding": {
-                "query_text": query_text,
-                "model_id": ml_model.model_id()
+                "chunk_embedding": {
+                    "query_text": query_text,
+                    "model_id": ml_model.model_id(),
+                }
             }
-            }
-        }
+        },
     }
-    search_results = client.os_client.search(
-        index=index_name,
-        body = search_query
-    )
-    hits = search_results['hits']['hits']
-    hits = [hit['_source']['chunk'] for hit in hits]
+    search_results = client.os_client.search(index=index_name, body=search_query)
+    hits = search_results["hits"]["hits"]
+    hits = [hit["_source"]["chunk"] for hit in hits]
     hits = list(set(hits))
     for i, hit in enumerate(hits):
         print(f"{i + 1}th search result:\n {hit}")
