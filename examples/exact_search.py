@@ -36,12 +36,6 @@ def create_index_settings(base_mapping_path, index_config):
                 "chunk_embedding": {
                     "type": "knn_vector",
                     "dimension": model_dimension,
-                    "method": {
-                        "name": "hnsw",
-                        "space_type": "l2",
-                        "engine": "nmslib",
-                        "parameters": {"ef_construction": 128, "m": 24},
-                    },
                 },
             }
         },
