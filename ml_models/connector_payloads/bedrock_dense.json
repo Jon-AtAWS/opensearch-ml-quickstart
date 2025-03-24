@@ -20,5 +20,9 @@
       "pre_process_function": "connector.pre_process.bedrock.embedding",
       "post_process_function": "connector.post_process.bedrock.embedding"
     }
-  ]
+  ],
+  "client_config":{
+      "max_retry_times": -1,
+      "retry_backoff_millis": 10
+  }
 }
