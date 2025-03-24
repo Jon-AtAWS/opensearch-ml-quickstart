@@ -1,13 +1,14 @@
 # Copyright opensearch-ml-quickstart contributors
 # SPDX-License-Identifier: Apache-2.0
 
+import os
+import sys
 import json
 import logging
-import argparse
 from typing import Dict
-from opensearchpy import helpers, OpenSearch
 
-from configs import tasks, get_config, DEFAULT_ENV_PATH
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from configs import get_config, DEFAULT_ENV_PATH, BASE_MAPPING_PATH
 from client import (
     OsMlClientWrapper,
     get_client,
@@ -15,18 +16,9 @@ from client import (
 )
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
-from ml_models import (
-    MlModel,
-    LocalMlModel,
-    RemoteMlModel,
-    OsBedrockMlConnector,
-    AosBedrockMlConnector,
-    OsSagemakerMlConnector,
-    AosSagemakerMlConnector,
-    get_aos_connector_helper,
-    get_remote_connector_configs,
-)
-from ..main import get_ml_model, load_category
+from ml_models import (get_remote_connector_configs, MlModel)
+from main import get_ml_model, load_category
+
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
@@ -89,53 +81,50 @@ def create_index_settings(base_mapping_path, index_config, model_config=dict()):
     return settings
 
 
-def get_args():
-    parser = argparse.ArgumentParser(
-        prog="main",
-        description="This toolkit loads AmazonPQA data into an OpenSearch KNN index."
-        "Your opensearch endpoint can be either opensource opensearch or "
-        "amazon opensearch serivce. You can use local model and remote models "
-        "from bedrock or sagemaker.",
+def load_dataset(
+    client: OsMlClientWrapper,
+    ml_model: MlModel,
+    pqa_reader: QAndAFileReader,
+    config: Dict[str, str],
+    delete_existing: bool,
+    index_name: str,
+    pipeline_name: str,
+):
+    if delete_existing:
+        logging.info(f"Deleting existing index {index_name}")
+        client.delete_then_create_index(
+            index_name=config["index_name"], settings=config["index_settings"]
+        )
+
+    logging.info("Setting up for KNN")
+    client.setup_for_kNN(
+        ml_model=ml_model,
+        index_name=config["index_name"],
+        pipeline_name=pipeline_name,
+        index_settings=config["index_settings"],
+        pipeline_field_map=config["pipeline_field_map"],
+        delete_existing=delete_existing,
+        embedding_type=config["embedding_type"],
     )
-    parser.add_argument("-t", "--task", default="knn_768", action="store")
-    parser.add_argument("-c", "--categories", default="all", action="store")
-    parser.add_argument("-i", "--index_name", default="amazon_pqa", action="store")
-    parser.add_argument(
-        "-p", "--pipeline_name", default="amazon_pqa_pipeline", action="store"
-    )
-    parser.add_argument("-d", "--delete_existing", default=False, action="store_true")
-    parser.add_argument("-n", "--number_of_docs", default=500, action="store", type=int)
-    parser.add_argument(
-        "-mt",
-        "--model_type",
-        choices=["local", "sagemaker", "bedrock"],
-        default="local",
-        action="store",
-    )
-    parser.add_argument("-ep", "--env_path", default=DEFAULT_ENV_PATH, action="store")
-    parser.add_argument(
-        "-ht", "--host_type", choices=["os", "aos"], default="os", action="store"
-    )
-    parser.add_argument("-et", "--embedding_type", default="dense", action="store")
-    parser.add_argument("-cl", "--cleanup", default=False, action="store_true")
-    parser.add_argument(
-        "-dp",
-        "--dataset_path",
-        default=get_config("QANDA_FILE_READER_PATH"),
-        action="store",
-    )
-    parser.add_argument(
-        "-bmp",
-        "--base_mapping_path",
-        default=get_config("BASE_MAPPING_PATH"),
-        action="store",
-    )
-    args = parser.parse_args()
-    return args
+
+    for category in config["categories"]:
+        load_category(
+            client=client.os_client,
+            pqa_reader=pqa_reader,
+            category=category,
+            config=config,
+        )
+
+    if config["cleanup"]:
+        client.cleanup_kNN(
+            ml_model=ml_model,
+            index_name=config["index_name"],
+            pipeline_name=pipeline_name,
+        )
 
 
 def main():
-    host_type = "os"
+    host_type = "aos"
     model_type = "bedrock"
     index_name = "exact_search"
     dataset_path = get_config("QANDA_FILE_READER_PATH")
@@ -149,14 +138,6 @@ def main():
     categories = ["sheet and pillowcase sets"]
     config = {
         "with_knn": True,
-        "categories": categories,
-        "max_cat_docs": -1,
-        "cleanup": False,
-        "compression": "best_compression",
-        "pipeline_field_map": {"chunk": "chunk_embedding"},
-        "model_name": "huggingface/sentence-transformers/msmarco-distilbert-base-tas-b",
-        "model_version": "1.0.2",
-        "model_dimensions": 768,
     }
 
     pipeline_name = "amazon_pqa_pipeline"
@@ -180,9 +161,8 @@ def main():
         client=client,
     )
 
-    base_mapping_path = get_config("BASE_MAPPING_PATH")
     config["index_settings"] = create_index_settings(
-        base_mapping_path=base_mapping_path,
+        base_mapping_path=BASE_MAPPING_PATH,
         index_config=config,
         model_config=model_config,
     )
@@ -202,5 +182,4 @@ def main():
 
 
 if __name__ == "__main__":
-    i
     main()
