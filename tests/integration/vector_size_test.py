@@ -8,7 +8,7 @@ from typing import Dict
 from unittest.mock import patch
 from opensearchpy import helpers, OpenSearch
 
-from configs import get_config, tasks
+from configs import get_config, tasks, BASE_MAPPING_PATH
 from mapping import get_base_mapping, mapping_update
 from client import get_index_size, get_client, get_client_configs, OsMlClientWrapper
 from data_process import QAndAFileReader
@@ -262,7 +262,7 @@ def run_test(task: Dict[str, str]) -> Dict:
         ):
             client = aos_client if ml_model_config["host_type"] == "aos" else os_client
             index_settings = create_index_settings(
-                base_mapping_path=get_config("BASE_MAPPING_PATH"),
+                base_mapping_path=BASE_MAPPING_PATH,
                 task=task,
                 model_config=ml_model_config,
             )

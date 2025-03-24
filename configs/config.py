@@ -1,8 +1,14 @@
 # Copyright opensearch-ml-quickstart contributors
 # SPDX-License-Identifier: Apache-2.0
 
+import os
+
 # Env
-DEFAULT_ENV_PATH = "./configs/.env"
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+DEFAULT_ENV_PATH = os.path.join(PROJECT_ROOT, "configs", ".env")
+
+BASE_MAPPING_PATH = os.path.join(PROJECT_ROOT, "mapping", "base_mapping.json")
 
 # Open Search
 MINIMUM_OPENSEARCH_VERSION = "2.13.0"
