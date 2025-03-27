@@ -93,7 +93,7 @@ def send_bulk_ignore_exceptions(client: OpenSearch, docs):
         status = helpers.bulk(
             client,
             docs,
-            chunk_size=100,
+            chunk_size=10,
             request_timeout=300,
             max_retries=10,
             raise_on_error=False,
