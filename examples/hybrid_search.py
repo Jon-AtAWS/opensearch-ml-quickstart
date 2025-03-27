@@ -96,7 +96,7 @@ def load_dataset(
 
 def main():
     host_type = "aos"
-    index_name = "hybrid"
+    index_name = "hybrid_search"
     dense_model_type = "bedrock"
     sparse_model_type = "sagemaker"
     dataset_path = get_config("QANDA_FILE_READER_PATH")
@@ -130,6 +130,7 @@ def main():
 
     dense_model_config["embedding_type"] = "dense"
     sparse_model_config["embedding_type"] = "sparse"
+    config["model_dimensions"] = dense_model_config["model_dimensions"]
 
     dense_ml_model = get_ml_model(
         host_type=host_type,
@@ -145,6 +146,7 @@ def main():
         client=client,
     )
 
+    print("index_config:\n", config)
     config["index_settings"] = create_index_settings(
         base_mapping_path=BASE_MAPPING_PATH,
         index_config=config,
@@ -164,31 +166,56 @@ def main():
         pipeline_name=pipeline_name,
     )
 
+    search_pipeline_id = "hybrid-search-pipeline"
+    logging.info(f"Creating search pipeline {search_pipeline_id}")
+    pipeline_config = {
+        "description": "Post processor for hybrid search",
+        "phase_results_processors": [
+            {
+                "normalization-processor": {
+                    "normalization": {"technique": "min_max"},
+                    "combination": {
+                        "technique": "arithmetic_mean",
+                        "parameters": {"weights": [0.5, 0.5]},
+                    },
+                }
+            }
+        ],
+    }
+    client.os_client.transport.perform_request(
+        "PUT", f"/_search/pipeline/{search_pipeline_id}", body=pipeline_config
+    )
+
     query_text = input("Please input your search query text: ")
     search_query = {
         "_source": {"include": "chunk"},
-        "hybrid": {
-            "queries": [
-                {
-                    "neural": {
-                        "chunk_dense_embedding": {
-                            "query_text": query_text,
-                            "model_id": dense_ml_model.model_id(),
+        "query": {
+            "hybrid": {
+                "queries": [
+                    {
+                        "neural": {
+                            "chunk_dense_embedding": {
+                                "query_text": query_text,
+                                "model_id": dense_ml_model.model_id(),
+                            }
                         }
-                    }
-                },
-                {
-                    "neural_sparse": {
-                        "chunk_sparse_embedding": {
-                            "query_text": query_text,
-                            "model_id": sparse_ml_model.model_id(),
+                    },
+                    {
+                        "neural_sparse": {
+                            "chunk_sparse_embedding": {
+                                "query_text": query_text,
+                                "model_id": sparse_ml_model.model_id(),
+                            }
                         }
-                    }
-                },
-            ]
+                    },
+                ]
+            }
         },
     }
-    search_results = client.os_client.search(index=index_name, body=search_query)
+
+    search_results = client.os_client.search(
+        index=index_name, body=search_query, search_pipeline=search_pipeline_id
+    )
     hits = search_results["hits"]["hits"]
     hits = [hit["_source"]["chunk"] for hit in hits]
     hits = list(set(hits))
