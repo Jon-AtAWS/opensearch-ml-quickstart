@@ -89,7 +89,6 @@ class AosConnectorHelper:
 
             logging.info(f"Created role: {role_name}")
             return role_arn
-        
 
         except Exception as e:
             logging.error(f"Error creating the role: {e}")
@@ -206,7 +205,9 @@ class AosConnectorHelper:
             ],
         }
 
-        logging.info(f"Step1: Create IAM role configued in connector: {connector_role_name}")
+        logging.info(
+            f"Step1: Create IAM role configued in connector: {connector_role_name}"
+        )
         if not self.role_exists(connector_role_name):
             connector_role_arn = self.create_iam_role(
                 connector_role_name, trust_policy, connector_role_inline_policy

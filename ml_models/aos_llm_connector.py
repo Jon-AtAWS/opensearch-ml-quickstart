@@ -45,9 +45,10 @@ class AosLlmConnector(AosMlConnector):
         connector_create_payload["parameters"]["region"] = region
         connector_create_payload["version"] = connector_version
 
-        print(f"aos_llm_connector connector_create_payload:\n{connector_create_payload}")
+        print(
+            f"aos_llm_connector connector_create_payload:\n{connector_create_payload}"
+        )
         return connector_create_payload
-
 
     @overrides
     def _get_connector_create_payload_filename(self):
