@@ -10,6 +10,8 @@ DEFAULT_ENV_PATH = os.path.join(PROJECT_ROOT, "configs", ".env")
 
 BASE_MAPPING_PATH = os.path.join(PROJECT_ROOT, "mapping", "base_mapping.json")
 
+QANDA_FILE_READER_PATH= os.path.join(PROJECT_ROOT, "datasets", "amazon_pqa")
+
 # Open Search
 MINIMUM_OPENSEARCH_VERSION = "2.13.0"
 
