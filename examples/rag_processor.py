@@ -88,13 +88,6 @@ def load_dataset(
             config=config,
         )
 
-    if config["cleanup"]:
-        client.cleanup_kNN(
-            ml_model=ml_model,
-            index_name=config["index_name"],
-            pipeline_name=pipeline_name,
-        )
-
 
 def create_llm_model():
     client = OsMlClientWrapper(get_client("aos"))
@@ -144,11 +137,12 @@ def main():
     categories = ["sheet and pillowcase sets"]
     config = {"with_knn": True, "pipeline_field_map": PIPELINE_FIELD_MAP}
 
-    pipeline_name = "amazon_pqa_pipeline"
+    search_pipeline_name = "rag_pipeline"
+    ingest_pipeline_name = "amazon_pqa_pipeline"
     embedding_type = "dense"
     config["categories"] = categories
     config["index_name"] = index_name
-    config["pipeline_name"] = pipeline_name
+    config["pipeline_name"] = ingest_pipeline_name
     config["embedding_type"] = embedding_type
 
     ml_model = None
@@ -172,7 +166,7 @@ def main():
         base_mapping_path=BASE_MAPPING_PATH,
         index_config=config,
     )
-    config["cleanup"] = False
+    config["index_settings"]["settings"]["index.search.default_pipeline"] = search_pipeline_name
 
     logging.info(f"Config:\n {json.dumps(config, indent=4)}")
 
@@ -190,7 +184,7 @@ def main():
 
     response = client.os_client.transport.perform_request(
         "PUT",
-        f"/_search/pipeline/rag_pipeline",
+        f"/_search/pipeline/{search_pipeline_name}",
         body={
             "response_processors": [
                 {
