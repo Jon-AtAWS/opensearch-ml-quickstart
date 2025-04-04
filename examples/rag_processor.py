@@ -9,14 +9,16 @@ from typing import Dict
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from configs import get_config, BASE_MAPPING_PATH, PIPELINE_FIELD_MAP
-from client import (
-    OsMlClientWrapper,
-    get_client,
-    get_client_configs
-)
+from client import OsMlClientWrapper, get_client, get_client_configs
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
-from ml_models import get_remote_connector_configs, get_aos_connector_helper, MlModel, RemoteMlModel, AosLlmConnector
+from ml_models import (
+    get_remote_connector_configs,
+    get_aos_connector_helper,
+    MlModel,
+    RemoteMlModel,
+    AosLlmConnector,
+)
 from main import get_ml_model, load_category
 
 logging.basicConfig(
@@ -93,22 +95,27 @@ def load_dataset(
             pipeline_name=pipeline_name,
         )
 
+
 def create_llm_model():
     client = OsMlClientWrapper(get_client("aos"))
     connector_configs = get_remote_connector_configs(
         host_type="aos", connector_type="bedrock"
     )
-    connector_configs["llm_arn"] = "arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0"
+    connector_configs[
+        "llm_arn"
+    ] = "arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0"
     connector_configs["connector_role_name"] = "bedrock_llm_connector_role"
-    connector_configs["create_connector_role_name"] = "bedrock_llm_create_connector_role"
-    print(f"connector_configs:\n{connector_configs}")
+    connector_configs[
+        "create_connector_role_name"
+    ] = "bedrock_llm_create_connector_role"
+    logging.info(f"connector_configs:\n{connector_configs}")
     aos_connector_helper = get_aos_connector_helper(get_client_configs("aos"))
     aosLlmConnector = AosLlmConnector(
         os_client=client.os_client,
         connector_configs=connector_configs,
-        aos_connector_helper=aos_connector_helper
+        aos_connector_helper=aos_connector_helper,
     )
-    print(f"connector id of the llm connector: {aosLlmConnector.connector_id()}")
+    logging.info(f"connector id of the llm connector: {aosLlmConnector.connector_id()}")
     model_group_id = client.ml_model_group.model_group_id()
     llm_model = RemoteMlModel(
         os_client=client.os_client,
@@ -117,13 +124,15 @@ def create_llm_model():
         model_group_id=model_group_id,
         model_name="Amazon Bedrock claude 3.5",
     )
-    print(f"model id of the llm model: {llm_model.model_id()}")
+    llm_model_id = llm_model.model_id()
+    logging.info(f"model id of the llm model: {llm_model_id}")
+    return llm_model_id
 
 
 def main():
     host_type = "aos"
     model_type = "bedrock"
-    index_name = "hnsw_search"
+    index_name = "rag_processor_search"
     dataset_path = get_config("QANDA_FILE_READER_PATH")
     number_of_docs = 500
     client = OsMlClientWrapper(get_client(host_type))
@@ -152,7 +161,6 @@ def main():
     model_config["embedding_type"] = embedding_type
     config.update(model_config)
 
-    
     ml_model = get_ml_model(
         host_type=host_type,
         model_type=model_type,
@@ -178,25 +186,63 @@ def main():
         pipeline_name=pipeline_name,
     )
 
-    query_text = input("Please input your search query text: ")
-    search_query = {
-        "_source": {"include": "chunk"},
-        "query": {
-            "neural": {
-                "chunk_embedding": {
-                    "query_text": query_text,
-                    "model_id": ml_model.model_id(),
+    llm_model_id = create_llm_model()
+
+    response = client.os_client.transport.perform_request(
+        "PUT",
+        f"/_search/pipeline/rag_pipeline",
+        body={
+            "response_processors": [
+                {
+                    "retrieval_augmented_generation": {
+                        "tag": "conversation demo",
+                        "description": "Demo pipeline Using Bedrock Connector",
+                        "model_id": f"{llm_model_id}",
+                        "context_field_list": ["aggregated_answers"],
+                        "system_prompt": "You are a helpful assistant",
+                        "user_instructions": "Generate a concise and informative answer in less than 100 words for the given question",
+                    }
                 }
-            }
+            ]
         },
-    }
-    search_results = client.os_client.search(index=index_name, body=search_query)
-    hits = search_results["hits"]["hits"]
-    hits = [hit["_source"]["chunk"] for hit in hits]
-    hits = list(set(hits))
-    for i, hit in enumerate(hits):
-        print(f"{i + 1}th search result:\n {hit}")
+    )
+
+    conversation_name = f"conversation-{categories[0]}"
+    response = client.os_client.transport.perform_request(
+        "POST", "/_plugins/_ml/memory/", body={"name": conversation_name}
+    )
+    memory_id = response["memory_id"]
+    logging.info(f"Memory ID: {memory_id}")
+
+    question = input("Please input your question: ")
+    response = client.os_client.search(
+        index="converse",
+        body={
+            "query": {
+                "simple_query_string": {"query": question, "fields": ["question_text"]}
+            },
+            "ext": {
+                "generative_qa_parameters": {
+                    "llm_model": "bedrock/claude",
+                    "llm_question": question,
+                    "memory_id": f"{memory_id}",
+                    "context_size": 5,
+                    "message_size": 5,
+                    "timeout": 30,
+                }
+            },
+        },
+    )
+
+    print(json.dumps(response, indent=4))
+    print()
+    print(f"These are the questions retrieved by the lexical query: {question}")
+    for hit in response["hits"]["hits"]:
+        print(f"{hit['_source']['item_name']}:\n\t{hit['_source']['question_text']}")
+    print()
+    print()
+    print(response["ext"]["retrieval_augmented_generation"]["answer"])
 
 
 if __name__ == "__main__":
-    create_llm_model()
+    main()
