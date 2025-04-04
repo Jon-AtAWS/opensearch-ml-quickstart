@@ -118,7 +118,7 @@ def create_llm_model():
         model_name="Amazon Bedrock claude 3.5",
     )
     llm_model_id = llm_model.model_id()
-    logging.info(f"model id of the llm model: {llm_model_id}")
+    logging.info(f"Model id of the llm model: {llm_model_id}")
     return llm_model_id
 
 
@@ -127,7 +127,7 @@ def main():
     model_type = "bedrock"
     index_name = "rag_processor_search"
     dataset_path = get_config("QANDA_FILE_READER_PATH")
-    number_of_docs = 500
+    number_of_docs = 50
     client = OsMlClientWrapper(get_client(host_type))
 
     pqa_reader = QAndAFileReader(
@@ -166,7 +166,6 @@ def main():
         base_mapping_path=BASE_MAPPING_PATH,
         index_config=config,
     )
-    config["index_settings"]["settings"]["index.search.default_pipeline"] = search_pipeline_name
 
     logging.info(f"Config:\n {json.dumps(config, indent=4)}")
 
@@ -177,7 +176,7 @@ def main():
         config,
         delete_existing=True,
         index_name=index_name,
-        pipeline_name=pipeline_name,
+        pipeline_name=ingest_pipeline_name,
     )
 
     llm_model_id = create_llm_model()
@@ -192,7 +191,7 @@ def main():
                         "tag": "conversation demo",
                         "description": "Demo pipeline Using Bedrock Connector",
                         "model_id": f"{llm_model_id}",
-                        "context_field_list": ["aggregated_answers"],
+                        "context_field_list": ["chunk"],
                         "system_prompt": "You are a helpful assistant",
                         "user_instructions": "Generate a concise and informative answer in less than 100 words for the given question",
                     }
@@ -206,20 +205,27 @@ def main():
         "POST", "/_plugins/_ml/memory/", body={"name": conversation_name}
     )
     memory_id = response["memory_id"]
-    logging.info(f"Memory ID: {memory_id}")
+    logging.info(f"Conversation Memory ID: {memory_id}")
 
     question = input("Please input your question: ")
     response = client.os_client.search(
-        index="converse",
+        index=index_name,
+        search_pipeline=search_pipeline_name,
         body={
+            "_source": {"include": "chunk"},
             "query": {
-                "simple_query_string": {"query": question, "fields": ["question_text"]}
+                "neural": {
+                    "chunk_embedding": {
+                        "query_text": question,
+                        "model_id": ml_model.model_id(),
+                    }
+                }
             },
             "ext": {
                 "generative_qa_parameters": {
                     "llm_model": "bedrock/claude",
                     "llm_question": question,
-                    "memory_id": f"{memory_id}",
+                    "memory_id": memory_id,
                     "context_size": 5,
                     "message_size": 5,
                     "timeout": 30,
@@ -230,9 +236,11 @@ def main():
 
     print(json.dumps(response, indent=4))
     print()
-    print(f"These are the questions retrieved by the lexical query: {question}")
-    for hit in response["hits"]["hits"]:
-        print(f"{hit['_source']['item_name']}:\n\t{hit['_source']['question_text']}")
+    hits = response["hits"]["hits"]
+    hits = [hit["_source"]["chunk"] for hit in hits]
+    hits = list(set(hits))
+    for i, hit in enumerate(hits):
+        print(f"{i + 1}th search result:\n {hit}")
     print()
     print()
     print(response["ext"]["retrieval_augmented_generation"]["answer"])
