@@ -7,7 +7,7 @@ import json
 import logging
 from typing import Dict
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.getcwd()))
 from configs import get_config, BASE_MAPPING_PATH, PIPELINE_FIELD_MAP
 from client import (
     OsMlClientWrapper,
@@ -115,7 +115,6 @@ def main():
     config["index_name"] = index_name
     config["pipeline_name"] = pipeline_name
 
-    ml_model = None
     dense_model_name = f"{host_type}_{dense_model_type}"
     sparse_model_name = f"{host_type}_{sparse_model_type}"
 
