@@ -234,6 +234,29 @@ def main():
         },
     )
 
+    search_query = {
+            "_source": {"include": "chunk"},
+            "query": {
+                "neural": {
+                    "chunk_embedding": {
+                        "query_text": question,
+                        "model_id": ml_model.model_id(),
+                    }
+                }
+            },
+            "ext": {
+                "generative_qa_parameters": {
+                    "llm_model": "bedrock/claude",
+                    "llm_question": question,
+                    "memory_id": memory_id,
+                    "context_size": 5,
+                    "message_size": 5,
+                    "timeout": 30,
+                }
+            },
+        },
+    print("search_query:\n", search_query)
+
     print(json.dumps(response, indent=4))
     print()
     hits = response["hits"]["hits"]
