@@ -89,6 +89,7 @@ class AosConnectorHelper:
 
             logging.info(f"Created role: {role_name}")
             return role_arn
+        
 
         except Exception as e:
             logging.error(f"Error creating the role: {e}")
@@ -181,7 +182,7 @@ class AosConnectorHelper:
         headers = {"Content-Type": "application/json"}
 
         r = requests.post(url, auth=awsauth, json=payload, headers=headers)
-        # print(r.text)
+        print(r.text)
         connector_id = json.loads(r.text)["connector_id"]
         return connector_id
 
@@ -205,7 +206,7 @@ class AosConnectorHelper:
             ],
         }
 
-        logging.info("Step1: Create IAM role configued in connector")
+        logging.info(f"Step1: Create IAM role configued in connector: {connector_role_name}")
         if not self.role_exists(connector_role_name):
             connector_role_arn = self.create_iam_role(
                 connector_role_name, trust_policy, connector_role_inline_policy
@@ -213,7 +214,7 @@ class AosConnectorHelper:
         else:
             logging.info("role exists, skip creating")
             connector_role_arn = self.get_role_arn(connector_role_name)
-        # print(connector_role_arn)
+        print("connector_role_arn:", connector_role_arn)
         logging.info("----------")
 
         # Step 2: Configure IAM role in OpenSearch

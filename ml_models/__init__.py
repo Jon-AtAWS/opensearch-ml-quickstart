@@ -5,6 +5,7 @@ from .ml_model import MlModel
 from .ml_model_group import MlModelGroup
 from .local_ml_model import LocalMlModel
 from .remote_ml_model import RemoteMlModel
+from .aos_llm_connector import AosLlmConnector
 from .os_bedrock_ml_connector import OsBedrockMlConnector
 from .os_sagemaker_ml_connector import OsSagemakerMlConnector
 from .aos_bedrock_ml_connector import AosBedrockMlConnector

@@ -12,10 +12,11 @@ from configs import get_config, BASE_MAPPING_PATH, PIPELINE_FIELD_MAP
 from client import (
     OsMlClientWrapper,
     get_client,
+    get_client_configs
 )
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
-from ml_models import get_remote_connector_configs, MlModel
+from ml_models import get_remote_connector_configs, get_aos_connector_helper, MlModel, RemoteMlModel, AosLlmConnector
 from main import get_ml_model, load_category
 
 logging.basicConfig(
@@ -92,6 +93,32 @@ def load_dataset(
             pipeline_name=pipeline_name,
         )
 
+def create_llm_model():
+    client = OsMlClientWrapper(get_client("aos"))
+    connector_configs = get_remote_connector_configs(
+        host_type="aos", connector_type="bedrock"
+    )
+    connector_configs["llm_arn"] = "arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0"
+    connector_configs["connector_role_name"] = "bedrock_llm_connector_role"
+    connector_configs["create_connector_role_name"] = "bedrock_llm_create_connector_role"
+    print(f"connector_configs:\n{connector_configs}")
+    aos_connector_helper = get_aos_connector_helper(get_client_configs("aos"))
+    aosLlmConnector = AosLlmConnector(
+        os_client=client.os_client,
+        connector_configs=connector_configs,
+        aos_connector_helper=aos_connector_helper
+    )
+    print(f"connector id of the llm connector: {aosLlmConnector.connector_id()}")
+    model_group_id = client.ml_model_group.model_group_id()
+    llm_model = RemoteMlModel(
+        os_client=client.os_client,
+        ml_commons_client=client.ml_commons_client,
+        ml_connector=aosLlmConnector,
+        model_group_id=model_group_id,
+        model_name="Amazon Bedrock claude 3.5",
+    )
+    print(f"model id of the llm model: {llm_model.model_id()}")
+
 
 def main():
     host_type = "aos"
@@ -125,7 +152,7 @@ def main():
     model_config["embedding_type"] = embedding_type
     config.update(model_config)
 
-    llm_connector = AosBedrockLLMConnector()
+    
     ml_model = get_ml_model(
         host_type=host_type,
         model_type=model_type,
@@ -172,4 +199,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    create_llm_model()
