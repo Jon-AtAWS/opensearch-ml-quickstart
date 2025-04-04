@@ -13,4 +13,5 @@ from .config import (
     DEFAULT_MODEL_FORMAT,
     DEFAULT_ENV_PATH,
     BASE_MAPPING_PATH,
+    QANDA_FILE_READER_PATH,
 )
