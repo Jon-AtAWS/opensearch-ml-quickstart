@@ -8,15 +8,14 @@ import logging
 from typing import Dict
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from configs import get_config, BASE_MAPPING_PATH, PIPELINE_FIELD_MAP
+from configs import get_config, BASE_MAPPING_PATH
 from client import (
     OsMlClientWrapper,
     get_client,
 )
 from data_process import QAndAFileReader
-from mapping import get_base_mapping, mapping_update
-from ml_models import get_remote_connector_configs, MlModel
-from main import get_ml_model, load_category
+from mapping import get_base_mapping
+from main import load_category
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
