@@ -96,7 +96,7 @@ def load_dataset(
 def main():
     host_type = "aos"
     model_type = "bedrock"
-    index_name = "hnsw_search"
+    index_name = "dense_hnsw_search"
     dataset_path = get_config("QANDA_FILE_READER_PATH")
     number_of_docs = 500
     client = OsMlClientWrapper(get_client(host_type))
