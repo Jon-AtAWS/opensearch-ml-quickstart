@@ -25,9 +25,7 @@ def validate_embedding(client: OpenSearch, index_name):
     client.indices.refresh(index=index_name)
     search_response = client.search(index=index_name, body=query)
     hits = search_response["hits"]["hits"]
-    # sometimes a few document cannot be ingested into the index
-    # we only need 400 documents to avoid flakey test
-    assert len(hits) >= 400
+    assert len(hits) >= 50
     for hit in hits:
         source = hit["_source"]
         if TEXT_FIELD in source:
@@ -75,8 +73,10 @@ def get_resources_cnt(client: OpenSearch):
 
 
 def run_test(is_os_client: bool, model_type, embedding_type="dense"):
+    ingest_doc_num = 50
     host_type = "os" if is_os_client else "aos"
     client = OS_CLIENT if is_os_client else AOS_CLIENT
+    
     clean_up_task = "sparse_encoding_v1" if embedding_type == "sparse" else "knn_768"
     no_clean_up_task = clean_up_task + "_no_cleanup"
     prev_connector_cnt, prev_model_cnt, prev_model_group_cnt = get_resources_cnt(client)
@@ -85,6 +85,7 @@ def run_test(is_os_client: bool, model_type, embedding_type="dense"):
             "python3",
             "main.py",
             f"-t={no_clean_up_task}",
+            f"-n={ingest_doc_num}",
             f"-mt={model_type}",
             f"-ht={host_type}",
             f"-et={embedding_type}",
@@ -100,6 +101,7 @@ def run_test(is_os_client: bool, model_type, embedding_type="dense"):
         args=[
             "python3",
             "main.py",
+            f"-n={ingest_doc_num}",
             f"-t={clean_up_task}",
             f"-mt={model_type}",
             f"-ht={host_type}",
@@ -123,6 +125,7 @@ def run_test(is_os_client: bool, model_type, embedding_type="dense"):
         args=[
             "python3",
             "main.py",
+            f"-n={ingest_doc_num}",
             f"-t={clean_up_task}",
             f"-mt={model_type}",
             f"-ht={host_type}",

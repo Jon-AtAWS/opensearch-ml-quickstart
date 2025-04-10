@@ -96,7 +96,7 @@ def load_dataset(
 def main():
     host_type = "aos"
     model_type = "bedrock"
-    index_name = "hnsw_search"
+    index_name = "dense_hnsw_search"
     dataset_path = get_config("QANDA_FILE_READER_PATH")
     number_of_docs = 500
     client = OsMlClientWrapper(get_client(host_type))
@@ -115,7 +115,6 @@ def main():
     config["pipeline_name"] = pipeline_name
     config["embedding_type"] = embedding_type
 
-    ml_model = None
     model_name = f"{host_type}_{model_type}"
 
     model_config = get_remote_connector_configs(

@@ -79,18 +79,11 @@ def load_dataset(
             config=config,
         )
 
-    if config["cleanup"]:
-        client.cleanup_kNN(
-            ml_model=ml_model,
-            index_name=config["index_name"],
-            pipeline_name=pipeline_name,
-        )
-
 
 def main():
     host_type = "aos"
     model_type = "bedrock"
-    index_name = "exact_search"
+    index_name = "dense_exact_search"
     dataset_path = get_config("QANDA_FILE_READER_PATH")
     number_of_docs = 500
     client = OsMlClientWrapper(get_client(host_type))
@@ -109,7 +102,6 @@ def main():
     config["pipeline_name"] = pipeline_name
     config["embedding_type"] = embedding_type
 
-    ml_model = None
     model_name = f"{host_type}_{model_type}"
 
     model_config = get_remote_connector_configs(
@@ -130,7 +122,6 @@ def main():
         base_mapping_path=BASE_MAPPING_PATH,
         index_config=config,
     )
-    config["cleanup"] = False
 
     logging.info(f"Config:\n {json.dumps(config, indent=4)}")
 

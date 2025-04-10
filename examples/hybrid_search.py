@@ -115,7 +115,6 @@ def main():
     config["index_name"] = index_name
     config["pipeline_name"] = pipeline_name
 
-    ml_model = None
     dense_model_name = f"{host_type}_{dense_model_type}"
     sparse_model_name = f"{host_type}_{sparse_model_type}"
 

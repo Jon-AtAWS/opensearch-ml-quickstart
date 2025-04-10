@@ -7,7 +7,13 @@ import argparse
 from typing import Dict
 from opensearchpy import helpers, OpenSearch
 
-from configs import tasks, get_config, DEFAULT_ENV_PATH, BASE_MAPPING_PATH
+from configs import (
+    tasks,
+    get_config,
+    DEFAULT_ENV_PATH,
+    BASE_MAPPING_PATH,
+    QANDA_FILE_READER_PATH,
+)
 from client import (
     OsMlClientWrapper,
     get_client,
@@ -267,7 +273,7 @@ def get_args():
     parser.add_argument(
         "-dp",
         "--dataset_path",
-        default=get_config("QANDA_FILE_READER_PATH"),
+        default=QANDA_FILE_READER_PATH,
         action="store",
     )
     parser.add_argument(

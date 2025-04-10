@@ -107,7 +107,6 @@ def main():
     config["pipeline_name"] = pipeline_name
     config["embedding_type"] = embedding_type
 
-    ml_model = None
     model_name = f"{host_type}_{model_type}"
 
     model_config = get_remote_connector_configs(

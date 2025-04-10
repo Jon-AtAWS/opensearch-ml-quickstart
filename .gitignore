@@ -4,3 +4,4 @@ __pycache__/
 datasets/
 .venv
 .DS_Store
+examples/.ipynb_checkpoints/
