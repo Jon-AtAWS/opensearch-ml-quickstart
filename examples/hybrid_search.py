@@ -7,7 +7,7 @@ import json
 import logging
 from typing import Dict
 
-sys.path.append(os.path.dirname(os.getcwd()))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from configs import get_config, BASE_MAPPING_PATH, PIPELINE_FIELD_MAP
 from client import (
     OsMlClientWrapper,
