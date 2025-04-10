@@ -4,7 +4,7 @@
 import os
 
 # Env
-PROJECT_ROOT = os.path.dirname(os.getcwd())
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 DEFAULT_ENV_PATH = os.path.join(PROJECT_ROOT, "configs", ".env")
 
