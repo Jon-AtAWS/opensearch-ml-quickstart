@@ -67,7 +67,7 @@ class MlConnector(ABC):
         pass
 
     def _read_connector_create_payload(self):
-        current_dir = os.getcwd()
+        current_dir = os.path.dirname(os.path.abspath(__file__))
         create_connector_payload_path = os.path.join(
             current_dir,
             "connector_payloads",
