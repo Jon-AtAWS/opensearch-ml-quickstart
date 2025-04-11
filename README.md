@@ -43,13 +43,33 @@ source .venv/bin/activate
 pip3 install -r requirements.txt
 ```
 
+# Usage
+
 ## Configure
 
 Modify files in the `configs` directory with your own values. See below for the different cases of local/managed service, and local/remote models. Be sure to set a correct path for `QANDA_FILE_READER_PATH`
 
-# Usage
-
 ## Local OpenSearch, local model
+
+### configs/.env
+
+In .env you set up credentials for contacting the OpenSearch domain or cluster. If you're running locally, you don't need to set up credentials for an Amazon OpenSearch Service domain, or vice-versa.
+
+If you're running locally, set these values
+
+```
+OS_USERNAME=<A user with sufficient permissions>
+OS_PASSWORD=<User's password>
+```
+
+Additionally, if you are running OpenSearch at a different port, or using OpenSearch open source, set these variables.
+
+```
+OS_HOST_URL=localhost
+OS_PORT=9200
+```
+
+## Run
 
 The simplest way to use the toolkit is to load data into OpenSearch running locally, on Docker desktop, and with a hugging face model loaded into the local, ML node.
 
@@ -76,7 +96,8 @@ Since the above command line does not specify `--cleanup`, the toolkit leaves th
 
 # Working with remote models
 
-To work with a remote model, you'll need an AWS account, with sufficient permissions to access Amazon Bedrock (Bedrock) or Amazon SageMaker (SageMaker), and to add access for Bedrock models. You can use remote models either with OpenSearch running locally, or Amazon OpenSearch Service (OpenSearch Service) managed clusters. See below for instructions on setting up and running with an OpenSearch Service domain.
+To work with a remote model, you'll need an AWS account, with sufficient permissions to access Amazon Bedrock (Bedrock) or Amazon SageMaker (SageMaker), and to add access for Bedrock models. You can use remote models either with OpenSearch running locally, or Amazon OpenSearch Service (OpenSearch Service) managed clusters. Note, opensearch-ml-quickstart does not work with Amazon OpenSearch Serverless at this time.
+See below for instructions on setting up and running with an OpenSearch Service domain.
 
 ## Bedrock
 
@@ -125,7 +146,7 @@ Set the domain's Domain Endpoint. You can find this on the OpenSearch Service co
 Set the user name from the IAM user that created the domain and will connect to Bedrock.<br>
 `AOS_AWS_USER_NAME=<Your IAM user name>`
 
-## Set up variables in `<root>/configs/.env` to connect with the model 
+### (Bedrock) Set up variables in `<root>/configs/.env` to connect with the model 
 
 Set the region where you are connecting to Bedrock.<br>
 `AOS_BEDROCK_REGION=<AWS region like us-west-2>`
@@ -144,6 +165,9 @@ Run the code
 cd <root>
 python main.py --model_type bedrock --host_type aos -c adapters --delete_existing --number_of_docs 10   
 ```
+
+### (SageMaker) Set up variables in `<root>/configs/.env` to connect with the model 
+
 
 # Testing
 
@@ -171,10 +195,7 @@ Please note that you need to comment out some model type or host type if you hav
 
 ## is_datetime_or_timedelta
 
-See also (this GitHub issue)[https://github.com/opensearch-project/opensearch-py-ml/issues/263]
+See also [this GitHub issue](https://github.com/opensearch-project/opensearch-py-ml/issues/263)
 
-Opensearch-py-ml requires pandas, which in turn requires this function. OpenSearch-ml-quickstart requires pandas version 2.0.3, and Python 3.10 (lower versions might also work). You can use (Anaconda)[https://www.anaconda.com/] to create a Python 3.10 environment, and then use that to create your virtual environment.
+Opensearch-py-ml requires pandas, which in turn requires this function. OpenSearch-ml-quickstart requires pandas version 2.0.3, and Python 3.10 (lower versions might also work). You can use [Anaconda](https://www.anaconda.com/) to create a Python 3.10 environment, and then use that to create your virtual environment.
 
-## Documents not appearing in your index
-
-If you are using Amazon Bedrock to generate embeddings, you may be hitting limits on the number of calls that you can make. 
