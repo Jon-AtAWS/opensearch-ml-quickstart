@@ -8,7 +8,12 @@ import logging
 from typing import Dict
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from configs import get_config, BASE_MAPPING_PATH, PIPELINE_FIELD_MAP
+from configs import (
+    get_config,
+    BASE_MAPPING_PATH,
+    PIPELINE_FIELD_MAP,
+    QANDA_FILE_READER_PATH,
+)
 from client import OsMlClientWrapper, get_client, get_client_configs
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
@@ -126,7 +131,7 @@ def main():
     host_type = "aos"
     model_type = "bedrock"
     index_name = "rag_processor_search"
-    dataset_path = get_config("QANDA_FILE_READER_PATH")
+    dataset_path = QANDA_FILE_READER_PATH
     number_of_docs = 50
     client = OsMlClientWrapper(get_client(host_type))
 
@@ -225,6 +230,7 @@ def main():
                 "generative_qa_parameters": {
                     "llm_model": "bedrock/claude",
                     "llm_question": question,
+                    "llm_response_field": "response",
                     "memory_id": memory_id,
                     "context_size": 5,
                     "message_size": 5,
@@ -234,7 +240,8 @@ def main():
         },
     )
 
-    search_query = {
+    search_query = (
+        {
             "_source": {"include": "chunk"},
             "query": {
                 "neural": {
@@ -255,17 +262,13 @@ def main():
                 }
             },
         },
-    print("search_query:\n", search_query)
-
-    print(json.dumps(response, indent=4))
-    print()
+    )
     hits = response["hits"]["hits"]
     hits = [hit["_source"]["chunk"] for hit in hits]
     hits = list(set(hits))
     for i, hit in enumerate(hits):
         print(f"{i + 1}th search result:\n {hit}")
-    print()
-    print()
+    print("\n\n")
     print(response["ext"]["retrieval_augmented_generation"]["answer"])
 
 
