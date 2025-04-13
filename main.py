@@ -9,7 +9,6 @@ from opensearchpy import helpers, OpenSearch
 
 from configs import (
     tasks,
-    get_config,
     DEFAULT_ENV_PATH,
     BASE_MAPPING_PATH,
     QANDA_FILE_READER_PATH,

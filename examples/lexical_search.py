@@ -8,7 +8,7 @@ import logging
 from typing import Dict
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from configs import get_config, BASE_MAPPING_PATH
+from configs import BASE_MAPPING_PATH, QANDA_FILE_READER_PATH
 from client import (
     OsMlClientWrapper,
     get_client,
@@ -55,7 +55,7 @@ def load_dataset(
 def main():
     host_type = "aos"
     index_name = "lexical_search"
-    dataset_path = get_config("QANDA_FILE_READER_PATH")
+    dataset_path = QANDA_FILE_READER_PATH
     number_of_docs = 500
     client = OsMlClientWrapper(get_client(host_type))
 

@@ -1,0 +1,26 @@
+{
+    "name": "Amazon Bedrock claude 3.5 sonnet v2",
+    "description": "Test connector for Amazon Bedrock claude v3",
+    "version": 1,
+    "protocol": "aws_sigv4",
+    "parameters": {
+        "region": "%s",
+        "service_name": "bedrock",
+        "auth": "Sig_V4",
+        "response_filter": "$.content[0].text",
+        "max_tokens_to_sample": "8000",
+        "anthropic_version": "bedrock-2023-05-31",
+        "model": "anthropic.claude-3-5-sonnet-20241022-v2:0"
+    },
+    "actions": [
+        {
+            "action_type": "predict",
+            "method": "POST",
+            "headers": {
+                "content-type": "application/json"
+            },
+            "url": "https://bedrock-runtime.${parameters.region}.amazonaws.com/model/${parameters.model}/invoke",
+            "request_body": "{\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"${parameters.inputs}\"}]}],\"anthropic_version\":\"${parameters.anthropic_version}\",\"max_tokens\":${parameters.max_tokens_to_sample}}"
+        }
+    ]
+}
