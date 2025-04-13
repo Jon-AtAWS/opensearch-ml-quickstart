@@ -76,7 +76,7 @@ def run_test(is_os_client: bool, model_type, embedding_type="dense"):
     ingest_doc_num = 50
     host_type = "os" if is_os_client else "aos"
     client = OS_CLIENT if is_os_client else AOS_CLIENT
-    
+
     clean_up_task = "sparse_encoding_v1" if embedding_type == "sparse" else "knn_768"
     no_clean_up_task = clean_up_task + "_no_cleanup"
     prev_connector_cnt, prev_model_cnt, prev_model_group_cnt = get_resources_cnt(client)
