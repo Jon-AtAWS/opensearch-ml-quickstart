@@ -132,14 +132,24 @@ def main():
     model_type = "sagemaker"
     index_name = "rag_processor_search"
     dataset_path = QANDA_FILE_READER_PATH
-    number_of_docs = 500
+    number_of_docs = -1
     client = OsMlClientWrapper(get_client(host_type))
 
     pqa_reader = QAndAFileReader(
         directory=dataset_path, max_number_of_docs=number_of_docs
     )
 
-    categories = ["sheet and pillowcase sets"]
+    categories = [
+        "earbud headphones",
+        "headsets",
+        "diffusers",
+        "mattresses",
+        "mp3 and mp4 players",
+        "sheet and pillowcase sets",
+        "batteries",
+        "casual",
+        "costumes",
+    ]
     config = {"with_knn": True, "pipeline_field_map": PIPELINE_FIELD_MAP}
 
     search_pipeline_name = "rag_pipeline"
@@ -179,7 +189,7 @@ def main():
         ml_model,
         pqa_reader,
         config,
-        delete_existing=True,
+        delete_existing=False,
         index_name=index_name,
         pipeline_name=ingest_pipeline_name,
     )
