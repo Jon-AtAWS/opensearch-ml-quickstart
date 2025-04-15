@@ -129,10 +129,10 @@ def create_llm_model():
 
 def main():
     host_type = "aos"
-    model_type = "bedrock"
+    model_type = "sagemaker"
     index_name = "rag_processor_search"
     dataset_path = QANDA_FILE_READER_PATH
-    number_of_docs = 50
+    number_of_docs = 500
     client = OsMlClientWrapper(get_client(host_type))
 
     pqa_reader = QAndAFileReader(
