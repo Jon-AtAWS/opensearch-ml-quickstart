@@ -130,9 +130,9 @@ def create_llm_model():
 def main():
     host_type = "aos"
     model_type = "sagemaker"
-    index_name = "rag_processor_search"
+    index_name = "conversational_search"
     dataset_path = QANDA_FILE_READER_PATH
-    number_of_docs = -1
+    number_of_docs = 5000
     client = OsMlClientWrapper(get_client(host_type))
 
     pqa_reader = QAndAFileReader(
@@ -250,6 +250,7 @@ def main():
         },
     )
 
+    '''
     search_query = (
         {
             "_source": {"include": "chunk"},
@@ -280,6 +281,7 @@ def main():
         print(f"{i + 1}th search result:\n {hit}")
     print("\n\n")
     print(response["ext"]["retrieval_augmented_generation"]["answer"])
+    '''
 
 
 if __name__ == "__main__":

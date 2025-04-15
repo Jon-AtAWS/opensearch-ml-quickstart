@@ -87,7 +87,7 @@ def main():
     model_type = "sagemaker"
     index_name = "dense_exact_search"
     dataset_path = QANDA_FILE_READER_PATH
-    number_of_docs = -1
+    number_of_docs = 5000
     client = OsMlClientWrapper(get_client(host_type))
 
     pqa_reader = QAndAFileReader(
@@ -147,6 +147,7 @@ def main():
         pipeline_name=pipeline_name,
     )
 
+    '''
     query_text = input("Please input your search query text: ")
     search_query = {
         "query": {
@@ -159,6 +160,7 @@ def main():
         },
     }
     search_results = client.os_client.search(index=index_name, body=search_query)
+<<<<<<< HEAD
     for hit in search_results["hits"]["hits"]:
         print('--------------------------------------------------------------------------------')
         print(f'{hit["_source"]["item_name"]} ({hit["_source"]["asin"]})')
@@ -166,6 +168,14 @@ def main():
         print(hit["_source"]["product_description"])
         print()
         print()
+=======
+    hits = search_results["hits"]["hits"]
+    hits = [hit["_source"]["chunk"] for hit in hits]
+    hits = list(set(hits))
+    for i, hit in enumerate(hits):
+        print(f"{i + 1}th search result:\n {hit}")
+    '''
+>>>>>>> 116c43b (begin ingestion on 9 categories)
 
 
 if __name__ == "__main__":

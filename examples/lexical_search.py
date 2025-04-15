@@ -52,7 +52,7 @@ def main():
     host_type = "aos"
     index_name = "lexical_search"
     dataset_path = QANDA_FILE_READER_PATH
-    number_of_docs = -1
+    number_of_docs = 5000
     client = OsMlClientWrapper(get_client(host_type))
 
     pqa_reader = QAndAFileReader(
@@ -92,13 +92,11 @@ def main():
         "query": {"match": {"chunk": query_text}},
     }
     search_results = client.os_client.search(index=index_name, body=search_query)
-    for hit in search_results["hits"]["hits"]:
-        print('--------------------------------------------------------------------------------')
-        print(hit["_source"]["item_name"])
-        print()
-        print(hit["_source"]["product_description"])
-        print()
-        print()
+    hits = search_results["hits"]["hits"]
+    hits = [hit["_source"]["chunk"] for hit in hits]
+    hits = list(set(hits))
+    for i, hit in enumerate(hits):
+        print(f"{i + 1}th search result:\n {hit}")
 
 
 if __name__ == "__main__":

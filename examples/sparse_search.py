@@ -90,7 +90,7 @@ def main():
     model_type = "sagemaker"
     index_name = "sparse_search"
     dataset_path = QANDA_FILE_READER_PATH
-    number_of_docs = -1
+    number_of_docs = 5000
     client = OsMlClientWrapper(get_client(host_type))
 
     pqa_reader = QAndAFileReader(
@@ -151,6 +151,7 @@ def main():
         pipeline_name=pipeline_name,
     )
 
+    '''
     query_text = input("Please input your search query text: ")
     search_query = {
         "_source": {"include": "chunk"},
@@ -169,6 +170,7 @@ def main():
     hits = list(set(hits))
     for i, hit in enumerate(hits):
         print(f"{i + 1}th search result:\n {hit}")
+    '''
 
 
 if __name__ == "__main__":
