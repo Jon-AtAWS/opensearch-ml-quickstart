@@ -8,7 +8,7 @@ from typing import Dict
 from unittest.mock import patch
 from opensearchpy import helpers, OpenSearch
 
-from configs import get_config, tasks, BASE_MAPPING_PATH
+from configs import get_config, tasks, BASE_MAPPING_PATH, QANDA_FILE_READER_PATH
 from mapping import get_base_mapping, mapping_update
 from client import get_index_size, get_client, get_client_configs, OsMlClientWrapper
 from data_process import QAndAFileReader
@@ -87,7 +87,7 @@ def load_to_opensearch(
     add_chunk=True,
 ):
     reader = QAndAFileReader(
-        directory=get_config("QANDA_FILE_READER_PATH"), max_number_of_docs=max_cat_docs
+        directory=QANDA_FILE_READER_PATH, max_number_of_docs=max_cat_docs
     )
     results = {}
     bytes = 0
@@ -291,7 +291,7 @@ def run_test(task: Dict[str, str]) -> Dict:
         logging.info("Setting up without KNN")
         clients = [os_client, aos_client]
         index_settings = create_index_settings(
-            base_mapping_path=get_config("BASE_MAPPING_PATH"), task=task
+            base_mapping_path=BASE_MAPPING_PATH, task=task
         )
         for client, client_type in zip(clients, client_types):
             client.setup_without_kNN(
