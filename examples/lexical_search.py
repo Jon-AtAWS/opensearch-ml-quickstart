@@ -37,19 +37,15 @@ def load_dataset(
             index_name=config["index_name"], settings=config["index_settings"]
         )
 
-    logging.info("Setting up without KNN")
-    client.setup_without_kNN(
-        index_name=config["index_name"],
-        index_settings=config["index_settings"],
-    )
-
-    for category in config["categories"]:
-        load_category(
-            client=client.os_client,
-            pqa_reader=pqa_reader,
-            category=category,
-            config=config,
-        )
+        for category in config["categories"]:
+            load_category(
+                client=client.os_client,
+                pqa_reader=pqa_reader,
+                category=category,
+                config=config,
+            )
+    else:
+        logging.info("Skipping index setup")
 
 
 def main():
@@ -93,15 +89,16 @@ def main():
 
     query_text = input("Please input your search query text: ")
     search_query = {
-        "_source": {"include": "chunk"},
         "query": {"match": {"chunk": query_text}},
     }
     search_results = client.os_client.search(index=index_name, body=search_query)
-    hits = search_results["hits"]["hits"]
-    hits = [hit["_source"]["chunk"] for hit in hits]
-    hits = list(set(hits))
-    for i, hit in enumerate(hits):
-        print(f"{i + 1}th search result:\n {hit}")
+    for hit in search_results["hits"]["hits"]:
+        print('--------------------------------------------------------------------------------')
+        print(hit["_source"]["item_name"])
+        print()
+        print(hit["_source"]["product_description"])
+        print()
+        print()
 
 
 if __name__ == "__main__":
