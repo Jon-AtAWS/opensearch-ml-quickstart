@@ -8,22 +8,21 @@ from typing import Dict
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from configs import (
-    get_config,
+    get_remote_connector_configs,
     BASE_MAPPING_PATH,
     PIPELINE_FIELD_MAP,
     QANDA_FILE_READER_PATH,
 )
-from client import OsMlClientWrapper, get_client, get_client_configs
+from client import get_client, get_client_configs, load_category, OsMlClientWrapper
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
 from ml_models import (
-    get_remote_connector_configs,
+    get_ml_model,
     get_aos_connector_helper,
     MlModel,
     RemoteMlModel,
     AosLlmConnector,
 )
-from main import get_ml_model, load_category
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
@@ -173,7 +172,9 @@ def main():
         host_type=host_type,
         model_type=model_type,
         model_config=model_config,
-        client=client,
+        os_client=client.os_client,
+        ml_commons_client=client.ml_commons_client,
+        model_group_id=client.ml_model_group.model_group_id(),
     )
 
     config.update(model_config)

@@ -7,15 +7,20 @@ import logging
 from typing import Dict
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from configs import BASE_MAPPING_PATH, PIPELINE_FIELD_MAP, QANDA_FILE_READER_PATH
+from configs import (
+    get_remote_connector_configs,
+    BASE_MAPPING_PATH,
+    PIPELINE_FIELD_MAP,
+    QANDA_FILE_READER_PATH,
+)
 from client import (
     OsMlClientWrapper,
     get_client,
+    load_category,
 )
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
-from ml_models import get_remote_connector_configs, MlModel
-from main import get_ml_model, load_category
+from ml_models import get_ml_model, MlModel
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
@@ -127,12 +132,13 @@ def main():
     )
     model_config["model_name"] = model_name
     model_config["embedding_type"] = embedding_type
-
     ml_model = get_ml_model(
         host_type=host_type,
         model_type=model_type,
         model_config=model_config,
-        client=client,
+        os_client=client.os_client,
+        ml_commons_client=client.ml_commons_client,
+        model_group_id=client.ml_model_group.model_group_id(),
     )
 
     config.update(model_config)

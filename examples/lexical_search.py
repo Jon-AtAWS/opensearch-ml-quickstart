@@ -9,12 +9,12 @@ from typing import Dict
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from configs import BASE_MAPPING_PATH, QANDA_FILE_READER_PATH
 from client import (
-    OsMlClientWrapper,
     get_client,
+    load_category,
+    OsMlClientWrapper,
 )
 from data_process import QAndAFileReader
 from mapping import get_base_mapping
-from main import load_category
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
