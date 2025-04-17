@@ -28,24 +28,24 @@ def load_dataset(
     client: OsMlClientWrapper,
     pqa_reader: QAndAFileReader,
     config: Dict[str, str],
-    delete_existing: bool,
     index_name: str,
 ):
-    if delete_existing:
-        logging.info(f"Deleting existing index {index_name}")
-        client.delete_then_create_index(
-            index_name=config["index_name"], settings=config["index_settings"]
-        )
+    if client.os_client.indices.exists(index_name):
+        logging.info(f"Index {index_name} already exists. Skipping loading dataset")
+        return
 
-        for category in config["categories"]:
-            load_category(
-                client=client.os_client,
-                pqa_reader=pqa_reader,
-                category=category,
-                config=config,
-            )
-    else:
-        logging.info("Skipping index setup")
+    logging.info(f"Creating index {index_name}")
+    client.idempotent_create_index(
+        index_name=config["index_name"], settings=config["index_settings"]
+    )
+
+    for category in config["categories"]:
+        load_category(
+            client=client.os_client,
+            pqa_reader=pqa_reader,
+            category=category,
+            config=config,
+        )
 
 
 def main():
@@ -83,7 +83,6 @@ def main():
         client,
         pqa_reader,
         config,
-        delete_existing=False,
         index_name=index_name,
     )
 
