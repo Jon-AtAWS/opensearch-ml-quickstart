@@ -114,14 +114,11 @@ def main():
     }
 
     model_name = f"{host_type}_{model_type}"
-
     model_config = get_remote_connector_configs(
         host_type=host_type, connector_type=model_type
     )
     model_config["model_name"] = model_name
     model_config["embedding_type"] = embedding_type
-    config.update(model_config)
-
     ml_model = get_ml_model(
         host_type=host_type,
         model_type=model_type,
@@ -129,6 +126,7 @@ def main():
         client=client,
     )
 
+    config.update(model_config)
     config["index_settings"] = create_index_settings(
         base_mapping_path=BASE_MAPPING_PATH,
         index_config=config,
