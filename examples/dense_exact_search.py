@@ -135,7 +135,7 @@ def main():
         index_config=config,
     )
 
-    logging.info(f"Config:\n {json.dumps(config, indent=4)}")
+    # logging.info(f"Config:\n {json.dumps(config, indent=4)}")
 
     load_dataset(
         client,
@@ -147,7 +147,6 @@ def main():
         pipeline_name=pipeline_name,
     )
 
-    '''
     query_text = input("Please input your search query text: ")
     search_query = {
         "query": {
@@ -160,23 +159,15 @@ def main():
         },
     }
     search_results = client.os_client.search(index=index_name, body=search_query)
-<<<<<<< HEAD
-    for hit in search_results["hits"]["hits"]:
-        print('--------------------------------------------------------------------------------')
-        print(f'{hit["_source"]["item_name"]} ({hit["_source"]["asin"]})')
-        print()
-        print(hit["_source"]["product_description"])
-        print()
-        print()
-=======
     hits = search_results["hits"]["hits"]
-    hits = [hit["_source"]["chunk"] for hit in hits]
-    hits = list(set(hits))
-    for i, hit in enumerate(hits):
-        print(f"{i + 1}th search result:\n {hit}")
-    '''
->>>>>>> 116c43b (begin ingestion on 9 categories)
-
+    for hit in hits:
+        print('--------------------------------------------------------------------------------')
+        print(f'Category name: {hit["_source"]["category_name"]}')
+        print()
+        print(f'Item name: {hit["_source"]["item_name"]}')
+        print()
+        print(f'Production description: {hit["_source"]["product_description"]}')
+        print()
 
 if __name__ == "__main__":
     main()
