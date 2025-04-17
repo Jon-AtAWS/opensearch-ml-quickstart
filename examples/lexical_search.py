@@ -3,7 +3,6 @@
 
 import os
 import sys
-import json
 import logging
 from typing import Dict
 
@@ -51,13 +50,6 @@ def load_dataset(
 def main():
     host_type = "aos"
     index_name = "lexical_search"
-    dataset_path = QANDA_FILE_READER_PATH
-    number_of_docs = 5000
-    client = OsMlClientWrapper(get_client(host_type))
-
-    pqa_reader = QAndAFileReader(
-        directory=dataset_path, max_number_of_docs=number_of_docs
-    )
 
     categories = [
         "earbud headphones",
@@ -70,6 +62,13 @@ def main():
         "casual",
         "costumes",
     ]
+    dataset_path = QANDA_FILE_READER_PATH
+    number_of_docs = 5000
+
+    client = OsMlClientWrapper(get_client(host_type))
+    pqa_reader = QAndAFileReader(
+        directory=dataset_path, max_number_of_docs=number_of_docs
+    )
 
     config = {
         "categories": categories,
@@ -93,7 +92,9 @@ def main():
     search_results = client.os_client.search(index=index_name, body=search_query)
     hits = search_results["hits"]["hits"]
     for hit in hits:
-        print('--------------------------------------------------------------------------------')
+        print(
+            "--------------------------------------------------------------------------------"
+        )
         print(f'Category name: {hit["_source"]["category_name"]}')
         print()
         print(f'Item name: {hit["_source"]["item_name"]}')
