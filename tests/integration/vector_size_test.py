@@ -8,7 +8,7 @@ from typing import Dict
 from unittest.mock import patch
 from opensearchpy import helpers, OpenSearch
 
-from configs import get_config, tasks, BASE_MAPPING_PATH, QANDA_FILE_READER_PATH
+from configs import get_remote_connector_configs, tasks, BASE_MAPPING_PATH, QANDA_FILE_READER_PATH
 from mapping import get_base_mapping, mapping_update
 from client import get_index_size, get_client, get_client_configs, OsMlClientWrapper
 from data_process import QAndAFileReader
@@ -20,7 +20,6 @@ from ml_models import (
     AosBedrockMlConnector,
     AosSagemakerMlConnector,
     get_aos_connector_helper,
-    get_remote_connector_configs,
 )
 
 INDEX_NAME = "amazon_pqa_test"
