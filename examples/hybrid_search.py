@@ -3,7 +3,6 @@
 
 import os
 import sys
-import json
 import logging
 from typing import Dict
 
@@ -54,18 +53,10 @@ def load_dataset(
     sparse_ml_model: MlModel,
     pqa_reader: QAndAFileReader,
     config: Dict[str, str],
-    delete_existing: bool,
     index_name: str,
     pipeline_name: str,
 ):
-    if delete_existing:
-        logging.info(f"Deleting existing index {index_name}")
-        client.delete_then_create_index(
-            index_name=config["index_name"], settings=config["index_settings"]
-        )
-
-    logging.info("Adding pipeline...")
-
+    logging.info("Adding ingestion pipeline for hybrid search...")
     pipeline_config = {
         "description": "Pipeline for processing chunks",
         "processors": [
@@ -85,6 +76,15 @@ def load_dataset(
     }
     client.os_client.ingest.put_pipeline(pipeline_name, body=pipeline_config)
 
+    if client.os_client.indices.exists(index_name):
+        logging.info(f"Index {index_name} already exists. Skipping loading dataset")
+        return
+
+    logging.info(f"Creating index {index_name}")
+    client.idempotent_create_index(
+        index_name=config["index_name"], settings=config["index_settings"]
+    )
+
     for category in config["categories"]:
         load_category(
             client=client.os_client,
@@ -99,13 +99,7 @@ def main():
     index_name = "hybrid_search"
     dense_model_type = "sagemaker"
     sparse_model_type = "sagemaker"
-    dataset_path = QANDA_FILE_READER_PATH
-    number_of_docs = 5000
-    client = OsMlClientWrapper(get_client(host_type))
-
-    pqa_reader = QAndAFileReader(
-        directory=dataset_path, max_number_of_docs=number_of_docs
-    )
+    pipeline_name = "hybrid-ingest-pipeline"
 
     categories = [
         "earbud headphones",
@@ -118,29 +112,28 @@ def main():
         "casual",
         "costumes",
     ]
-    config = {"with_knn": True, "pipeline_field_map": PIPELINE_FIELD_MAP}
+    number_of_docs_per_category = 50
+    dataset_path = QANDA_FILE_READER_PATH
+    
+    client = OsMlClientWrapper(get_client(host_type))
+    pqa_reader = QAndAFileReader(
+        directory=dataset_path, max_number_of_docs=number_of_docs_per_category
+    )
 
-    pipeline_name = "amazon_pqa_pipeline"
-    config["categories"] = categories
-    config["index_name"] = index_name
-    config["pipeline_name"] = pipeline_name
+    config = {
+        "with_knn": True,
+        "pipeline_field_map": PIPELINE_FIELD_MAP,
+        "categories": categories,
+        "index_name": index_name,
+        "pipeline_name": pipeline_name,
+    }
 
     dense_model_name = f"{host_type}_{dense_model_type}"
-    sparse_model_name = f"{host_type}_{sparse_model_type}"
-
     dense_model_config = get_remote_connector_configs(
         host_type=host_type, connector_type=dense_model_type
     )
-    sparse_model_config = get_remote_connector_configs(
-        host_type=host_type, connector_type=dense_model_type
-    )
     dense_model_config["model_name"] = dense_model_name
-    sparse_model_config["model_name"] = sparse_model_name
-
     dense_model_config["embedding_type"] = "dense"
-    sparse_model_config["embedding_type"] = "sparse"
-    config["model_dimensions"] = dense_model_config["model_dimensions"]
-
     dense_ml_model = get_ml_model(
         host_type=host_type,
         model_type=dense_model_type,
@@ -148,6 +141,12 @@ def main():
         client=client,
     )
 
+    sparse_model_name = f"{host_type}_{sparse_model_type}"
+    sparse_model_config = get_remote_connector_configs(
+        host_type=host_type, connector_type=dense_model_type
+    )
+    sparse_model_config["model_name"] = sparse_model_name
+    sparse_model_config["embedding_type"] = "sparse"
     sparse_ml_model = get_ml_model(
         host_type=host_type,
         model_type=sparse_model_type,
@@ -155,14 +154,11 @@ def main():
         client=client,
     )
 
-    print("index_config:\n", config)
+    config["model_dimensions"] = dense_model_config["model_dimensions"]
     config["index_settings"] = create_index_settings(
         base_mapping_path=BASE_MAPPING_PATH,
         index_config=config,
     )
-    config["cleanup"] = False
-
-    logging.info(f"Config:\n {json.dumps(config, indent=4)}")
 
     load_dataset(
         client,
@@ -170,13 +166,12 @@ def main():
         sparse_ml_model,
         pqa_reader,
         config,
-        delete_existing=False,
         index_name=index_name,
         pipeline_name=pipeline_name,
     )
 
-    search_pipeline_id = "hybrid-search-pipeline"
-    logging.info(f"Creating search pipeline {search_pipeline_id}")
+    search_pipeline_name = "hybrid-search-pipeline"
+    logging.info(f"Creating search pipeline {search_pipeline_name}")
     pipeline_config = {
         "description": "Post processor for hybrid search",
         "phase_results_processors": [
@@ -192,13 +187,11 @@ def main():
         ],
     }
     client.os_client.transport.perform_request(
-        "PUT", f"/_search/pipeline/{search_pipeline_id}", body=pipeline_config
+        "PUT", f"/_search/pipeline/{search_pipeline_name}", body=pipeline_config
     )
 
-    '''
     query_text = input("Please input your search query text: ")
     search_query = {
-        "_source": {"include": "chunk"},
         "query": {
             "hybrid": {
                 "queries": [
@@ -224,14 +217,20 @@ def main():
     }
 
     search_results = client.os_client.search(
-        index=index_name, body=search_query, search_pipeline=search_pipeline_id
+        index=index_name, body=search_query, search_pipeline=search_pipeline_name
     )
     hits = search_results["hits"]["hits"]
-    hits = [hit["_source"]["chunk"] for hit in hits]
-    hits = list(set(hits))
-    for i, hit in enumerate(hits):
-        print(f"{i + 1}th search result:\n {hit}")
-    '''
+    for hit in hits:
+        print(
+            "--------------------------------------------------------------------------------"
+        )
+        print(f'Category name: {hit["_source"]["category_name"]}')
+        print()
+        print(f'Item name: {hit["_source"]["item_name"]}')
+        print()
+        print(f'Production description: {hit["_source"]["product_description"]}')
+        print()
+
 
 if __name__ == "__main__":
     main()
