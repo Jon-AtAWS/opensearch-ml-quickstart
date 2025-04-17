@@ -77,7 +77,7 @@ def main():
         "index_settings": get_base_mapping(BASE_MAPPING_PATH),
     }
 
-    logging.info(f"Config:\n {json.dumps(config, indent=4)}")
+    # logging.info(f"Config:\n {json.dumps(config, indent=4)}")
 
     load_dataset(
         client,
@@ -93,10 +93,14 @@ def main():
     }
     search_results = client.os_client.search(index=index_name, body=search_query)
     hits = search_results["hits"]["hits"]
-    hits = [hit["_source"]["chunk"] for hit in hits]
-    hits = list(set(hits))
-    for i, hit in enumerate(hits):
-        print(f"{i + 1}th search result:\n {hit}")
+    for hit in hits:
+        print('--------------------------------------------------------------------------------')
+        print(f'Category name: {hit["_source"]["category_name"]}')
+        print()
+        print(f'Item name: {hit["_source"]["item_name"]}')
+        print()
+        print(f'Production description: {hit["_source"]["product_description"]}')
+        print()
 
 
 if __name__ == "__main__":
