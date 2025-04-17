@@ -4,75 +4,19 @@
 import json
 from typing import Dict
 
-from configs import validate_configs, get_config
+from opensearchpy import OpenSearch
+from configs import validate_configs, get_client_configs
+from opensearch_py_ml.ml_commons import MLCommonClient
+
+from .ml_model import MlModel
 from .ml_model_group import MlModelGroup
+from .local_ml_model import LocalMlModel
+from .remote_ml_model import RemoteMlModel
+from .os_bedrock_ml_connector import OsBedrockMlConnector
+from .os_sagemaker_ml_connector import OsSagemakerMlConnector
+from .aos_bedrock_ml_connector import AosBedrockMlConnector
+from .aos_sagemaker_ml_connector import AosSagemakerMlConnector
 from .aos_connector_helper import AosConnectorHelper
-
-
-def get_remote_connector_configs(connector_type: str, host_type: str) -> Dict[str, str]:
-    if connector_type not in {"sagemaker", "bedrock"}:
-        raise ValueError(f"connector_type must be either sagemaker or bedrock")
-    if host_type not in {"os", "aos"}:
-        raise ValueError(f"host_type must either be os or aos")
-
-    if connector_type == "sagemaker" and host_type == "os":
-        configs = {
-            "access_key": get_config("OS_SAGEMAKER_ACCESS_KEY"),
-            "secret_key": get_config("OS_SAGEMAKER_SECRET_KEY"),
-            "region": get_config("OS_SAGEMAKER_REGION"),
-            "connector_version": get_config("OS_SAGEMAKER_CONNECTOR_VERSION"),
-            "sparse_url": get_config("OS_SAGEMAKER_SPARSE_URL"),
-            "dense_url": get_config("OS_SAGEMAKER_DENSE_URL"),
-            "model_dimensions": get_config("OS_SAGEMAKER_DENSE_MODEL_DIMENSION"),
-        }
-        validate_configs(configs, list(configs.keys()))
-        return configs
-    elif connector_type == "sagemaker" and host_type == "aos":
-        configs = {
-            "dense_arn": get_config("AOS_SAGEMAKER_SPARSE_ARN"),
-            "sparse_arn": get_config("AOS_SAGEMAKER_DENSE_ARN"),
-            "connector_role_name": get_config("AOS_SAGEMAKER_CONNECTOR_ROLE_NAME"),
-            "create_connector_role_name": get_config(
-                "AOS_SAGEMAKER_CREATE_CONNECTOR_ROLE_NAME"
-            ),
-            "region": get_config("AOS_SAGEMAKER_REGION"),
-            "connector_version": get_config("AOS_SAGEMAKER_CONNECTOR_VERSION"),
-            "sparse_url": get_config("AOS_SAGEMAKER_SPARSE_URL"),
-            "dense_url": get_config("AOS_SAGEMAKER_DENSE_URL"),
-            "model_dimensions": get_config("AOS_SAGEMAKER_DENSE_MODEL_DIMENSION"),
-        }
-        validate_configs(configs, list(configs.keys()))
-        return configs
-    elif connector_type == "bedrock" and host_type == "os":
-        configs = {
-            "access_key": get_config("OS_BEDROCK_ACCESS_KEY"),
-            "secret_key": get_config("OS_BEDROCK_SECRET_KEY"),
-            "region": get_config("OS_BEDROCK_REGION"),
-            "connector_version": get_config("OS_BEDROCK_CONNECTOR_VERSION"),
-            "dense_url": get_config("OS_BEDROCK_URL"),
-            "model_dimensions": get_config("OS_BEDROCK_MODEL_DIMENSION"),
-        }
-        validate_configs(configs, list(configs.keys()))
-        return configs
-    else:
-        configs = {
-            "dense_arn": get_config("AOS_BEDROCK_ARN"),
-            "connector_role_name": get_config("AOS_BEDROCK_CONNECTOR_ROLE_NAME"),
-            "create_connector_role_name": get_config(
-                "AOS_BEDROCK_CREATE_CONNECTOR_ROLE_NAME"
-            ),
-            "region": get_config("AOS_BEDROCK_REGION"),
-            "connector_version": get_config("AOS_BEDROCK_CONNECTOR_VERSION"),
-            "model_dimensions": get_config("AOS_BEDROCK_MODEL_DIMENSION"),
-            "dense_url": get_config("AOS_BEDROCK_URL"),
-        }
-        validate_configs(configs, list(configs.keys()))
-        return configs
-
-
-def read_json_file(file_path):
-    with open(file_path, "r") as file:
-        return json.load(file)
 
 
 def get_aos_connector_helper(configs) -> AosConnectorHelper:
@@ -90,4 +34,69 @@ def get_ml_model_group(os_client, ml_commons_client) -> MlModelGroup:
     return MlModelGroup(
         os_client=os_client,
         ml_commons_client=ml_commons_client,
+    )
+
+
+def get_ml_model(
+    host_type,
+    model_type,
+    model_group_id,
+    model_config: Dict[str, str],
+    os_client: OpenSearch,
+    ml_commons_client: MLCommonClient,
+) -> MlModel:
+    aos_connector_helper = None
+
+    model_name = model_config.get("model_name", None)
+    embedding_type = model_config.get("embedding_type", "dense")
+
+    if model_type != "local":
+        model_name = f"{host_type}_{model_type}_{embedding_type}"
+        connector_name = f"{host_type}_{model_type}_{embedding_type}"
+
+    if host_type == "aos":
+        aos_connector_helper = get_aos_connector_helper(get_client_configs("aos"))
+
+    if model_type == "local":
+        return LocalMlModel(
+            os_client=os_client,
+            ml_commons_client=ml_commons_client,
+            model_group_id=model_group_id,
+            model_name=model_name,
+            model_configs=model_config,
+        )
+    elif model_type == "sagemaker" and host_type == "os":
+        ml_connector = OsSagemakerMlConnector(
+            os_client=os_client,
+            connector_name=connector_name,
+            connector_configs=model_config,
+        )
+
+    elif model_type == "sagemaker" and host_type == "aos":
+        ml_connector = AosSagemakerMlConnector(
+            os_client=os_client,
+            connector_name=connector_name,
+            aos_connector_helper=aos_connector_helper,
+            connector_configs=model_config,
+        )
+    elif model_type == "bedrock" and host_type == "os":
+        ml_connector = OsBedrockMlConnector(
+            os_client=os_client,
+            connector_name=connector_name,
+            connector_configs=model_config,
+        )
+    elif model_type == "bedrock" and host_type == "aos":
+        ml_connector = AosBedrockMlConnector(
+            os_client=os_client,
+            connector_name=connector_name,
+            aos_connector_helper=aos_connector_helper,
+            connector_configs=model_config,
+        )
+    return RemoteMlModel(
+        os_client=os_client,
+        ml_commons_client=ml_commons_client,
+        ml_connector=ml_connector,
+        model_group_id=model_group_id,
+        model_name=model_name,
+        model_configs=model_config,
     )

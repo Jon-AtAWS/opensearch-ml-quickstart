@@ -2,12 +2,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import json
 import logging
 from abc import ABC, abstractmethod
 from opensearchpy import OpenSearch
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-from .helper import read_json_file
 from configs import ML_BASE_URI, DELETE_RESOURCE_WAIT_TIME, DELETE_RESOURCE_RETRY_TIME
 
 
@@ -66,6 +66,10 @@ class MlConnector(ABC):
     def _get_connector_create_payload_filename(self):
         pass
 
+    def _read_json_file(file_path):
+        with open(file_path, "r") as file:
+            return json.load(file)
+
     def _read_connector_create_payload(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         create_connector_payload_path = os.path.join(
@@ -73,7 +77,7 @@ class MlConnector(ABC):
             "connector_payloads",
             self._get_connector_create_payload_filename(),
         )
-        connector_create_payload = read_json_file(create_connector_payload_path)
+        connector_create_payload = self._read_json_file(create_connector_payload_path)
         return connector_create_payload
 
     @abstractmethod

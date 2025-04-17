@@ -1,53 +1,15 @@
 # Copyright opensearch-ml-quickstart contributors
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
 from typing import Dict
-from opensearchpy import OpenSearch
+from opensearchpy import helpers, OpenSearch
 
-from configs import validate_configs, get_config, MINIMUM_OPENSEARCH_VERSION
+from ml_models import MlModel
+from data_process import QAndAFileReader
+from configs import get_client_configs, MINIMUM_OPENSEARCH_VERSION
 
-
-def parse_version(version: str):
-    return tuple(map(int, version.split(".")))
-
-
-def check_client_version(client: OpenSearch):
-    """
-    Checks if the given version is at least the mininum version
-    """
-    info = client.info()
-    version = info["version"]["number"]
-    if parse_version(version) < parse_version(MINIMUM_OPENSEARCH_VERSION):
-        raise ValueError(
-            f"The mininum required version for opensearch cluster is {MINIMUM_OPENSEARCH_VERSION}"
-        )
-
-
-def get_client_configs(host_type: str) -> Dict[str, str]:
-    required_args = ["host_url", "username", "password"]
-    if host_type == "os":
-        configs = {
-            "port": get_config("OS_PORT"),
-            "host_url": get_config("OS_HOST_URL"),
-            "username": get_config("OS_USERNAME"),
-            "password": get_config("OS_PASSWORD"),
-        }
-        validate_configs(configs, required_args)
-        return configs
-    elif host_type == "aos":
-        configs = {
-            "port": get_config("AOS_PORT"),
-            "host_url": get_config("AOS_HOST_URL"),
-            "username": get_config("AOS_USERNAME"),
-            "password": get_config("AOS_PASSWORD"),
-            "domain_name": get_config("AOS_DOMAIN_NAME"),
-            "region": get_config("AOS_REGION"),
-            "aws_user_name": get_config("AOS_AWS_USER_NAME"),
-        }
-        validate_configs(configs, required_args)
-        return configs
-    else:
-        raise ValueError("host_type must either be os or aos")
+from .os_ml_client_wrapper import OsMlClientWrapper
 
 
 def get_client(host_type: str) -> OpenSearch:
@@ -78,3 +40,106 @@ def get_index_size(client: OpenSearch, index_name, unit="mb"):
             index=index_name, params={"bytes": f"{unit}", "h": "pri.store.size"}
         )
     )
+
+
+def parse_version(version: str):
+    return tuple(map(int, version.split(".")))
+
+
+def check_client_version(client: OpenSearch):
+    """
+    Checks if the given version is at least the mininum version
+    """
+    info = client.info()
+    version = info["version"]["number"]
+    if parse_version(version) < parse_version(MINIMUM_OPENSEARCH_VERSION):
+        raise ValueError(
+            f"The mininum required version for opensearch cluster is {MINIMUM_OPENSEARCH_VERSION}"
+        )
+
+
+def send_bulk_ignore_exceptions(client: OpenSearch, docs):
+    try:
+        status = helpers.bulk(
+            client,
+            docs,
+            chunk_size=10,
+            request_timeout=300,
+            max_retries=10,
+            raise_on_error=False,
+        )
+        return status
+    except Exception as e:
+        logging.error(f"Error sending bulk: {e}")
+
+
+def load_category(client: OpenSearch, pqa_reader: QAndAFileReader, category, config):
+    SPACE_SEPARATOR = " "
+    logging.info(f'Loading category "{category}"')
+    docs = []
+    number_of_docs = 0
+    for doc in pqa_reader.questions_for_category(
+        pqa_reader.amazon_pqa_category_name_to_constant(category), enriched=True
+    ):
+        doc["_index"] = config["index_name"]
+        doc["_id"] = doc["question_id"]
+        doc["chunk"] = SPACE_SEPARATOR.join(
+            [doc["product_description"], doc["brand_name"], doc["item_name"]]
+        )
+        # limit the document token count to 500 tokens from embedding models
+        doc["chunk"] = SPACE_SEPARATOR.join(doc["chunk"].split()[:500])
+        # documents less than 4 words are meaningless
+        if len(doc["chunk"]) <= 4:
+            logging.info(f"Empty chunk for {doc}")
+            continue
+        docs.append(doc)
+        number_of_docs += 1
+        if number_of_docs % 2000 == 0:
+            logging.info(f"Sending {number_of_docs} docs")
+            send_bulk_ignore_exceptions(client, docs)
+            docs = []
+    if len(docs) > 0:
+        logging.info(f'Category "{category}" complete. Sending {number_of_docs} docs')
+        send_bulk_ignore_exceptions(client, docs)
+
+
+def load_dataset(
+    client: OsMlClientWrapper,
+    ml_model: MlModel,
+    pqa_reader: QAndAFileReader,
+    config: Dict[str, str],
+    delete_existing: bool,
+    index_name: str,
+    pipeline_name: str,
+):
+    if delete_existing:
+        logging.info(f"Deleting existing index {index_name}")
+        client.delete_then_create_index(
+            index_name=config["index_name"], settings=config["index_settings"]
+        )
+
+    logging.info("Setting up for KNN")
+    client.setup_for_kNN(
+        ml_model=ml_model,
+        index_name=config["index_name"],
+        pipeline_name=pipeline_name,
+        index_settings=config["index_settings"],
+        pipeline_field_map=config["pipeline_field_map"],
+        delete_existing=delete_existing,
+        embedding_type=config["embedding_type"],
+    )
+
+    for category in config["categories"]:
+        load_category(
+            client=client.os_client,
+            pqa_reader=pqa_reader,
+            category=category,
+            config=config,
+        )
+
+    if config["cleanup"]:
+        client.cleanup_kNN(
+            ml_model=ml_model,
+            index_name=config["index_name"],
+            pipeline_name=pipeline_name,
+        )
