@@ -4,42 +4,28 @@
 import json
 import logging
 import argparse
-from typing import Dict
-from opensearchpy import helpers, OpenSearch
 
 from configs import (
     tasks,
+    get_remote_connector_configs,
     DEFAULT_ENV_PATH,
     BASE_MAPPING_PATH,
     QANDA_FILE_READER_PATH,
 )
 from client import (
-    OsMlClientWrapper,
     get_client,
-    get_client_configs,
+    load_dataset,
+    OsMlClientWrapper,
 )
+from ml_models import get_ml_model
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
-from ml_models import (
-    MlModel,
-    LocalMlModel,
-    RemoteMlModel,
-    OsBedrockMlConnector,
-    AosBedrockMlConnector,
-    OsSagemakerMlConnector,
-    AosSagemakerMlConnector,
-    get_aos_connector_helper,
-    get_remote_connector_configs,
-)
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
     datefmt="%Y-%m-%d:%H:%M:%S",
     level=logging.INFO,
 )
-
-SPACE_SEPARATOR = " "
-SEPARATOR = SPACE_SEPARATOR
 
 
 def create_index_settings(base_mapping_path, index_config, model_config=dict()):
@@ -91,153 +77,6 @@ def create_index_settings(base_mapping_path, index_config, model_config=dict()):
         }
         mapping_update(settings, compression_settings)
     return settings
-
-
-def send_bulk_ignore_exceptions(client: OpenSearch, docs):
-    try:
-        status = helpers.bulk(
-            client,
-            docs,
-            chunk_size=10,
-            request_timeout=300,
-            max_retries=10,
-            raise_on_error=False,
-        )
-        return status
-    except Exception as e:
-        logging.error(f"Error sending bulk: {e}")
-
-
-def get_ml_model(
-    host_type, model_type, model_config: Dict[str, str], client: OsMlClientWrapper
-) -> MlModel:
-    aos_connector_helper = None
-
-    model_name = model_config.get("model_name", None)
-    embedding_type = model_config.get("embedding_type", "dense")
-    model_group_id = client.ml_model_group.model_group_id()
-
-    if model_type != "local":
-        model_name = f"{host_type}_{model_type}_{embedding_type}"
-        connector_name = f"{host_type}_{model_type}_{embedding_type}"
-
-    if host_type == "aos":
-        aos_connector_helper = get_aos_connector_helper(get_client_configs("aos"))
-
-    if model_type == "local":
-        return LocalMlModel(
-            os_client=client.os_client,
-            ml_commons_client=client.ml_commons_client,
-            model_group_id=model_group_id,
-            model_name=model_name,
-            model_configs=model_config,
-        )
-    elif model_type == "sagemaker" and host_type == "os":
-        ml_connector = OsSagemakerMlConnector(
-            os_client=client.os_client,
-            connector_name=connector_name,
-            connector_configs=model_config,
-        )
-
-    elif model_type == "sagemaker" and host_type == "aos":
-        ml_connector = AosSagemakerMlConnector(
-            os_client=client.os_client,
-            connector_name=connector_name,
-            aos_connector_helper=aos_connector_helper,
-            connector_configs=model_config,
-        )
-    elif model_type == "bedrock" and host_type == "os":
-        ml_connector = OsBedrockMlConnector(
-            os_client=client.os_client,
-            connector_name=connector_name,
-            connector_configs=model_config,
-        )
-    elif model_type == "bedrock" and host_type == "aos":
-        ml_connector = AosBedrockMlConnector(
-            os_client=client.os_client,
-            connector_name=connector_name,
-            aos_connector_helper=aos_connector_helper,
-            connector_configs=model_config,
-        )
-    return RemoteMlModel(
-        os_client=client.os_client,
-        ml_commons_client=client.ml_commons_client,
-        ml_connector=ml_connector,
-        model_group_id=model_group_id,
-        model_name=model_name,
-        model_configs=model_config,
-    )
-
-
-def load_category(client: OpenSearch, pqa_reader: QAndAFileReader, category, config):
-    logging.info(f'Loading category "{category}"')
-    docs = []
-    number_of_docs = 0
-    for doc in pqa_reader.questions_for_category(
-        pqa_reader.amazon_pqa_category_name_to_constant(category), enriched=True
-    ):
-        doc["_index"] = config["index_name"]
-        doc["_id"] = doc["question_id"]
-        doc["chunk"] = SPACE_SEPARATOR.join(
-            [doc["product_description"], doc["brand_name"], doc["item_name"]]
-        )
-        # limit the document token count to 500 tokens from embedding models
-        doc["chunk"] = SPACE_SEPARATOR.join(doc["chunk"].split()[:500])
-        # documents less than 4 words are meaningless
-        if len(doc["chunk"]) <= 4:
-            logging.info(f"Empty chunk for {doc}")
-            continue
-        docs.append(doc)
-        number_of_docs += 1
-        if number_of_docs % 2000 == 0:
-            logging.info(f"Sending {number_of_docs} docs")
-            send_bulk_ignore_exceptions(client, docs)
-            docs = []
-    if len(docs) > 0:
-        logging.info(f'Category "{category}" complete. Sending {number_of_docs} docs')
-        send_bulk_ignore_exceptions(client, docs)
-
-
-def load_dataset(
-    client: OsMlClientWrapper,
-    ml_model: MlModel,
-    pqa_reader: QAndAFileReader,
-    config: Dict[str, str],
-    delete_existing: bool,
-    index_name: str,
-    pipeline_name: str,
-):
-    if delete_existing:
-        logging.info(f"Deleting existing index {index_name}")
-        client.delete_then_create_index(
-            index_name=config["index_name"], settings=config["index_settings"]
-        )
-
-    logging.info("Setting up for KNN")
-    client.setup_for_kNN(
-        ml_model=ml_model,
-        index_name=config["index_name"],
-        pipeline_name=pipeline_name,
-        index_settings=config["index_settings"],
-        pipeline_field_map=config["pipeline_field_map"],
-        delete_existing=delete_existing,
-        embedding_type=config["embedding_type"],
-    )
-
-    for category in config["categories"]:
-        load_category(
-            client=client.os_client,
-            pqa_reader=pqa_reader,
-            category=category,
-            config=config,
-        )
-
-    if config["cleanup"]:
-        client.cleanup_kNN(
-            ml_model=ml_model,
-            index_name=config["index_name"],
-            pipeline_name=pipeline_name,
-        )
 
 
 def get_args():
@@ -338,7 +177,9 @@ def main():
         host_type=args.host_type,
         model_type=args.model_type,
         model_config=model_config,
-        client=client,
+        os_client=client.os_client,
+        ml_commons_client=client.ml_commons_client,
+        model_group_id=client.ml_model_group.model_group_id(),
     )
 
     config["index_settings"] = create_index_settings(

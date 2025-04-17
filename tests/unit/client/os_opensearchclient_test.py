@@ -5,10 +5,10 @@ import logging
 from unittest.mock import patch
 from opensearch_py_ml.ml_commons import MLCommonClient
 
+from configs import get_remote_connector_configs
 from client import get_client, OsMlClientWrapper
 from ml_models import (
     get_ml_model_group,
-    get_remote_connector_configs,
     LocalMlModel,
     OsBedrockMlConnector,
     OsSagemakerMlConnector,
