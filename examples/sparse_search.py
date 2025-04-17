@@ -48,15 +48,17 @@ def load_dataset(
     ml_model: MlModel,
     pqa_reader: QAndAFileReader,
     config: Dict[str, str],
-    delete_existing: bool,
     index_name: str,
     pipeline_name: str,
 ):
-    if delete_existing:
-        logging.info(f"Deleting existing index {index_name}")
-        client.delete_then_create_index(
-            index_name=config["index_name"], settings=config["index_settings"]
-        )
+    if client.os_client.indices.exists(index_name):
+        logging.info(f"Index {index_name} already exists. Skipping loading dataset")
+        return
+    
+    logging.info(f"Creating index {index_name}")
+    client.idempotent_create_index(
+        index_name=config["index_name"], settings=config["index_settings"]
+    )
 
     logging.info("Setting up for KNN")
     client.setup_for_kNN(
@@ -65,7 +67,6 @@ def load_dataset(
         pipeline_name=pipeline_name,
         index_settings=config["index_settings"],
         pipeline_field_map=config["pipeline_field_map"],
-        delete_existing=delete_existing,
         embedding_type=config["embedding_type"],
     )
 
@@ -77,12 +78,6 @@ def load_dataset(
             config=config,
         )
 
-    if config["cleanup"]:
-        client.cleanup_kNN(
-            ml_model=ml_model,
-            index_name=config["index_name"],
-            pipeline_name=pipeline_name,
-        )
 
 
 def main():
@@ -137,24 +132,20 @@ def main():
         base_mapping_path=BASE_MAPPING_PATH,
         index_config=config,
     )
-    config["cleanup"] = False
 
-    logging.info(f"Config:\n {json.dumps(config, indent=4)}")
+    # logging.info(f"Config:\n {json.dumps(config, indent=4)}")
 
     load_dataset(
         client,
         ml_model,
         pqa_reader,
         config,
-        delete_existing=False,
         index_name=index_name,
         pipeline_name=pipeline_name,
     )
 
-    '''
     query_text = input("Please input your search query text: ")
     search_query = {
-        "_source": {"include": "chunk"},
         "query": {
             "neural_sparse": {
                 "chunk_embedding": {
@@ -166,11 +157,14 @@ def main():
     }
     search_results = client.os_client.search(index=index_name, body=search_query)
     hits = search_results["hits"]["hits"]
-    hits = [hit["_source"]["chunk"] for hit in hits]
-    hits = list(set(hits))
-    for i, hit in enumerate(hits):
-        print(f"{i + 1}th search result:\n {hit}")
-    '''
+    for hit in hits:
+        print('--------------------------------------------------------------------------------')
+        print(f'Category name: {hit["_source"]["category_name"]}')
+        print()
+        print(f'Item name: {hit["_source"]["item_name"]}')
+        print()
+        print(f'Production description: {hit["_source"]["product_description"]}')
+        print()
 
 
 if __name__ == "__main__":
