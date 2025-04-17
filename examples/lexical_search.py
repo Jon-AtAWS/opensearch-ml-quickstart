@@ -63,11 +63,11 @@ def main():
         "costumes",
     ]
     dataset_path = QANDA_FILE_READER_PATH
-    number_of_docs = 5000
+    number_of_docs_per_category = 5000
 
     client = OsMlClientWrapper(get_client(host_type))
     pqa_reader = QAndAFileReader(
-        directory=dataset_path, max_number_of_docs=number_of_docs
+        directory=dataset_path, max_number_of_docs=number_of_docs_per_category
     )
 
     config = {
@@ -75,8 +75,6 @@ def main():
         "index_name": index_name,
         "index_settings": get_base_mapping(BASE_MAPPING_PATH),
     }
-
-    # logging.info(f"Config:\n {json.dumps(config, indent=4)}")
 
     load_dataset(
         client,

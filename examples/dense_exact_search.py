@@ -86,7 +86,7 @@ def main():
     index_name = "dense_exact_search"
     embedding_type = "dense"
     pipeline_name = "dense-ingest-pipeline"
-    
+
     categories = [
         "earbud headphones",
         "headsets",
@@ -98,12 +98,12 @@ def main():
         "casual",
         "costumes",
     ]
-    number_of_docs = 5000
+    number_of_docs_per_category = 5000
     dataset_path = QANDA_FILE_READER_PATH
 
     client = OsMlClientWrapper(get_client(host_type))
     pqa_reader = QAndAFileReader(
-        directory=dataset_path, max_number_of_docs=number_of_docs
+        directory=dataset_path, max_number_of_docs=number_of_docs_per_category
     )
 
     config = {

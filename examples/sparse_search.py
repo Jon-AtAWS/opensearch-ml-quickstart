@@ -132,8 +132,6 @@ def main():
         index_config=config,
     )
 
-    # logging.info(f"Config:\n {json.dumps(config, indent=4)}")
-
     load_dataset(
         client,
         ml_model,

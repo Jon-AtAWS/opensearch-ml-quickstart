@@ -99,7 +99,8 @@ def main():
     index_name = "hybrid_search"
     dense_model_type = "sagemaker"
     sparse_model_type = "sagemaker"
-    pipeline_name = "hybrid-ingest-pipeline"
+    ingest_pipeline_name = "hybrid-ingest-pipeline"
+    search_pipeline_name = "hybrid-search-pipeline"
 
     categories = [
         "earbud headphones",
@@ -114,7 +115,7 @@ def main():
     ]
     number_of_docs_per_category = 5000
     dataset_path = QANDA_FILE_READER_PATH
-    
+
     client = OsMlClientWrapper(get_client(host_type))
     pqa_reader = QAndAFileReader(
         directory=dataset_path, max_number_of_docs=number_of_docs_per_category
@@ -125,7 +126,7 @@ def main():
         "pipeline_field_map": PIPELINE_FIELD_MAP,
         "categories": categories,
         "index_name": index_name,
-        "pipeline_name": pipeline_name,
+        "pipeline_name": ingest_pipeline_name,
     }
 
     dense_model_name = f"{host_type}_{dense_model_type}"
@@ -167,10 +168,9 @@ def main():
         pqa_reader,
         config,
         index_name=index_name,
-        pipeline_name=pipeline_name,
+        pipeline_name=ingest_pipeline_name,
     )
 
-    search_pipeline_name = "hybrid-search-pipeline"
     logging.info(f"Creating search pipeline {search_pipeline_name}")
     pipeline_config = {
         "description": "Post processor for hybrid search",
