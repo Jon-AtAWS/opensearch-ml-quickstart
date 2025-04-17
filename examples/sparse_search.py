@@ -3,7 +3,6 @@
 
 import os
 import sys
-import json
 import logging
 from typing import Dict
 
@@ -48,15 +47,17 @@ def load_dataset(
     ml_model: MlModel,
     pqa_reader: QAndAFileReader,
     config: Dict[str, str],
-    delete_existing: bool,
     index_name: str,
     pipeline_name: str,
 ):
-    if delete_existing:
-        logging.info(f"Deleting existing index {index_name}")
-        client.delete_then_create_index(
-            index_name=config["index_name"], settings=config["index_settings"]
-        )
+    if client.os_client.indices.exists(index_name):
+        logging.info(f"Index {index_name} already exists. Skipping loading dataset")
+        return
+
+    logging.info(f"Creating index {index_name}")
+    client.idempotent_create_index(
+        index_name=config["index_name"], settings=config["index_settings"]
+    )
 
     logging.info("Setting up for KNN")
     client.setup_for_kNN(
@@ -65,7 +66,6 @@ def load_dataset(
         pipeline_name=pipeline_name,
         index_settings=config["index_settings"],
         pipeline_field_map=config["pipeline_field_map"],
-        delete_existing=delete_existing,
         embedding_type=config["embedding_type"],
     )
 
@@ -77,25 +77,13 @@ def load_dataset(
             config=config,
         )
 
-    if config["cleanup"]:
-        client.cleanup_kNN(
-            ml_model=ml_model,
-            index_name=config["index_name"],
-            pipeline_name=pipeline_name,
-        )
-
 
 def main():
     host_type = "aos"
     model_type = "sagemaker"
     index_name = "sparse_search"
-    dataset_path = QANDA_FILE_READER_PATH
-    number_of_docs = -1
-    client = OsMlClientWrapper(get_client(host_type))
-
-    pqa_reader = QAndAFileReader(
-        directory=dataset_path, max_number_of_docs=number_of_docs
-    )
+    embedding_type = "sparse"
+    pipeline_name = "sparse-ingest-pipeline"
 
     categories = [
         "earbud headphones",
@@ -108,24 +96,29 @@ def main():
         "casual",
         "costumes",
     ]
-    config = {"with_knn": True, "pipeline_field_map": PIPELINE_FIELD_MAP}
+    number_of_docs_per_category = 5000
+    dataset_path = QANDA_FILE_READER_PATH
 
-    pipeline_name = "amazon_pqa_pipeline"
-    embedding_type = "sparse"
-    config["categories"] = categories
-    config["index_name"] = index_name
-    config["pipeline_name"] = pipeline_name
-    config["embedding_type"] = embedding_type
+    client = OsMlClientWrapper(get_client(host_type))
+    pqa_reader = QAndAFileReader(
+        directory=dataset_path, max_number_of_docs=number_of_docs_per_category
+    )
+
+    config = {
+        "with_knn": True,
+        "pipeline_field_map": PIPELINE_FIELD_MAP,
+        "categories": categories,
+        "index_name": index_name,
+        "pipeline_name": pipeline_name,
+        "embedding_type": embedding_type,
+    }
 
     model_name = f"{host_type}_{model_type}"
-
     model_config = get_remote_connector_configs(
         host_type=host_type, connector_type=model_type
     )
     model_config["model_name"] = model_name
     model_config["embedding_type"] = embedding_type
-    config.update(model_config)
-
     ml_model = get_ml_model(
         host_type=host_type,
         model_type=model_type,
@@ -133,27 +126,23 @@ def main():
         client=client,
     )
 
+    config.update(model_config)
     config["index_settings"] = create_index_settings(
         base_mapping_path=BASE_MAPPING_PATH,
         index_config=config,
     )
-    config["cleanup"] = False
-
-    logging.info(f"Config:\n {json.dumps(config, indent=4)}")
 
     load_dataset(
         client,
         ml_model,
         pqa_reader,
         config,
-        delete_existing=False,
         index_name=index_name,
         pipeline_name=pipeline_name,
     )
 
     query_text = input("Please input your search query text: ")
     search_query = {
-        "_source": {"include": "chunk"},
         "query": {
             "neural_sparse": {
                 "chunk_embedding": {
@@ -165,10 +154,16 @@ def main():
     }
     search_results = client.os_client.search(index=index_name, body=search_query)
     hits = search_results["hits"]["hits"]
-    hits = [hit["_source"]["chunk"] for hit in hits]
-    hits = list(set(hits))
-    for i, hit in enumerate(hits):
-        print(f"{i + 1}th search result:\n {hit}")
+    for hit in hits:
+        print(
+            "--------------------------------------------------------------------------------"
+        )
+        print(f'Category name: {hit["_source"]["category_name"]}')
+        print()
+        print(f'Item name: {hit["_source"]["item_name"]}')
+        print()
+        print(f'Production description: {hit["_source"]["product_description"]}')
+        print()
 
 
 if __name__ == "__main__":
