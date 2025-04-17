@@ -112,7 +112,7 @@ def main():
         "casual",
         "costumes",
     ]
-    number_of_docs_per_category = 50
+    number_of_docs_per_category = 5000
     dataset_path = QANDA_FILE_READER_PATH
     
     client = OsMlClientWrapper(get_client(host_type))
