@@ -66,7 +66,7 @@ class MlConnector(ABC):
     def _get_connector_create_payload_filename(self):
         pass
 
-    def _read_json_file(file_path):
+    def _read_json_file(self, file_path):
         with open(file_path, "r") as file:
             return json.load(file)
 
