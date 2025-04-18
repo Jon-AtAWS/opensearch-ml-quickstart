@@ -226,6 +226,7 @@ def main():
             index=index_name,
             search_pipeline=search_pipeline_name,
             body={
+                "size": 3,
                 "query": {
                     "neural": {
                         "chunk_embedding": {
@@ -252,9 +253,11 @@ def main():
             print(
                 "--------------------------------------------------------------------------------"
             )
-            print(f'Category name: {hit["_source"]["category_name"]}')
+            print(f'Item name: {hit["_source"]["item_name"]} ({hit["_source"]["category_name"]})')
             print()
-            print(f'Item name: {hit["_source"]["item_name"]}')
+            print(f'Question: {hit["_source"]["question_text"]}')
+            for answer in hit["_source"]["answers"]:
+                print(f'\tAnswer: {answer["answer_text"]}')
             print()
             print(f'Production description: {hit["_source"]["product_description"]}')
             print()
