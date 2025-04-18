@@ -220,45 +220,46 @@ def main():
     memory_id = response["memory_id"]
     logging.info(f"Conversation Memory ID: {memory_id}")
 
-    question = input("Please input your question: ")
-    response = client.os_client.search(
-        index=index_name,
-        search_pipeline=search_pipeline_name,
-        body={
-            "query": {
-                "neural": {
-                    "chunk_embedding": {
-                        "query_text": question,
-                        "model_id": ml_model.model_id(),
+    while (1):
+        question = input("Please input your question: ")
+        response = client.os_client.search(
+            index=index_name,
+            search_pipeline=search_pipeline_name,
+            body={
+                "query": {
+                    "neural": {
+                        "chunk_embedding": {
+                            "query_text": question,
+                            "model_id": ml_model.model_id(),
+                        }
                     }
-                }
+                },
+                "ext": {
+                    "generative_qa_parameters": {
+                        "llm_model": "bedrock/claude",
+                        "llm_question": question,
+                        "llm_response_field": "response",
+                        "memory_id": memory_id,
+                        "context_size": 5,
+                        "message_size": 5,
+                        "timeout": 30,
+                    }
+                },
             },
-            "ext": {
-                "generative_qa_parameters": {
-                    "llm_model": "bedrock/claude",
-                    "llm_question": question,
-                    "llm_response_field": "response",
-                    "memory_id": memory_id,
-                    "context_size": 5,
-                    "message_size": 5,
-                    "timeout": 30,
-                }
-            },
-        },
-    )
-    hits = response["hits"]["hits"]
-    for hit in hits:
-        print(
-            "--------------------------------------------------------------------------------"
         )
-        print(f'Category name: {hit["_source"]["category_name"]}')
-        print()
-        print(f'Item name: {hit["_source"]["item_name"]}')
-        print()
-        print(f'Production description: {hit["_source"]["product_description"]}')
-        print()
-    print("LLM Answer:")
-    print(response["ext"]["retrieval_augmented_generation"]["answer"])
+        hits = response["hits"]["hits"]
+        for hit in hits:
+            print(
+                "--------------------------------------------------------------------------------"
+            )
+            print(f'Category name: {hit["_source"]["category_name"]}')
+            print()
+            print(f'Item name: {hit["_source"]["item_name"]}')
+            print()
+            print(f'Production description: {hit["_source"]["product_description"]}')
+            print()
+        print("LLM Answer:")
+        print(response["ext"]["retrieval_augmented_generation"]["answer"])
 
 
 if __name__ == "__main__":
