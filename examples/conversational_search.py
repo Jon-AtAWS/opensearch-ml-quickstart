@@ -270,7 +270,10 @@ def main():
             "--------------------------------------------------------------------------------"
         )
         print(
-            "LLM Answer:", response["ext"]["retrieval_augmented_generation"]["answer"]
+            "LLM Answer:\n", response["ext"]["retrieval_augmented_generation"]["answer"]
+        )
+        print(
+            "--------------------------------------------------------------------------------"
         )
 
 
