@@ -220,7 +220,7 @@ def main():
     memory_id = response["memory_id"]
     logging.info(f"Conversation Memory ID: {memory_id}")
 
-    while 1:
+    while True:
         question = input("Please input your question: ")
         response = client.os_client.search(
             index=index_name,
