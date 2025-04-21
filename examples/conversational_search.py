@@ -3,6 +3,7 @@
 
 import os
 import sys
+import json
 import logging
 from typing import Dict
 
@@ -221,33 +222,36 @@ def main():
     logging.info(f"Conversation Memory ID: {memory_id}")
 
     while True:
-        question = input("Please input your question: ")
-        response = client.os_client.search(
-            index=index_name,
-            search_pipeline=search_pipeline_name,
-            body={
-                "size": 3,
-                "query": {
-                    "neural": {
-                        "chunk_embedding": {
-                            "query_text": question,
-                            "model_id": ml_model.model_id(),
-                        }
+        question = input("Please input your question (or 'quit' to quit): ")
+        if question == "quit":
+            break
+        search_query = {
+            "size": 3,
+            "query": {
+                "neural": {
+                    "chunk_embedding": {
+                        "query_text": question,
+                        "model_id": ml_model.model_id(),
                     }
-                },
-                "ext": {
-                    "generative_qa_parameters": {
-                        "llm_model": "bedrock/claude",
-                        "llm_question": question,
-                        "llm_response_field": "response",
-                        "memory_id": memory_id,
-                        "context_size": 3,
-                        "message_size": 5,
-                        "timeout": 30,
-                    }
-                },
+                }
             },
+            "ext": {
+                "generative_qa_parameters": {
+                    "llm_model": "bedrock/claude",
+                    "llm_question": question,
+                    "llm_response_field": "response",
+                    "memory_id": memory_id,
+                    "context_size": 3,
+                    "message_size": 5,
+                    "timeout": 30,
+                }
+            },
+        }
+        print("Search query:\n", json.dumps(search_query, indent=4))
+        response = client.os_client.search(
+            index=index_name, search_pipeline=search_pipeline_name, body=search_query
         )
+
         hits = response["hits"]["hits"]
         for hit_id, hit in enumerate(hits):
             print(
