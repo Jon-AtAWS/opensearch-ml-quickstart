@@ -3,6 +3,7 @@
 
 import os
 import sys
+import json
 import logging
 from typing import Dict
 
@@ -195,50 +196,62 @@ def main():
             }
         ],
     }
+    print("Search pipeline config:\n", json.dumps(pipeline_config, indent=4))
     client.os_client.transport.perform_request(
         "PUT", f"/_search/pipeline/{search_pipeline_name}", body=pipeline_config
     )
 
-    query_text = input("Please input your search query text: ")
-    search_query = {
-        "query": {
-            "hybrid": {
-                "queries": [
-                    {
-                        "neural": {
-                            "chunk_dense_embedding": {
-                                "query_text": query_text,
-                                "model_id": dense_ml_model.model_id(),
+    while True:
+        query_text = input("Please input your search query text (or 'quit' to quit): ")
+        if query_text == "quit":
+            break
+        search_query = {
+            "size": 3,
+            "query": {
+                "hybrid": {
+                    "queries": [
+                        {
+                            "neural": {
+                                "chunk_dense_embedding": {
+                                    "query_text": query_text,
+                                    "model_id": dense_ml_model.model_id(),
+                                }
                             }
-                        }
-                    },
-                    {
-                        "neural_sparse": {
-                            "chunk_sparse_embedding": {
-                                "query_text": query_text,
-                                "model_id": sparse_ml_model.model_id(),
+                        },
+                        {
+                            "neural_sparse": {
+                                "chunk_sparse_embedding": {
+                                    "query_text": query_text,
+                                    "model_id": sparse_ml_model.model_id(),
+                                }
                             }
-                        }
-                    },
-                ]
-            }
-        },
-    }
-
-    search_results = client.os_client.search(
-        index=index_name, body=search_query, search_pipeline=search_pipeline_name
-    )
-    hits = search_results["hits"]["hits"]
-    for hit in hits:
-        print(
-            "--------------------------------------------------------------------------------"
+                        },
+                    ]
+                }
+            },
+        }
+        print("Search query:\n", json.dumps(search_query, indent=4))
+        search_results = client.os_client.search(
+            index=index_name, body=search_query, search_pipeline=search_pipeline_name
         )
-        print(f'Category name: {hit["_source"]["category_name"]}')
-        print()
-        print(f'Item name: {hit["_source"]["item_name"]}')
-        print()
-        print(f'Production description: {hit["_source"]["product_description"]}')
-        print()
+        hits = search_results["hits"]["hits"]
+        for hit_id, hit in enumerate(hits):
+            print(
+                "--------------------------------------------------------------------------------"
+            )
+            print(
+                f'Item {hit_id + 1} name: {hit["_source"]["item_name"]} ({hit["_source"]["category_name"]})'
+            )
+            print()
+            if hit["_source"]["product_description"]:
+                print(
+                    f'Production description: {hit["_source"]["product_description"]}'
+                )
+                print()
+            print(f'Question: {hit["_source"]["question_text"]}')
+            for answer_id, answer in enumerate(hit["_source"]["answers"]):
+                print(f'Answer {answer_id + 1}: {answer["answer_text"]}')
+            print()
 
 
 if __name__ == "__main__":
