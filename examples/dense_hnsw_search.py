@@ -160,7 +160,6 @@ def main():
         query_text = input("Please input your search query text (or 'quit' to quit): ")
         if query_text == "quit":
             break
-        query_text = input("Please input your search query text: ")
         search_query = {
             "size": 3,
             "query": {
