@@ -3,6 +3,7 @@
 
 import os
 import sys
+import json
 import logging
 from typing import Dict
 
@@ -171,6 +172,7 @@ def main():
                 }
             },
         }
+        print("Search query:\n", json.dumps(search_query, indent=4))
         search_results = client.os_client.search(index=index_name, body=search_query)
         hits = search_results["hits"]["hits"]
         for hit_id, hit in enumerate(hits):
