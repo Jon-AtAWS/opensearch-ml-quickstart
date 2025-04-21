@@ -3,6 +3,7 @@
 
 import os
 import sys
+import json
 import logging
 from typing import Dict
 
@@ -220,49 +221,64 @@ def main():
     memory_id = response["memory_id"]
     logging.info(f"Conversation Memory ID: {memory_id}")
 
-    while (1):
-        question = input("Please input your question: ")
-        response = client.os_client.search(
-            index=index_name,
-            search_pipeline=search_pipeline_name,
-            body={
-                "size": 3,
-                "query": {
-                    "neural": {
-                        "chunk_embedding": {
-                            "query_text": question,
-                            "model_id": ml_model.model_id(),
-                        }
+    while True:
+        question = input("Please input your question (or 'quit' to quit): ")
+        if question == "quit":
+            break
+        search_query = {
+            "size": 3,
+            "query": {
+                "neural": {
+                    "chunk_embedding": {
+                        "query_text": question,
+                        "model_id": ml_model.model_id(),
                     }
-                },
-                "ext": {
-                    "generative_qa_parameters": {
-                        "llm_model": "bedrock/claude",
-                        "llm_question": question,
-                        "llm_response_field": "response",
-                        "memory_id": memory_id,
-                        "context_size": 5,
-                        "message_size": 5,
-                        "timeout": 30,
-                    }
-                },
+                }
             },
+            "ext": {
+                "generative_qa_parameters": {
+                    "llm_model": "bedrock/claude",
+                    "llm_question": question,
+                    "llm_response_field": "response",
+                    "memory_id": memory_id,
+                    "context_size": 3,
+                    "message_size": 5,
+                    "timeout": 30,
+                }
+            },
+        }
+        print("Search query:\n", json.dumps(search_query, indent=4))
+        response = client.os_client.search(
+            index=index_name, search_pipeline=search_pipeline_name, body=search_query
         )
+
         hits = response["hits"]["hits"]
-        for hit in hits:
+        for hit_id, hit in enumerate(hits):
             print(
                 "--------------------------------------------------------------------------------"
             )
-            print(f'Item name: {hit["_source"]["item_name"]} ({hit["_source"]["category_name"]})')
+            print(
+                f'Item {hit_id + 1} name: {hit["_source"]["item_name"]} ({hit["_source"]["category_name"]})'
+            )
             print()
+            if hit["_source"]["product_description"]:
+                print(
+                    f'Production description: {hit["_source"]["product_description"]}'
+                )
+                print()
             print(f'Question: {hit["_source"]["question_text"]}')
-            for answer in hit["_source"]["answers"]:
-                print(f'\tAnswer: {answer["answer_text"]}')
+            for answer_id, answer in enumerate(hit["_source"]["answers"]):
+                print(f'Answer {answer_id + 1}: {answer["answer_text"]}')
             print()
-            print(f'Production description: {hit["_source"]["product_description"]}')
-            print()
-        print("LLM Answer:")
-        print(response["ext"]["retrieval_augmented_generation"]["answer"])
+        print(
+            "--------------------------------------------------------------------------------"
+        )
+        print(
+            "LLM Answer:\n", response["ext"]["retrieval_augmented_generation"]["answer"]
+        )
+        print(
+            "--------------------------------------------------------------------------------"
+        )
 
 
 if __name__ == "__main__":
