@@ -89,6 +89,7 @@ def main():
         if query_text == "quit":
             break
         search_query = {
+            "size": 3,
             "query": {"match": {"chunk": query_text}},
         }
         print("Search query:\n", json.dumps(search_query, indent=4))
