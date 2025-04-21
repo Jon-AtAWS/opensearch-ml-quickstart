@@ -265,7 +265,7 @@ def main():
                 print(
                     f'Production description: {hit["_source"]["product_description"]}'
                 )
-            print()
+                print()
             print(f'Question: {hit["_source"]["question_text"]}')
             for answer_id, answer in enumerate(hit["_source"]["answers"]):
                 print(f'Answer {answer_id + 1}: {answer["answer_text"]}')
