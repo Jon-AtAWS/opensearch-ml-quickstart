@@ -35,21 +35,13 @@ logging.basicConfig(
 def create_index_settings(base_mapping_path, index_config):
     settings = get_base_mapping(base_mapping_path)
     pipeline_name = index_config["pipeline_name"]
-    model_dimension = index_config["model_dimensions"]
     knn_settings = {
         "settings": {"index": {"knn": True}, "default_pipeline": pipeline_name},
         "mappings": {
             "properties": {
                 "chunk": {"type": "text", "index": False},
                 "chunk_embedding": {
-                    "type": "knn_vector",
-                    "dimension": model_dimension,
-                    "method": {
-                        "name": "hnsw",
-                        "space_type": "l2",
-                        "engine": "nmslib",
-                        "parameters": {"ef_construction": 128, "m": 24},
-                    },
+                    "type": "rank_features",
                 },
             }
         },
@@ -130,7 +122,7 @@ def create_llm_model():
 def main():
     host_type = "aos"
     model_type = "sagemaker"
-    embedding_type = "dense"
+    embedding_type = "sparse"
     index_name = "conversational_search"
     ingest_pipeline_name = "sparse-ingest-pipeline"
     search_pipeline_name = "conversational-search-pipeline"
@@ -228,7 +220,7 @@ def main():
         search_query = {
             "size": 3,
             "query": {
-                "neural": {
+                "neural_sparse": {
                     "chunk_embedding": {
                         "query_text": question,
                         "model_id": ml_model.model_id(),
@@ -241,8 +233,8 @@ def main():
                     "llm_question": question,
                     "llm_response_field": "response",
                     "memory_id": memory_id,
-                    "context_size": 3,
-                    "message_size": 5,
+                    "context_size": 10,
+                    "message_size": 10,
                     "timeout": 30,
                 }
             },
@@ -273,9 +265,8 @@ def main():
         print(
             "--------------------------------------------------------------------------------"
         )
-        print(
-            "LLM Answer:\n", response["ext"]["retrieval_augmented_generation"]["answer"]
-        )
+        print("LLM Answer:")
+        print(response["ext"]["retrieval_augmented_generation"]["answer"])
         print(
             "--------------------------------------------------------------------------------"
         )
