@@ -267,13 +267,15 @@ def main():
             )
             print()
             print(
-                f'{LIGHT_YELLOW_HEADER}Item {hit_id + 1} name:{RESET} {hit["_source"]["item_name"]} {LIGHT_PURPLE_HEADER}({hit["_source"]["category_name"]}){RESET}'
+                f'{LIGHT_PURPLE_HEADER}Item {hit_id + 1} category:{RESET} {hit["_source"]["category_name"]}'
+            )
+            print(
+                f'{LIGHT_YELLOW_HEADER}Item {hit_id + 1} product name:{RESET} {hit["_source"]["item_name"]}'
             )
             print()
             if hit["_source"]["product_description"]:
-                print(
-                    f'{LIGHT_BLUE_HEADER}Production description:{RESET} {hit["_source"]["product_description"]}'
-                )
+                print(f"{LIGHT_BLUE_HEADER}Production description:{RESET}")
+                print(hit["_source"]["product_description"])
                 print()
             print(
                 f'{LIGHT_RED_HEADER}Question:{RESET} {hit["_source"]["question_text"]}'
