@@ -196,7 +196,6 @@ def main():
             }
         ],
     }
-    print("Search pipeline config:\n", json.dumps(pipeline_config, indent=4))
     client.os_client.transport.perform_request(
         "PUT", f"/_search/pipeline/{search_pipeline_name}", body=pipeline_config
     )
@@ -232,6 +231,8 @@ def main():
         }
         print("Search query:")
         print(json.dumps(search_query, indent=4))
+        print("Search pipeline config:")
+        print(json.dumps(pipeline_config, indent=4))
         search_results = client.os_client.search(
             index=index_name, body=search_query, search_pipeline=search_pipeline_name
         )
