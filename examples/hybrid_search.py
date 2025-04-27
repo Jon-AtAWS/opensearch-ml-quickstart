@@ -240,9 +240,9 @@ def main():
                 }
             },
         }
-        print(f"{LIGHT_RED_HEADER}Search query:{RESET}")
+        print(f"{LIGHT_GREEN_HEADER}Search query:{RESET}")
         print(json.dumps(search_query, indent=4))
-        print(f"{LIGHT_GREEN_HEADER}Search pipeline config:{RESET}")
+        print(f"{LIGHT_RED_HEADER}Search pipeline config:{RESET}")
         print(json.dumps(pipeline_config, indent=4))
         search_results = client.os_client.search(
             index=index_name, body=search_query, search_pipeline=search_pipeline_name

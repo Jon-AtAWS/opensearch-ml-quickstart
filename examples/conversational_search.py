@@ -31,6 +31,17 @@ logging.basicConfig(
     level=logging.INFO,
 )
 
+# ANSI escape sequence constants with improved colors
+BOLD = "\033[1m"
+RESET = "\033[0m"
+
+# Headers
+LIGHT_RED_HEADER = "\033[1;31m"
+LIGHT_GREEN_HEADER = "\033[1;32m"
+LIGHT_BLUE_HEADER = "\033[1;34m"
+LIGHT_YELLOW_HEADER = "\033[1;33m"
+LIGHT_PURPLE_HEADER = "\033[1;35m"
+
 
 def create_index_settings(base_mapping_path, index_config):
     settings = get_base_mapping(base_mapping_path)
@@ -243,38 +254,45 @@ def main():
                 }
             },
         }
-        print("Search query:")
+        print(f"{LIGHT_GREEN_HEADER}Search query:{RESET}")
         print(json.dumps(search_query, indent=4))
         response = client.os_client.search(
             index=index_name, search_pipeline=search_pipeline_name, body=search_query
         )
-        input("Press enter to see the search results and LLM Answer: ")
         hits = response["hits"]["hits"]
+        input("Press enter to see the search results: ")
         for hit_id, hit in enumerate(hits):
             print(
                 "--------------------------------------------------------------------------------"
             )
+            print()
             print(
-                f'Item {hit_id + 1} name: {hit["_source"]["item_name"]} ({hit["_source"]["category_name"]})'
+                f'{LIGHT_YELLOW_HEADER}Item {hit_id + 1} name:{RESET} {hit["_source"]["item_name"]} {LIGHT_PURPLE_HEADER}({hit["_source"]["category_name"]}){RESET}'
             )
             print()
             if hit["_source"]["product_description"]:
                 print(
-                    f'Production description: {hit["_source"]["product_description"]}'
+                    f'{LIGHT_BLUE_HEADER}Production description:{RESET} {hit["_source"]["product_description"]}'
                 )
                 print()
-            print(f'Question: {hit["_source"]["question_text"]}')
+            print(
+                f'{LIGHT_RED_HEADER}Question:{RESET} {hit["_source"]["question_text"]}'
+            )
             for answer_id, answer in enumerate(hit["_source"]["answers"]):
-                print(f'Answer {answer_id + 1}: {answer["answer_text"]}')
+                print(
+                    f'{LIGHT_GREEN_HEADER}Answer {answer_id + 1}:{RESET} {answer["answer_text"]}'
+                )
             print()
         print(
             "--------------------------------------------------------------------------------"
         )
-        print("LLM Answer:")
+        print()
+        print(f"{LIGHT_YELLOW_HEADER}LLM Answer:{RESET}")
         print(response["ext"]["retrieval_augmented_generation"]["answer"])
-    print(
-        "--------------------------------------------------------------------------------"
-    )
+        print()
+        print(
+            "--------------------------------------------------------------------------------"
+        )
 
 
 if __name__ == "__main__":
