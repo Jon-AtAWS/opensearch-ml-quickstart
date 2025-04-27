@@ -197,7 +197,11 @@ def main():
                         "tag": "conversation demo",
                         "description": "Demo pipeline Using Bedrock Connector",
                         "model_id": f"{llm_model_id}",
-                        "context_field_list": ["item_name", "product_description", "chunk"],
+                        "context_field_list": [
+                            "item_name",
+                            "product_description",
+                            "chunk",
+                        ],
                         "system_prompt": "You are a helpful assistant",
                         "user_instructions": "Generate a concise and informative answer in less than 100 words for the given question",
                     }
