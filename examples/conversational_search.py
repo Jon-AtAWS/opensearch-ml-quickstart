@@ -197,7 +197,7 @@ def main():
                         "tag": "conversation demo",
                         "description": "Demo pipeline Using Bedrock Connector",
                         "model_id": f"{llm_model_id}",
-                        "context_field_list": ["chunk"],
+                        "context_field_list": ["item_name", "product_description", "chunk"],
                         "system_prompt": "You are a helpful assistant",
                         "user_instructions": "Generate a concise and informative answer in less than 100 words for the given question",
                     }
@@ -221,7 +221,7 @@ def main():
             "size": 3,
             "query": {
                 "neural_sparse": {
-                    "chunk_embedding": {
+                    "chunk_sparse_embedding": {
                         "query_text": question,
                         "model_id": ml_model.model_id(),
                     }
@@ -239,11 +239,12 @@ def main():
                 }
             },
         }
-        print("Search query:\n", json.dumps(search_query, indent=4))
+        print("Search query:")
+        print(json.dumps(search_query, indent=4))
         response = client.os_client.search(
             index=index_name, search_pipeline=search_pipeline_name, body=search_query
         )
-
+        input("Press enter to see the search results and LLM Answer: ")
         hits = response["hits"]["hits"]
         for hit_id, hit in enumerate(hits):
             print(
@@ -267,9 +268,9 @@ def main():
         )
         print("LLM Answer:")
         print(response["ext"]["retrieval_augmented_generation"]["answer"])
-        print(
-            "--------------------------------------------------------------------------------"
-        )
+    print(
+        "--------------------------------------------------------------------------------"
+    )
 
 
 if __name__ == "__main__":

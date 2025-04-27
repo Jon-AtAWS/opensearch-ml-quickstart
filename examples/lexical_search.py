@@ -92,9 +92,11 @@ def main():
             "size": 3,
             "query": {"match": {"chunk": query_text}},
         }
-        print("Search query:\n", json.dumps(search_query, indent=4))
+        print("Search query:")
+        print(json.dumps(search_query, indent=4))
         search_results = client.os_client.search(index=index_name, body=search_query)
         hits = search_results["hits"]["hits"]
+        input("Press enter to see the search results: ")
         for hit_id, hit in enumerate(hits):
             print(
                 "--------------------------------------------------------------------------------"
@@ -112,6 +114,10 @@ def main():
             for answer_id, answer in enumerate(hit["_source"]["answers"]):
                 print(f'Answer {answer_id + 1}: {answer["answer_text"]}')
             print()
+        print(
+            "--------------------------------------------------------------------------------"
+        )
+
 
 
 if __name__ == "__main__":
