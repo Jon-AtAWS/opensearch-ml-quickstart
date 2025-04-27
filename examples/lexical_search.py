@@ -23,6 +23,17 @@ logging.basicConfig(
     level=logging.INFO,
 )
 
+# ANSI escape sequence constants with improved colors
+BOLD = "\033[1m"
+RESET = "\033[0m"
+
+# Headers
+LIGHT_RED_HEADER = "\033[1;31m"
+LIGHT_GREEN_HEADER = "\033[1;32m"
+LIGHT_BLUE_HEADER = "\033[1;34m"
+LIGHT_YELLOW_HEADER = "\033[1;33m"
+LIGHT_PURPLE_HEADER = "\033[1;35m"
+
 
 def load_dataset(
     client: OsMlClientWrapper,
@@ -92,26 +103,36 @@ def main():
             "size": 3,
             "query": {"match": {"chunk": query_text}},
         }
-        print("Search query:\n", json.dumps(search_query, indent=4))
+        print(f"{LIGHT_GREEN_HEADER}Search query:{RESET}")
+        print(json.dumps(search_query, indent=4))
         search_results = client.os_client.search(index=index_name, body=search_query)
         hits = search_results["hits"]["hits"]
+        input("Press enter to see the search results: ")
         for hit_id, hit in enumerate(hits):
             print(
                 "--------------------------------------------------------------------------------"
             )
+            print()
             print(
-                f'Item {hit_id + 1} name: {hit["_source"]["item_name"]} ({hit["_source"]["category_name"]})'
+                f'{LIGHT_YELLOW_HEADER}Item {hit_id + 1} name:{RESET} {hit["_source"]["item_name"]} {LIGHT_PURPLE_HEADER}({hit["_source"]["category_name"]}){RESET}'
             )
             print()
             if hit["_source"]["product_description"]:
                 print(
-                    f'Production description: {hit["_source"]["product_description"]}'
+                    f'{LIGHT_BLUE_HEADER}Production description:{RESET} {hit["_source"]["product_description"]}'
                 )
                 print()
-            print(f'Question: {hit["_source"]["question_text"]}')
+            print(
+                f'{LIGHT_RED_HEADER}Question:{RESET} {hit["_source"]["question_text"]}'
+            )
             for answer_id, answer in enumerate(hit["_source"]["answers"]):
-                print(f'Answer {answer_id + 1}: {answer["answer_text"]}')
+                print(
+                    f'{LIGHT_GREEN_HEADER}Answer {answer_id + 1}:{RESET} {answer["answer_text"]}'
+                )
             print()
+        print(
+            "--------------------------------------------------------------------------------"
+        )
 
 
 if __name__ == "__main__":
