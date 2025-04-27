@@ -123,7 +123,7 @@ def main():
     host_type = "aos"
     model_type = "sagemaker"
     embedding_type = "sparse"
-    index_name = "conversational_search"
+    index_name = "amazon_pqa_qa_emebedding"
     ingest_pipeline_name = "sparse-ingest-pipeline"
     search_pipeline_name = "conversational-search-pipeline"
 
