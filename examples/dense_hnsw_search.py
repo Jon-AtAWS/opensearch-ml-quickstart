@@ -8,6 +8,7 @@ import logging
 from typing import Dict
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import cmd_line_params
 from configs import (
     get_remote_connector_configs,
     BASE_MAPPING_PATH,
@@ -22,6 +23,8 @@ from client import (
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
 from ml_models import get_ml_model, MlModel
+import print_utils
+
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
@@ -75,7 +78,7 @@ def load_dataset(
     index_name: str,
     pipeline_name: str,
 ):
-    if client.os_client.indices.exists(index_name):
+    if client.os_client.indices.exists(index_name) and not config["force_index_creation"]:
         logging.info(f"Index {index_name} already exists. Skipping loading dataset")
         return
 
@@ -109,6 +112,7 @@ def main():
     index_name = "dense_hnsw_search"
     embedding_type = "dense"
     pipeline_name = "dense-ingest-pipeline"
+    args = cmd_line_params.get_command_line_args()
 
     categories = [
         "earbud headphones",
@@ -136,6 +140,7 @@ def main():
         "index_name": index_name,
         "pipeline_name": pipeline_name,
         "embedding_type": embedding_type,
+        "force_index_creation": args.force_index_creation,
     }
 
     model_name = f"{host_type}_{model_type}"
@@ -189,32 +194,7 @@ def main():
         hits = search_results["hits"]["hits"]
         input("Press enter to see the search results: ")
         for hit_id, hit in enumerate(hits):
-            print(
-                "--------------------------------------------------------------------------------"
-            )
-            print()
-            print(
-                f'{LIGHT_PURPLE_HEADER}Item {hit_id + 1} category:{RESET} {hit["_source"]["category_name"]}'
-            )
-            print(
-                f'{LIGHT_YELLOW_HEADER}Item {hit_id + 1} product name:{RESET} {hit["_source"]["item_name"]}'
-            )
-            print()
-            if hit["_source"]["product_description"]:
-                print(f"{LIGHT_BLUE_HEADER}Production description:{RESET}")
-                print(hit["_source"]["product_description"])
-                print()
-            print(
-                f'{LIGHT_RED_HEADER}Question:{RESET} {hit["_source"]["question_text"]}'
-            )
-            for answer_id, answer in enumerate(hit["_source"]["answers"]):
-                print(
-                    f'{LIGHT_GREEN_HEADER}Answer {answer_id + 1}:{RESET} {answer["answer_text"]}'
-                )
-            print()
-        print(
-            "--------------------------------------------------------------------------------"
-        )
+            print_utils.print_hit(hit_id, hit)
 
 
 if __name__ == "__main__":
