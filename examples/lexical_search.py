@@ -66,17 +66,6 @@ def main():
     index_name = "lexical_search"
     args = cmd_line_params.get_command_line_args()
 
-    categories = [
-        "earbud headphones",
-        "headsets",
-        "diffusers",
-        "mattresses",
-        "mp3 and mp4 players",
-        "sheet and pillowcase sets",
-        "batteries",
-        "casual",
-        "costumes",
-    ]
     dataset_path = QANDA_FILE_READER_PATH
     number_of_docs_per_category = 5000
 
@@ -86,10 +75,11 @@ def main():
     )
 
     config = {
-        "categories": categories,
+        "categories": args.categories,
         "index_name": index_name,
         "index_settings": get_base_mapping(BASE_MAPPING_PATH),
         "force_index_creation": args.force_index_creation,
+        "bulk_send_chunk_size": args.bulk_send_chunk_size,
     }
 
     load_dataset(

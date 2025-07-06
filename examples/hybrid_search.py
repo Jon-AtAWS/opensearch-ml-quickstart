@@ -123,17 +123,6 @@ def main():
     search_pipeline_name = "hybrid-search-pipeline"
     args = cmd_line_params.get_command_line_args()
 
-    categories = [
-        "earbud headphones",
-        "headsets",
-        "diffusers",
-        "mattresses",
-        "mp3 and mp4 players",
-        "sheet and pillowcase sets",
-        "batteries",
-        "casual",
-        "costumes",
-    ]
     number_of_docs_per_category = 5000
     dataset_path = QANDA_FILE_READER_PATH
 
@@ -145,10 +134,11 @@ def main():
     config = {
         "with_knn": True,
         "pipeline_field_map": PIPELINE_FIELD_MAP,
-        "categories": categories,
+        "categories": args.categories,
         "index_name": index_name,
         "pipeline_name": ingest_pipeline_name,
         "force_index_creation": args.force_index_creation,
+        "bulk_send_chunk_size": args.bulk_send_chunk_size,
     }
 
     dense_model_name = f"{host_type}_{dense_model_type}"

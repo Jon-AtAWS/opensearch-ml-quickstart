@@ -58,12 +58,13 @@ def check_client_version(client: OpenSearch):
         )
 
 
-def send_bulk_ignore_exceptions(client: OpenSearch, docs):
+def send_bulk_ignore_exceptions(client: OpenSearch, config: Dict[str, str], docs):
+    logging.info(f"Sending {config['bulk_send_chunk_size']} docs per bulk over the wire")
     try:
         status = helpers.bulk(
             client,
             docs,
-            chunk_size=10,
+            chunk_size=config['bulk_send_chunk_size'],
             request_timeout=300,
             max_retries=10,
             raise_on_error=False,
@@ -96,11 +97,11 @@ def load_category(client: OpenSearch, pqa_reader: QAndAFileReader, category, con
         number_of_docs += 1
         if number_of_docs % 2000 == 0:
             logging.info(f"Sending {number_of_docs} docs")
-            send_bulk_ignore_exceptions(client, docs)
+            send_bulk_ignore_exceptions(client, config, docs)
             docs = []
     if len(docs) > 0:
         logging.info(f'Category "{category}" complete. Sending {number_of_docs} docs')
-        send_bulk_ignore_exceptions(client, docs)
+        send_bulk_ignore_exceptions(client, config, docs)
 
 
 def load_dataset(

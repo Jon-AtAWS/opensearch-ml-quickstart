@@ -8,6 +8,7 @@ import logging
 from typing import Dict
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import cmd_line_params
 from configs import (
     get_remote_connector_configs,
     BASE_MAPPING_PATH,
@@ -138,17 +139,8 @@ def main():
     ingest_pipeline_name = "sparse-ingest-pipeline"
     search_pipeline_name = "conversational-search-pipeline"
 
-    categories = [
-        "earbud headphones",
-        "headsets",
-        "diffusers",
-        "mattresses",
-        "mp3 and mp4 players",
-        "sheet and pillowcase sets",
-        "batteries",
-        "casual",
-        "costumes",
-    ]
+    args = cmd_line_params.get_command_line_args()
+
     number_of_docs_per_category = 5000
     dataset_path = QANDA_FILE_READER_PATH
 
@@ -160,10 +152,12 @@ def main():
     config = {
         "with_knn": True,
         "pipeline_field_map": PIPELINE_FIELD_MAP,
-        "categories": categories,
+        "categories": args.categories,
         "index_name": index_name,
         "pipeline_name": ingest_pipeline_name,
         "embedding_type": embedding_type,
+        "force_index_creation": args.force_index_creation,
+        "bulk_send_chunk_size": args.bulk_send_chunk_size,
     }
 
     model_name = f"{host_type}_{model_type}"
