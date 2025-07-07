@@ -6,4 +6,5 @@ from .helper import (
     get_client_configs,
     get_client,
     get_index_size,
+    load_category,
 )
