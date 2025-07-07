@@ -59,7 +59,7 @@ def check_client_version(client: OpenSearch):
 
 
 def send_bulk_ignore_exceptions(client: OpenSearch, config: Dict[str, str], docs):
-    logging.info(f"Sending {config['bulk_send_chunk_size']} docs per bulk over the wire")
+    logging.info(f"Sending {config['bulk_send_chunk_size']} docs over the wire")
     try:
         status = helpers.bulk(
             client,

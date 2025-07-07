@@ -72,14 +72,18 @@ def load_dataset(
     index_name: str,
     pipeline_name: str,
 ):
-    if client.os_client.indices.exists(index_name) and not config["delete_existing_index"]:
-        logging.info(f"Index {index_name} already exists. Skipping loading dataset")
-        return
-
-    logging.info(f"Creating index {index_name}")
-    client.idempotent_create_index(
-        index_name=config["index_name"], settings=config["index_settings"]
-    )
+    if client.os_client.indices.exists(index_name):
+        if config["delete_existing_index"]:
+            logging.info(f"Deleting existing index {index_name}, then creating a new one")
+            client.delete_then_create_index(index_name=index_name, settings=config["index_settings"])
+        else:
+            logging.info(f"Index {index_name} already exists. Skipping loading dataset")
+            return
+    else:
+        logging.info(f"Creating new index {index_name}")
+        client.idempotent_create_index(
+            index_name=config["index_name"], settings=config["index_settings"]
+        )
 
     logging.info("Setting up for KNN")
     client.setup_for_kNN(
@@ -107,8 +111,6 @@ def main():
     index_name = "dense_exact_search"
     embedding_type = "dense"
     pipeline_name = "dense-ingest-pipeline"
-
-    number_of_docs_per_category = 5000
 
     client = OsMlClientWrapper(get_client(host_type))
     pqa_reader = QAndAFileReader(
