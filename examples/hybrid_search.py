@@ -115,13 +115,13 @@ def load_dataset(
 
 
 def main():
+    args = cmd_line_params.get_command_line_args()
     host_type = "aos"
     index_name = "hybrid_search"
     dense_model_type = "sagemaker"
     sparse_model_type = "sagemaker"
     ingest_pipeline_name = "hybrid-ingest-pipeline"
     search_pipeline_name = "hybrid-search-pipeline"
-    args = cmd_line_params.get_command_line_args()
 
     client = OsMlClientWrapper(get_client(host_type))
     pqa_reader = QAndAFileReader(

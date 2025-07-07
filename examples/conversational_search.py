@@ -6,6 +6,8 @@ import sys
 import json
 import logging
 from typing import Dict
+import uuid
+
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import cmd_line_params
@@ -70,7 +72,7 @@ def load_dataset(
     index_name: str,
     pipeline_name: str,
 ):
-    if client.os_client.indices.exists(index_name):
+    if client.os_client.indices.exists(index_name) and not config["force_index_creation"]:
         logging.info(f"Index {index_name} already exists. Skipping loading dataset")
         return
 
@@ -132,6 +134,7 @@ def create_llm_model():
 
 
 def main():
+    args = cmd_line_params.get_command_line_args()
     host_type = "aos"
     model_type = "sagemaker"
     embedding_type = "sparse"
@@ -139,14 +142,10 @@ def main():
     ingest_pipeline_name = "sparse-ingest-pipeline"
     search_pipeline_name = "conversational-search-pipeline"
 
-    args = cmd_line_params.get_command_line_args()
-
-    number_of_docs_per_category = 5000
-    dataset_path = QANDA_FILE_READER_PATH
-
     client = OsMlClientWrapper(get_client(host_type))
     pqa_reader = QAndAFileReader(
-        directory=dataset_path, max_number_of_docs=number_of_docs_per_category
+        directory=QANDA_FILE_READER_PATH,
+        max_number_of_docs=args.number_of_docs_per_category
     )
 
     config = {
@@ -215,7 +214,8 @@ def main():
         },
     )
 
-    conversation_name = f"conversation-{categories[0]}"
+    uuid_str = str(uuid.uuid4())[:8]
+    conversation_name = f"conversation-{uuid_str}"
     response = client.os_client.transport.perform_request(
         "POST", "/_plugins/_ml/memory/", body={"name": conversation_name}
     )

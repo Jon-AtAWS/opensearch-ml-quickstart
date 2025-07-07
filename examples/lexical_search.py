@@ -62,9 +62,9 @@ def load_dataset(
 
 
 def main():
+    args = cmd_line_params.get_command_line_args()
     host_type = "aos"
     index_name = "lexical_search"
-    args = cmd_line_params.get_command_line_args()
 
     client = OsMlClientWrapper(get_client(host_type))
     pqa_reader = QAndAFileReader(
