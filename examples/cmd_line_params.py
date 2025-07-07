@@ -42,6 +42,12 @@ def get_command_line_args():
         default=100,
         help="Chunk size for bulk sending documents to OpenSearch",
     )
+    parser.add_argument(
+        "-n", "--number-of-docs-per-category",
+        type=int,
+        default=5000,
+        help="Number of documents to load per category",
+    )
     args = parser.parse_args()
     
     if args.categories is None:

@@ -66,12 +66,10 @@ def main():
     index_name = "lexical_search"
     args = cmd_line_params.get_command_line_args()
 
-    dataset_path = QANDA_FILE_READER_PATH
-    number_of_docs_per_category = 5000
-
     client = OsMlClientWrapper(get_client(host_type))
     pqa_reader = QAndAFileReader(
-        directory=dataset_path, max_number_of_docs=number_of_docs_per_category
+        directory=QANDA_FILE_READER_PATH,
+        max_number_of_docs=args.number_of_docs_per_category,
     )
 
     config = {

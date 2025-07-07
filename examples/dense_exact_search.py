@@ -109,11 +109,11 @@ def main():
     pipeline_name = "dense-ingest-pipeline"
 
     number_of_docs_per_category = 5000
-    dataset_path = QANDA_FILE_READER_PATH
 
     client = OsMlClientWrapper(get_client(host_type))
     pqa_reader = QAndAFileReader(
-        directory=dataset_path, max_number_of_docs=number_of_docs_per_category
+        directory=QANDA_FILE_READER_PATH,
+        max_number_of_docs=args.number_of_docs_per_category,
     )
 
     config = {

@@ -99,19 +99,17 @@ def load_dataset(
 
 
 def main():
+    args = cmd_line_params.get_command_line_args()
     host_type = "aos"
     model_type = "sagemaker"
     index_name = "sparse_search"
     embedding_type = "sparse"
     pipeline_name = "sparse-ingest-pipeline"
-    args = cmd_line_params.get_command_line_args()
-
-    number_of_docs_per_category = 5000
-    dataset_path = QANDA_FILE_READER_PATH
 
     client = OsMlClientWrapper(get_client(host_type))
     pqa_reader = QAndAFileReader(
-        directory=dataset_path, max_number_of_docs=number_of_docs_per_category
+        directory=QANDA_FILE_READER_PATH,
+        max_number_of_docs=args.number_of_docs_per_category
     )
 
     config = {
