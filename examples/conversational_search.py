@@ -9,8 +9,10 @@ from typing import Dict
 import uuid
 
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import cmd_line_params
+
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from configs import (
     get_remote_connector_configs,
     BASE_MAPPING_PATH,

@@ -25,17 +25,6 @@ def get_client(host_type: str) -> OpenSearch:
     return client
 
 
-def get_index_size(client: OpenSearch, index_name, unit="mb"):
-    """Get the index size from the opensearch client"""
-    if not client.indices.exists(index=index_name):
-        return 0
-    return int(
-        client.cat.indices(
-            index=index_name, params={"bytes": f"{unit}", "h": "pri.store.size"}
-        )
-    )
-
-
 def parse_version(version: str):
     return tuple(map(int, version.split(".")))
 

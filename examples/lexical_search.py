@@ -10,7 +10,6 @@ from typing import Dict
 
 import cmd_line_params
 import print_utils
-from index_utils import load_category
 
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -18,6 +17,7 @@ from configs import BASE_MAPPING_PATH, QANDA_FILE_READER_PATH
 from client import (
     get_client,
     OsMlClientWrapper,
+    load_category,
 )
 from data_process import QAndAFileReader
 from mapping import get_base_mapping

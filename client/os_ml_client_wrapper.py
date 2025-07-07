@@ -6,6 +6,7 @@ from opensearchpy import OpenSearch
 from opensearch_py_ml.ml_commons import MLCommonClient
 
 from ml_models import MlModel, MlModelGroup
+import index_utils
 
 
 class OsMlClientWrapper:

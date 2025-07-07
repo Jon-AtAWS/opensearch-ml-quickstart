@@ -6,3 +6,8 @@ from .helper import (
     get_client_configs,
     get_client,
 )
+from .index_utils import (
+    send_bulk_ignore_exceptions,
+    load_category,
+    get_index_size,
+)

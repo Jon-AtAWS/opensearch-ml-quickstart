@@ -48,3 +48,23 @@ def load_category(client: OpenSearch, pqa_reader: QAndAFileReader, category, con
     if len(docs) > 0:
         logging.info(f'Category "{category}" complete. Sending {number_of_docs} docs')
         send_bulk_ignore_exceptions(client, config, docs)
+
+
+def get_index_size(client: OpenSearch, index_name, unit="mb"):
+    """Get the index size from the opensearch client"""
+    if not client.indices.exists(index=index_name):
+        return 0
+    return int(
+        client.cat.indices(
+            index=index_name, params={"bytes": f"{unit}", "h": "pri.store.size"}
+        )
+    )
+
+
+def delete_index(client: OpenSearch, index_name: str):
+    """Delete the index if it exists"""
+    if client.indices.exists(index=index_name):
+        logging.info(f"Deleting index {index_name}")
+        client.indices.delete(index=index_name)
+    else:
+        logging.info(f"Index {index_name} does not exist. Skipping deletion.")

@@ -9,7 +9,7 @@ from typing import Dict
 
 import cmd_line_params
 import print_utils
-from index_utils import load_category
+
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from configs import (
@@ -21,6 +21,7 @@ from configs import (
 from client import (
     OsMlClientWrapper,
     get_client,
+    load_category,
 )
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
