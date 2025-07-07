@@ -25,10 +25,10 @@ def get_command_line_args():
         description="Run AI-powered search examples with OpenSearch ML Quickstart"
     )
     parser.add_argument(
-        "-f", "--force-index-creation",
+        "-d", "--delete-existing-index",
         default=False,
         action="store_true",
-        help="Delete/recreate the index even if it already exists",
+        help="Delete the index if it already exists",
     )
     parser.add_argument(
         "-c", "--categories",

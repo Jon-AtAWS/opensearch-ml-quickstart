@@ -96,7 +96,7 @@ def load_dataset(
     }
     client.os_client.ingest.put_pipeline(pipeline_name, body=pipeline_config)
 
-    if client.os_client.indices.exists(index_name) and not config["force_index_creation"]:
+    if client.os_client.indices.exists(index_name) and not config["delete_existing_index"]:
         logging.info(f"Index {index_name} already exists. Skipping loading dataset")
         return
 
@@ -135,7 +135,7 @@ def main():
         "categories": args.categories,
         "index_name": index_name,
         "pipeline_name": ingest_pipeline_name,
-        "force_index_creation": args.force_index_creation,
+        "delete_existing_index": args.delete_existing_index,
         "bulk_send_chunk_size": args.bulk_send_chunk_size,
     }
 

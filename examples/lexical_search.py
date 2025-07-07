@@ -43,7 +43,7 @@ def load_dataset(
     config: Dict[str, str],
     index_name: str,
 ):
-    if client.os_client.indices.exists(index_name) and not config["force_index_creation"]:
+    if client.os_client.indices.exists(index_name) and not config["delete_existing_index"]:
         logging.info(f"Index {index_name} already exists. Skipping loading dataset")
         return
 
@@ -76,7 +76,7 @@ def main():
         "categories": args.categories,
         "index_name": index_name,
         "index_settings": get_base_mapping(BASE_MAPPING_PATH),
-        "force_index_creation": args.force_index_creation,
+        "delete_existing_index": args.delete_existing_index,
         "bulk_send_chunk_size": args.bulk_send_chunk_size,
     }
 
