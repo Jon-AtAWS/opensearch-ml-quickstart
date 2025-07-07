@@ -7,8 +7,12 @@ import json
 import logging
 from typing import Dict
 
+
+import cmd_line_params
+import print_utils
+from index_utils import load_category
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import cmd_line_params  # noqa: E402
 from configs import (
     get_remote_connector_configs,
     BASE_MAPPING_PATH,
@@ -17,7 +21,6 @@ from configs import (
 )
 from client import (
     get_client,
-    load_category,
     OsMlClientWrapper,
 )
 from data_process import QAndAFileReader

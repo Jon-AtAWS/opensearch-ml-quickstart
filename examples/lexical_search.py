@@ -7,17 +7,20 @@ import json
 import logging
 from typing import Dict
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import cmd_line_params
+import print_utils
+from index_utils import load_category
+
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from configs import BASE_MAPPING_PATH, QANDA_FILE_READER_PATH
 from client import (
     get_client,
-    load_category,
     OsMlClientWrapper,
 )
 from data_process import QAndAFileReader
 from mapping import get_base_mapping
-import print_utils
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
