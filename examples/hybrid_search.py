@@ -99,18 +99,11 @@ def load_dataset(
     }
     client.os_client.ingest.put_pipeline(pipeline_name, body=pipeline_config)
 
-    if client.os_client.indices.exists(index_name):
-        if config["delete_existing_index"]:
-            logging.info(f"Deleting existing index {index_name}, then creating a new one")
-            client.delete_then_create_index(index_name=index_name, settings=config["index_settings"])
-        else:
-            logging.info(f"Index {index_name} already exists. Skipping loading dataset")
-            return
-    else:
-        logging.info(f"Creating new index {index_name}")
-        client.idempotent_create_index(
-            index_name=config["index_name"], settings=config["index_settings"]
-        )
+    client.handle_index_creation(
+        index_name=index_name,
+        index_settings=config["index_settings"],
+        delete_existing=config["delete_existing_index"],
+    )
 
     for category in config["categories"]:
         load_category(

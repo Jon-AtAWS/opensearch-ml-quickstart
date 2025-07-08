@@ -8,6 +8,7 @@ from configs import get_client_configs, MINIMUM_OPENSEARCH_VERSION
 
 def get_client(host_type: str) -> OpenSearch:
     configs = get_client_configs(host_type)
+    logging.info(f"Connecting to OpenSearch with configs\n{configs}")
     port = configs["port"]
     host_url = configs["host_url"]
     username = configs["username"]
@@ -22,6 +23,27 @@ def get_client(host_type: str) -> OpenSearch:
         ssl_show_warn=False,
     )
     check_client_version(client)
+    # AOS does not support local hosting of ML models, but local OpenSearch does
+    # support it. So set the allow_registering_model_via_url and
+    # only_run_on_ml_node settings to whether or not the host_type is "os"
+    # (local OpenSearch).
+    settings = {
+        "plugins.ml_commons.memory_feature_enabled": True,
+        "plugins.ml_commons.rag_pipeline_feature_enabled": True,
+        "plugins.ml_commons.trusted_connector_endpoints_regex": [
+            "^https://bedrock-runtime\\..*[a-z0-9-]\\.amazonaws\\.com/.*$"
+        ]
+    }
+    if host_type == "os":
+        settings.update({
+            "plugins.ml_commons.allow_registering_model_via_url": True,
+            "plugins.ml_commons.only_run_on_ml_node": True,
+        })
+    try:
+        client.cluster.put_settings(body={"persistent": settings})
+    except Exception as e:
+        logging.error(f"Failed to set cluster settings: {e}")
+        raise e
     return client
 
 

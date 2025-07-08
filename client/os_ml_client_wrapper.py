@@ -4,8 +4,11 @@
 import logging
 from opensearchpy import OpenSearch
 from opensearch_py_ml.ml_commons import MLCommonClient
-
 from ml_models import MlModel, MlModelGroup
+
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import index_utils
 
 
@@ -87,44 +90,29 @@ class OsMlClientWrapper:
         logging.info(f"sparse_pipeline_config: {pipeline_field_map}")
         logging.info("Adding sparse pipeline...")
         self.os_client.ingest.put_pipeline(pipeline_name, body=pipeline_config)
-
-    def idempotent_create_index(self, index_name="", settings=None):
-        """
-        Create the index with settings.
-        """
-        if not index_name:
-            raise ValueError("idempotent_create_index: index name must be specified")
-        if not settings:
-            raise ValueError("idempotent_create_index: settings must be specified")
-        try:
-            response = self.os_client.indices.create(index_name, body=settings)
-            logging.info(
-                f"idempotent_create_index response: {response}",
+        
+    def handle_index_creation(
+        self,
+        index_name: str,
+        index_settings: str,
+        delete_existing: bool = False,
+    ):
+        if delete_existing:
+            index_utils.delete_index(
+                client=self.os_client, index_name=index_name
             )
-        except Exception as e:
-            logging.error(f"Error creating index {index_name} due to exception: {e}")
-
-    def delete_then_create_index(self, index_name="", settings=None):
-        """
-        Delete the index and then create the index with settings.
-        """
-        if not index_name:
-            raise ValueError("delete_then_create_index: index name must be specified")
-        if not settings:
-            raise ValueError("delete_then_create_index: settings must be specified")
-        if self.os_client.indices.exists(index_name):
-            logging.info(f"Deleting index {index_name}")
-            self.os_client.indices.delete(index=index_name)
-        self.idempotent_create_index(index_name=index_name, settings=settings)
+        index_utils.idempotent_create_index(
+            self.os_client,
+            index_name=index_name,
+            settings=index_settings
+        )
 
     def setup_for_kNN(
         self,
         ml_model: MlModel,
         index_name="",
-        index_settings="",
         pipeline_name=None,
         pipeline_field_map=None,
-        delete_existing=False,
         embedding_type="dense",
     ):
         """
@@ -135,44 +123,8 @@ class OsMlClientWrapper:
         )
         self.index_name = index_name
         self.pipeline_name = pipeline_name
-        try:
-            # TODO: Should this go in .env? Maybe just the trusted endpoints?
-            self.os_client.cluster.put_settings(
-                body={
-                    "persistent": {
-                        "plugins.ml_commons.model_access_control_enabled": False,
-                        "plugins.ml_commons.allow_registering_model_via_url": True,
-                    }
-                }
-            )
-        except Exception as e:
-            logging.info(f"Setting up cluster settings failed due to exception {e}")
-
-        try:
-            self.os_client.cluster.put_settings(
-                body={
-                    "persistent": {
-                        "plugins.ml_commons.only_run_on_ml_node": False,
-                    }
-                }
-            )
-        except Exception as e:
-            # AOS cannot apply allow_registering_model_via_url setting
-            self.os_client.cluster.put_settings(
-                body={
-                    "persistent": {
-                        "plugins.ml_commons.only_run_on_ml_node": False,
-                    }
-                }
-            )
-
         self.ml_model = ml_model
-        if delete_existing:
-            self.delete_then_create_index(
-                index_name=index_name, settings=index_settings
-            )
-        else:
-            self.idempotent_create_index(index_name=index_name, settings=index_settings)
+
         if embedding_type == "sparse":
             self._add_sparse_pipeline(
                 pipeline_name=pipeline_name, pipeline_field_map=pipeline_field_map

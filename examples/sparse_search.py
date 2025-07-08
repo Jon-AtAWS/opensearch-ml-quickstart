@@ -73,25 +73,17 @@ def load_dataset(
     index_name: str,
     pipeline_name: str,
 ):
-    if client.os_client.indices.exists(index_name):
-        if config["delete_existing_index"]:
-            logging.info(f"Deleting existing index {index_name}, then creating a new one")
-            client.delete_then_create_index(index_name=index_name, settings=config["index_settings"])
-        else:
-            logging.info(f"Index {index_name} already exists. Skipping loading dataset")
-            return
-    else:
-        logging.info(f"Creating new index {index_name}")
-        client.idempotent_create_index(
-            index_name=config["index_name"], settings=config["index_settings"]
-        )
-
     logging.info("Setting up for KNN")
+    client.handle_index_creation(
+        index_name=index_name,
+        index_settings=config["index_settings"],
+        delete_existing=config["delete_existing_index"],
+    )
+
     client.setup_for_kNN(
         ml_model=ml_model,
         index_name=config["index_name"],
         pipeline_name=pipeline_name,
-        index_settings=config["index_settings"],
         pipeline_field_map=config["pipeline_field_map"],
         embedding_type=config["embedding_type"],
     )

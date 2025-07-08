@@ -68,3 +68,20 @@ def delete_index(client: OpenSearch, index_name: str):
         client.indices.delete(index=index_name)
     else:
         logging.info(f"Index {index_name} does not exist. Skipping deletion.")
+
+
+def idempotent_create_index(os_client: OpenSearch, index_name="", settings=None):
+    """
+    Create the index with settings.
+    """
+    if not index_name:
+        raise ValueError("idempotent_create_index: index name must be specified")
+    if not settings:
+        raise ValueError("idempotent_create_index: settings must be specified")
+    try:
+        response = os_client.indices.create(index_name, body=settings)
+        logging.info(
+            f"idempotent_create_index response: {response}",
+        )
+    except Exception as e:
+        logging.error(f"Error creating index {index_name} due to exception: {e}")

@@ -10,4 +10,6 @@ from .index_utils import (
     send_bulk_ignore_exceptions,
     load_category,
     get_index_size,
+    delete_index,
+    idempotent_create_index,
 )
