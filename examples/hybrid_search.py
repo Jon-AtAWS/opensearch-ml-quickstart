@@ -107,7 +107,7 @@ def load_dataset(
 
     for category in config["categories"]:
         load_category(
-            client=client.os_client,
+            os_client=client.os_client,
             pqa_reader=pqa_reader,
             category=category,
             config=config,

@@ -4,23 +4,71 @@ from opensearchpy import helpers, OpenSearch
 from data_process import QAndAFileReader
 
 
-def send_bulk_ignore_exceptions(client: OpenSearch, config: Dict[str, str], docs):
-    logging.info(f"Sending {config['bulk_send_chunk_size']} docs over the wire")
-    try:
-        status = helpers.bulk(
-            client,
-            docs,
-            chunk_size=config['bulk_send_chunk_size'],
-            request_timeout=300,
-            max_retries=10,
-            raise_on_error=False,
+def handle_index_creation(
+    os_client: OpenSearch,
+    config: Dict[str, str],
+    delete_existing: bool = False,
+):
+    # First check if the index exists and delete it if the command line
+    # parameter delete_existing is set. If it doesn't exist, log that and
+    # skip deletion.
+    index_name = config["index_name"]
+    logging.info(f"Handling index creation for {index_name}")
+
+    index_settings = config["index_settings"]
+    import json
+    logging.info(f"Index settings: {json.dumps(index_settings, indent=2)}")
+
+    index_exists = os_client.indices.exists(index=index_name)
+    logging.info(f"Index {index_name} exists: {index_exists}")
+    logging.info(f"Delete existing index: {delete_existing}")
+
+    if index_exists and delete_existing:
+        logging.info(f"Deleting index {index_name}")
+        os_client.indices.delete(index=index_name)
+    elif delete_existing:
+        logging.info(f"Index {index_name} does not exist. Skipping deletion.")
+
+    if os_client.indices.exists(index=index_name):
+        logging.info(f'index "{index_name}" exists. Skipping index creation.')
+    else:
+        try:
+            response = os_client.indices.create(index_name, body=index_settings)
+            logging.info(f"Create index response: {response}")
+        except Exception as e:
+            logging.error(f"Error creating index {index_name} due to exception: {e}")
+
+
+def handle_data_loading(os_client: OpenSearch,
+                        pqa_reader: QAndAFileReader,
+                        config: Dict[str, str],
+                        no_load: bool = False,
+                        ):
+    """
+    Handle data loading into OpenSearch index.
+    
+    Parameters:
+        client (OpenSearch): OpenSearch client instance
+        pqa_reader (QAndAFileReader): Reader for Amazon PQA dataset
+        config (Dict[str, str]): Configuration dictionary containing index settings and categories
+    
+    Returns:
+        None
+    """
+    if no_load:
+        logging.info("Skipping data loading, per command line argument")
+        return
+
+    for category in config["categories"]:
+        load_category(
+            os_client=os_client,
+            pqa_reader=pqa_reader,
+            category=category,
+            config=config,
         )
-        return status
-    except Exception as e:
-        logging.error(f"Error sending bulk: {e}")
+        
 
-
-def load_category(client: OpenSearch, pqa_reader: QAndAFileReader, category, config):
+def load_category(os_client: OpenSearch, pqa_reader: QAndAFileReader, category, config):
     SPACE_SEPARATOR = " "
     logging.info(f'Loading category "{category}"')
     docs = []
@@ -42,12 +90,27 @@ def load_category(client: OpenSearch, pqa_reader: QAndAFileReader, category, con
         docs.append(doc)
         number_of_docs += 1
         if number_of_docs % 2000 == 0:
-            logging.info(f"Sending {number_of_docs} docs")
-            send_bulk_ignore_exceptions(client, config, docs)
+            send_bulk_ignore_exceptions(os_client, config, docs)
             docs = []
     if len(docs) > 0:
-        logging.info(f'Category "{category}" complete. Sending {number_of_docs} docs')
-        send_bulk_ignore_exceptions(client, config, docs)
+        logging.info(f'Finished reading "{category}" going to send remaining docs')
+        send_bulk_ignore_exceptions(os_client, config, docs)
+
+
+def send_bulk_ignore_exceptions(client: OpenSearch, config: Dict[str, str], docs):
+    logging.info(f"Sending {config['bulk_send_chunk_size']} docs over the wire")
+    try:
+        status = helpers.bulk(
+            client,
+            docs,
+            chunk_size=config['bulk_send_chunk_size'],
+            request_timeout=300,
+            max_retries=10,
+            raise_on_error=False,
+        )
+        return status
+    except Exception as e:
+        logging.error(f"Error sending bulk: {e}")
 
 
 def get_index_size(client: OpenSearch, index_name, unit="mb"):
@@ -61,27 +124,3 @@ def get_index_size(client: OpenSearch, index_name, unit="mb"):
     )
 
 
-def delete_index(client: OpenSearch, index_name: str):
-    """Delete the index if it exists"""
-    if client.indices.exists(index=index_name):
-        logging.info(f"Deleting index {index_name}")
-        client.indices.delete(index=index_name)
-    else:
-        logging.info(f"Index {index_name} does not exist. Skipping deletion.")
-
-
-def idempotent_create_index(os_client: OpenSearch, index_name="", settings=None):
-    """
-    Create the index with settings.
-    """
-    if not index_name:
-        raise ValueError("idempotent_create_index: index name must be specified")
-    if not settings:
-        raise ValueError("idempotent_create_index: settings must be specified")
-    try:
-        response = os_client.indices.create(index_name, body=settings)
-        logging.info(
-            f"idempotent_create_index response: {response}",
-        )
-    except Exception as e:
-        logging.error(f"Error creating index {index_name} due to exception: {e}")

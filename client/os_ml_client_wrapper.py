@@ -91,22 +91,6 @@ class OsMlClientWrapper:
         logging.info("Adding sparse pipeline...")
         self.os_client.ingest.put_pipeline(pipeline_name, body=pipeline_config)
         
-    def handle_index_creation(
-        self,
-        index_name: str,
-        index_settings: str,
-        delete_existing: bool = False,
-    ):
-        if delete_existing:
-            index_utils.delete_index(
-                client=self.os_client, index_name=index_name
-            )
-        index_utils.idempotent_create_index(
-            self.os_client,
-            index_name=index_name,
-            settings=index_settings
-        )
-
     def setup_for_kNN(
         self,
         ml_model: MlModel,

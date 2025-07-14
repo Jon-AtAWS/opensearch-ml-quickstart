@@ -1,24 +1,31 @@
 # Copyright opensearch-ml-quickstart contributors
 # SPDX-License-Identifier: Apache-2.0
 
+"""
+Lexical Search Example
+
+This module demonstrates lexical (keyword-based) search using OpenSearch.
+It loads data from the Amazon PQA dataset and provides an interactive
+search interface using traditional text matching.
+
+See cmd_line_params.py for command line parameters.
+
+Consider:
+ - c, --categories: Comma-separated list of categories to load from the dataset.
+
+This example is designed to be run in a terminal environment.
+"""
+
+import logging
 import os
 import sys
-import json
-import logging
-from typing import Dict
-
 
 import cmd_line_params
 import print_utils
 
-
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from client import OsMlClientWrapper, get_client, index_utils
 from configs import BASE_MAPPING_PATH, QANDA_FILE_READER_PATH
-from client import (
-    get_client,
-    OsMlClientWrapper,
-    load_category,
-)
 from data_process import QAndAFileReader
 from mapping import get_base_mapping
 
@@ -28,50 +35,31 @@ logging.basicConfig(
     level=logging.INFO,
 )
 
-# ANSI escape sequence constants with improved colors
-BOLD = "\033[1m"
-RESET = "\033[0m"
-
-# Headers
-LIGHT_RED_HEADER = "\033[1;31m"
-LIGHT_GREEN_HEADER = "\033[1;32m"
-LIGHT_BLUE_HEADER = "\033[1;34m"
-LIGHT_YELLOW_HEADER = "\033[1;33m"
-LIGHT_PURPLE_HEADER = "\033[1;35m"
-
-
-def load_dataset(
-    client: OsMlClientWrapper,
-    pqa_reader: QAndAFileReader,
-    config: Dict[str, str],
-    index_name: str,
-):
-    client.handle_index_creation(
-        index_name=index_name,
-        index_settings=config["index_settings"],
-        delete_existing=config["delete_existing_index"],
-    )
-
-    for category in config["categories"]:
-        load_category(
-            client=client.os_client,
-            pqa_reader=pqa_reader,
-            category=category,
-            config=config,
-        )
-
 
 def main():
+    """
+    Main function to run lexical search example.
+    
+    This function:
+    1. Parses command line arguments
+    2. Initializes OpenSearch client and data reader
+    3. Loads dataset into OpenSearch index
+    4. Provides interactive search interface
+    """
     args = cmd_line_params.get_command_line_args()
-    host_type = "aos"
+
+    # The index name for lexical search. Could be a command line argument. For
+    # simplicity, use a fixed name here.
     index_name = "lexical_search"
 
-    client = OsMlClientWrapper(get_client(host_type))
+    # Initialize OpenSearch client and data reader
+    client = OsMlClientWrapper(get_client(args.opensearch_type))
     pqa_reader = QAndAFileReader(
         directory=QANDA_FILE_READER_PATH,
         max_number_of_docs=args.number_of_docs_per_category,
     )
 
+    # Set the configuration
     config = {
         "categories": args.categories,
         "index_name": index_name,
@@ -80,23 +68,35 @@ def main():
         "bulk_send_chunk_size": args.bulk_send_chunk_size,
     }
 
-    load_dataset(
-        client,
-        pqa_reader,
-        config,
-        index_name=index_name,
+    # Handle index creation ensures the index exists and creates and applies the
+    # mapping.
+    index_utils.handle_index_creation(
+        os_client=client.os_client,
+        config=config,
+        delete_existing=config["delete_existing_index"],
     )
 
+    # Load data into the index
+    index_utils.handle_data_loading(
+        os_client=client.os_client,
+        pqa_reader=pqa_reader,
+        config=config,
+        no_load=args.no_load,
+    )
+
+    # Interactive search loop
     while True:
         query_text = input("Please input your search query text (or 'quit' to quit): ")
         if query_text == "quit":
             break
+        # Build lexical search query
         search_query = {
             "size": 3,
             "query": {"match": {"chunk": query_text}},
         }
-        print(f"{LIGHT_GREEN_HEADER}Search query:{RESET}")
-        print(json.dumps(search_query, indent=4))
+        print_utils.print_query(search_query)
+
+        # Execute search and display results
         search_results = client.os_client.search(index=index_name, body=search_query)
         hits = search_results["hits"]["hits"]
         input("Press enter to see the search results: ")

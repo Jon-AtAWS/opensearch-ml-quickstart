@@ -1,33 +1,34 @@
 # Copyright opensearch-ml-quickstart contributors
 # SPDX-License-Identifier: Apache-2.0
 
+"""
+Dense Exact Search Example
+
+This module demonstrates dense vector search using OpenSearch with exact k-NN.
+It uses ML models to generate embeddings for semantic search capabilities,
+allowing users to find documents based on meaning rather than exact keyword matches.
+
+The example:
+1. Loads data from Amazon PQA dataset
+2. Creates embeddings using remote ML models (Bedrock/SageMaker)
+3. Stores vectors in OpenSearch with k-NN configuration
+4. Provides interactive semantic search interface
+"""
+
+import logging
 import os
 import sys
-import json
-import logging
-from typing import Dict
-
 
 import cmd_line_params
 import print_utils
 
-
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from configs import (
-    get_remote_connector_configs,
-    BASE_MAPPING_PATH,
-    PIPELINE_FIELD_MAP,
-    QANDA_FILE_READER_PATH,
-)
-from client import (
-    OsMlClientWrapper,
-    get_client,
-    load_category,
-)
+from client import OsMlClientWrapper, get_client, index_utils
+from configs import (BASE_MAPPING_PATH, PIPELINE_FIELD_MAP,
+                     QANDA_FILE_READER_PATH, get_remote_connector_configs)
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
-from ml_models import get_ml_model, MlModel
-
+from ml_models import get_ml_model
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
@@ -35,22 +36,22 @@ logging.basicConfig(
     level=logging.INFO,
 )
 
-# ANSI escape sequence constants with improved colors
-BOLD = "\033[1m"
-RESET = "\033[0m"
-
-# Headers
-LIGHT_RED_HEADER = "\033[1;31m"
-LIGHT_GREEN_HEADER = "\033[1;32m"
-LIGHT_BLUE_HEADER = "\033[1;34m"
-LIGHT_YELLOW_HEADER = "\033[1;33m"
-LIGHT_PURPLE_HEADER = "\033[1;35m"
-
 
 def create_index_settings(base_mapping_path, index_config):
+    """
+    Create OpenSearch index settings for dense vector search.
+    
+    Parameters:
+        base_mapping_path (str): Path to base mapping configuration
+        index_config (dict): Configuration containing pipeline and model settings
+    
+    Returns:
+        dict: Updated index settings with k-NN vector configuration
+    """
     settings = get_base_mapping(base_mapping_path)
     pipeline_name = index_config["pipeline_name"]
     model_dimension = index_config["model_dimensions"]
+    # Configure k-NN settings for vector search
     knn_settings = {
         "settings": {"index": {"knn": True}, "default_pipeline": pipeline_name},
         "mappings": {
@@ -67,46 +68,33 @@ def create_index_settings(base_mapping_path, index_config):
     return settings
 
 
-def load_dataset(
-    client: OsMlClientWrapper,
-    ml_model: MlModel,
-    pqa_reader: QAndAFileReader,
-    config: Dict[str, str],
-    index_name: str,
-    pipeline_name: str,
-):
-    logging.info("Setting up for KNN")
-    client.handle_index_creation(
-        index_name=index_name,
-        index_settings=config["index_settings"],
-        delete_existing=config["delete_existing_index"],
-    )
-
-    client.setup_for_kNN(
-        ml_model=ml_model,
-        index_name=config["index_name"],
-        pipeline_name=pipeline_name,
-        pipeline_field_map=config["pipeline_field_map"],
-        embedding_type=config["embedding_type"],
-    )
-
-    for category in config["categories"]:
-        load_category(
-            client=client.os_client,
-            pqa_reader=pqa_reader,
-            category=category,
-            config=config,
-        )
-
-
 def main():
+    """
+    Main function to run dense exact search example.
+    
+    This function:
+    1. Initializes OpenSearch client and ML model
+    2. Configures k-NN index settings
+    3. Loads dataset with vector embeddings
+    4. Provides interactive semantic search interface
+    """
     args = cmd_line_params.get_command_line_args()
+    
+    if args.opensearch_type != "aos":
+        logging.error(
+            "This example is designed for Amazon OpenSearch Service (AOS) only."
+        )
+        sys.exit(1)
+
+    # This example uses a dense model, hosted on Amazon SageMaker and an Amazon
+    # OpenSearch Service domain.
     host_type = "aos"
     model_type = "sagemaker"
     index_name = "dense_exact_search"
     embedding_type = "dense"
     pipeline_name = "dense-ingest-pipeline"
 
+    # Initialize OpenSearch client and data reader
     client = OsMlClientWrapper(get_client(host_type))
     pqa_reader = QAndAFileReader(
         directory=QANDA_FILE_READER_PATH,
@@ -124,11 +112,11 @@ def main():
         "bulk_send_chunk_size": args.bulk_send_chunk_size,
     }
 
-    model_name = f"{host_type}_{model_type}"
+    # Initialize ML model for embeddings
     model_config = get_remote_connector_configs(
         host_type=host_type, connector_type=model_type
     )
-    model_config["model_name"] = model_name
+    model_config["model_name"] = f"{host_type}_{model_type}"
     model_config["embedding_type"] = embedding_type
     ml_model = get_ml_model(
         host_type=host_type,
@@ -138,26 +126,44 @@ def main():
         ml_commons_client=client.ml_commons_client,
         model_group_id=client.ml_model_group.model_group_id(),
     )
-
     config.update(model_config)
+
     config["index_settings"] = create_index_settings(
         base_mapping_path=BASE_MAPPING_PATH,
         index_config=config,
     )
 
-    load_dataset(
-        client,
-        ml_model,
-        pqa_reader,
-        config,
-        index_name=index_name,
-        pipeline_name=pipeline_name,
+    # Handle index creation ensures the index exists and creates and applies the
+    # mapping.
+    index_utils.handle_index_creation(
+        os_client=client.os_client,
+        config=config,
+        delete_existing=config["delete_existing_index"],
     )
 
+    # Set up k-NN pipeline for automatic embedding generation
+    client.setup_for_kNN(
+        ml_model=ml_model,
+        index_name=config["index_name"],
+        pipeline_name=pipeline_name,
+        pipeline_field_map=config["pipeline_field_map"],
+        embedding_type=config["embedding_type"],
+    )
+
+    # Load data into the index
+    index_utils.handle_data_loading(
+        os_client=client.os_client,
+        pqa_reader=pqa_reader,
+        config=config,
+        no_load=args.no_load,
+    )
+
+    # Interactive semantic search loop
     while True:
         query_text = input("Please input your search query text (or 'quit' to quit): ")
         if query_text == "quit":
             break
+        # Build neural search query for semantic matching
         search_query = {
             "size": 3,
             "query": {
@@ -169,8 +175,9 @@ def main():
                 }
             },
         }
-        print(f"{LIGHT_GREEN_HEADER}Search query:{RESET}")
-        print(json.dumps(search_query, indent=4))
+        print_utils.print_query(search_query)
+
+        # Execute semantic search and display results
         search_results = client.os_client.search(index=index_name, body=search_query)
         hits = search_results["hits"]["hits"]
         input("Press enter to see the search results: ")

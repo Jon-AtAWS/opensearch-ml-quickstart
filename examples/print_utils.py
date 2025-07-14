@@ -1,3 +1,6 @@
+import json
+
+
 # ANSI escape sequence constants with improved colors
 BOLD = "\033[1m"
 RESET = "\033[0m"
@@ -34,3 +37,23 @@ def print_hit(hit_id, hit):
             f'{LIGHT_GREEN_HEADER}Answer {answer_id + 1}:{RESET} {answer["answer_text"]}'
         )
     print()
+
+
+def print_query(query):
+    print(f"{LIGHT_GREEN_HEADER}Search query:{RESET}")
+    print(json.dumps(query, indent=4))
+    print("--------------------------------------------------------------------------------")
+    print()
+    
+
+def print_answer(answer):
+    print(
+        "--------------------------------------------------------------------------------"
+    )
+    print()
+    print(f"{LIGHT_YELLOW_HEADER}LLM Answer:{RESET}")
+    print(answer)
+    print()
+    print(
+        "--------------------------------------------------------------------------------"
+    )

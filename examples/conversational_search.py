@@ -1,51 +1,31 @@
 # Copyright opensearch-ml-quickstart contributors
 # SPDX-License-Identifier: Apache-2.0
 
-import os
-import sys
 import json
 import logging
-from typing import Dict
+import os
+import sys
 import uuid
-
+from typing import Dict
 
 import cmd_line_params
-
+import print_utils
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from configs import (
-    get_remote_connector_configs,
-    BASE_MAPPING_PATH,
-    PIPELINE_FIELD_MAP,
-    QANDA_FILE_READER_PATH,
-)
-from client import get_client, get_client_configs, load_category, OsMlClientWrapper
+from client import (OsMlClientWrapper, get_client, get_client_configs,
+                    index_utils)
+from configs import (BASE_MAPPING_PATH, PIPELINE_FIELD_MAP,
+                     QANDA_FILE_READER_PATH, get_remote_connector_configs)
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
-from ml_models import (
-    get_ml_model,
-    get_aos_connector_helper,
-    MlModel,
-    RemoteMlModel,
-    AosLlmConnector,
-)
+from ml_models import (AosLlmConnector, MlModel, RemoteMlModel,
+                       get_aos_connector_helper, get_ml_model)
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
     datefmt="%Y-%m-%d:%H:%M:%S",
     level=logging.INFO,
 )
-
-# ANSI escape sequence constants with improved colors
-BOLD = "\033[1m"
-RESET = "\033[0m"
-
-# Headers
-LIGHT_RED_HEADER = "\033[1;31m"
-LIGHT_GREEN_HEADER = "\033[1;32m"
-LIGHT_BLUE_HEADER = "\033[1;34m"
-LIGHT_YELLOW_HEADER = "\033[1;33m"
-LIGHT_PURPLE_HEADER = "\033[1;35m"
 
 
 def create_index_settings(base_mapping_path, index_config):
@@ -66,47 +46,7 @@ def create_index_settings(base_mapping_path, index_config):
     return settings
 
 
-def load_dataset(
-    client: OsMlClientWrapper,
-    ml_model: MlModel,
-    pqa_reader: QAndAFileReader,
-    config: Dict[str, str],
-    index_name: str,
-    pipeline_name: str,
-):
-    if client.os_client.indices.exists(index_name):
-        if config["delete_existing_index"]:
-            logging.info(f"Deleting existing index {index_name}, then creating a new one")
-            client.delete_then_create_index(index_name=index_name, settings=config["index_settings"])
-        else:
-            logging.info(f"Index {index_name} already exists. Skipping loading dataset")
-            return
-    else:
-        logging.info(f"Creating new index {index_name}")
-        client.idempotent_create_index(
-            index_name=config["index_name"], settings=config["index_settings"]
-        )
-
-    logging.info("Setting up for KNN")
-    client.setup_for_kNN(
-        ml_model=ml_model,
-        index_name=config["index_name"],
-        pipeline_name=pipeline_name,
-        index_settings=config["index_settings"],
-        pipeline_field_map=config["pipeline_field_map"],
-        embedding_type=config["embedding_type"],
-    )
-
-    for category in config["categories"]:
-        load_category(
-            client=client.os_client,
-            pqa_reader=pqa_reader,
-            category=category,
-            config=config,
-        )
-
-
-def create_llm_model():
+def create_text_gen_model():
     client = OsMlClientWrapper(get_client("aos"))
     connector_configs = get_remote_connector_configs(
         host_type="aos", connector_type="bedrock"
@@ -141,12 +81,19 @@ def create_llm_model():
 
 def main():
     args = cmd_line_params.get_command_line_args()
+
     host_type = "aos"
     model_type = "sagemaker"
     embedding_type = "sparse"
     index_name = "amazon_pqa_qa_emebedding"
     ingest_pipeline_name = "sparse-ingest-pipeline"
     search_pipeline_name = "conversational-search-pipeline"
+    
+    if args.opensearch_type != "aos":
+        logging.error(
+            "This example is designed for Amazon OpenSearch Service (AOS) only."
+        )
+        sys.exit(1)
 
     client = OsMlClientWrapper(get_client(host_type))
     pqa_reader = QAndAFileReader(
@@ -185,17 +132,30 @@ def main():
         base_mapping_path=BASE_MAPPING_PATH,
         index_config=config,
     )
-
-    load_dataset(
-        client,
-        ml_model,
-        pqa_reader,
-        config,
-        index_name=index_name,
-        pipeline_name=ingest_pipeline_name,
+    
+    index_utils.handle_index_creation(
+        os_client=client.os_client,
+        config=config,
+        delete_existing=config["delete_existing_index"],
     )
 
-    llm_model_id = create_llm_model()
+    logging.info("Setting up for KNN")
+    client.setup_for_kNN(
+        ml_model=ml_model,
+        index_name=config["index_name"],
+        pipeline_name=ingest_pipeline_name,
+        pipeline_field_map=config["pipeline_field_map"],
+        embedding_type=config["embedding_type"],
+    )
+
+    index_utils.handle_data_loading(
+        os_client=client.os_client,
+        pqa_reader=pqa_reader,
+        config=config,
+        no_load=args.no_load,
+    )
+
+    text_gen_model_id = create_text_gen_model()
 
     response = client.os_client.transport.perform_request(
         "PUT",
@@ -206,7 +166,7 @@ def main():
                     "retrieval_augmented_generation": {
                         "tag": "conversation demo",
                         "description": "Demo pipeline Using Bedrock Connector",
-                        "model_id": f"{llm_model_id}",
+                        "model_id": f"{text_gen_model_id}",
                         "context_field_list": [
                             "item_name",
                             "product_description",
@@ -236,7 +196,7 @@ def main():
             "size": 3,
             "query": {
                 "neural_sparse": {
-                    "chunk_sparse_embedding": {
+                    "chunk_embedding": {
                         "query_text": question,
                         "model_id": ml_model.model_id(),
                     }
@@ -254,47 +214,16 @@ def main():
                 }
             },
         }
-        print(f"{LIGHT_GREEN_HEADER}Search query:{RESET}")
-        print(json.dumps(search_query, indent=4))
+        print_utils.print_query(search_query)
+
         response = client.os_client.search(
             index=index_name, search_pipeline=search_pipeline_name, body=search_query
         )
         hits = response["hits"]["hits"]
         input("Press enter to see the search results: ")
         for hit_id, hit in enumerate(hits):
-            print(
-                "--------------------------------------------------------------------------------"
-            )
-            print()
-            print(
-                f'{LIGHT_PURPLE_HEADER}Item {hit_id + 1} category:{RESET} {hit["_source"]["category_name"]}'
-            )
-            print(
-                f'{LIGHT_YELLOW_HEADER}Item {hit_id + 1} product name:{RESET} {hit["_source"]["item_name"]}'
-            )
-            print()
-            if hit["_source"]["product_description"]:
-                print(f"{LIGHT_BLUE_HEADER}Production description:{RESET}")
-                print(hit["_source"]["product_description"])
-                print()
-            print(
-                f'{LIGHT_RED_HEADER}Question:{RESET} {hit["_source"]["question_text"]}'
-            )
-            for answer_id, answer in enumerate(hit["_source"]["answers"]):
-                print(
-                    f'{LIGHT_GREEN_HEADER}Answer {answer_id + 1}:{RESET} {answer["answer_text"]}'
-                )
-            print()
-        print(
-            "--------------------------------------------------------------------------------"
-        )
-        print()
-        print(f"{LIGHT_YELLOW_HEADER}LLM Answer:{RESET}")
-        print(response["ext"]["retrieval_augmented_generation"]["answer"])
-        print()
-        print(
-            "--------------------------------------------------------------------------------"
-        )
+            print_utils.print_hit(hit_id, hit)
+        print_utils.print_answer(response["ext"]["retrieval_augmented_generation"]["answer"])
 
 
 if __name__ == "__main__":
