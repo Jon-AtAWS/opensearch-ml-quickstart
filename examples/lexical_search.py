@@ -36,6 +36,51 @@ logging.basicConfig(
 )
 
 
+def interactive_search_loop(client, index_name):
+    """
+    Provide an interactive search interface for user queries.
+    
+    Parameters:
+        client (OsMlClientWrapper): OpenSearch ML client wrapper
+        index_name (str): Name of the index to search
+    """
+    print_utils.print_search_interface_header(index_name, "Lexical Search")
+    
+    while True:
+        try:
+            query_text = print_utils.print_search_prompt()
+            
+            if query_text.lower().strip() in ['quit', 'exit', 'q']:
+                print_utils.print_goodbye()
+                break
+                
+            if not query_text.strip():
+                print_utils.print_empty_query_warning()
+                continue
+            
+            # Build lexical search query
+            search_query = {
+                "size": 3,
+                "query": {"match": {"chunk": query_text}},
+            }
+            
+            print_utils.print_executing_search()
+            print_utils.print_query(search_query)
+
+            # Execute search and display results
+            search_results = client.os_client.search(index=index_name, body=search_query)
+            
+            # Print search results using the print_utils function
+            print_utils.print_search_results(search_results)
+                    
+        except KeyboardInterrupt:
+            print_utils.print_search_interrupted()
+            break
+        except Exception as e:
+            logging.error(f"Search error: {e}")
+            print_utils.print_search_error(e)
+
+
 def main():
     """
     Main function to run lexical search example.
@@ -84,24 +129,10 @@ def main():
         no_load=args.no_load,
     )
 
-    # Interactive search loop
-    while True:
-        query_text = input("Please input your search query text (or 'quit' to quit): ")
-        if query_text == "quit":
-            break
-        # Build lexical search query
-        search_query = {
-            "size": 3,
-            "query": {"match": {"chunk": query_text}},
-        }
-        print_utils.print_query(search_query)
-
-        # Execute search and display results
-        search_results = client.os_client.search(index=index_name, body=search_query)
-        hits = search_results["hits"]["hits"]
-        input("Press enter to see the search results: ")
-        for hit_id, hit in enumerate(hits):
-            print_utils.print_hit(hit_id, hit)
+    logging.info("Setup complete! Starting interactive search interface...")
+    
+    # Start interactive search loop
+    interactive_search_loop(client, index_name)
 
 if __name__ == "__main__":
     main()

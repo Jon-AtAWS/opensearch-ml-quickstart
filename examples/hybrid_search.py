@@ -114,6 +114,81 @@ def load_dataset(
         )
 
 
+def interactive_search_loop(client, index_name, dense_ml_model, sparse_ml_model, search_pipeline_name, pipeline_config):
+    """
+    Provide an interactive search interface for user queries.
+    
+    Parameters:
+        client (OsMlClientWrapper): OpenSearch ML client wrapper
+        index_name (str): Name of the index to search
+        dense_ml_model: Dense ML model instance for generating embeddings
+        sparse_ml_model: Sparse ML model instance for generating embeddings
+        search_pipeline_name (str): Name of the search pipeline
+        pipeline_config (dict): Search pipeline configuration
+    """
+    print_utils.print_search_interface_header(index_name, f"Dense: {dense_ml_model.model_id()}, Sparse: {sparse_ml_model.model_id()}")
+    
+    while True:
+        try:
+            query_text = print_utils.print_search_prompt()
+            
+            if query_text.lower().strip() in ['quit', 'exit', 'q']:
+                print_utils.print_goodbye()
+                break
+                
+            if not query_text.strip():
+                print_utils.print_empty_query_warning()
+                continue
+            
+            # Build hybrid search query combining dense and sparse
+            search_query = {
+                "size": 3,
+                "query": {
+                    "hybrid": {
+                        "queries": [
+                            {
+                                "neural": {
+                                    "chunk_dense_embedding": {
+                                        "query_text": query_text,
+                                        "model_id": dense_ml_model.model_id(),
+                                    }
+                                }
+                            },
+                            {
+                                "neural_sparse": {
+                                    "chunk_sparse_embedding": {
+                                        "query_text": query_text,
+                                        "model_id": sparse_ml_model.model_id(),
+                                    }
+                                }
+                            },
+                        ]
+                    }
+                },
+            }
+            
+            print_utils.print_executing_search()
+            print_utils.print_query(search_query)
+            
+            print(f"{LIGHT_RED_HEADER}Search pipeline config:{RESET}")
+            print(json.dumps(pipeline_config, indent=4))
+            
+            # Execute hybrid search and display results
+            search_results = client.os_client.search(
+                index=index_name, search_pipeline=search_pipeline_name, body=search_query
+            )
+            
+            # Print search results using the print_utils function
+            print_utils.print_search_results(search_results)
+                    
+        except KeyboardInterrupt:
+            print_utils.print_search_interrupted()
+            break
+        except Exception as e:
+            logging.error(f"Search error: {e}")
+            print_utils.print_search_error(e)
+
+
 def main():
     args = cmd_line_params.get_command_line_args()
     host_type = "aos"
@@ -204,46 +279,10 @@ def main():
         "PUT", f"/_search/pipeline/{search_pipeline_name}", body=pipeline_config
     )
 
-    while True:
-        query_text = input("Please input your search query text (or 'quit' to quit): ")
-        if query_text == "quit":
-            break
-        search_query = {
-            "size": 3,
-            "query": {
-                "hybrid": {
-                    "queries": [
-                        {
-                            "neural": {
-                                "chunk_dense_embedding": {
-                                    "query_text": query_text,
-                                    "model_id": dense_ml_model.model_id(),
-                                }
-                            }
-                        },
-                        {
-                            "neural_sparse": {
-                                "chunk_sparse_embedding": {
-                                    "query_text": query_text,
-                                    "model_id": sparse_ml_model.model_id(),
-                                }
-                            }
-                        },
-                    ]
-                }
-            },
-        }
-        print(f"{LIGHT_GREEN_HEADER}Search query:{RESET}")
-        print(json.dumps(search_query, indent=4))
-        print(f"{LIGHT_RED_HEADER}Search pipeline config:{RESET}")
-        print(json.dumps(pipeline_config, indent=4))
-        search_results = client.os_client.search(
-            index=index_name, search_pipeline=search_pipeline_name, body=search_query
-        )
-        hits = search_results["hits"]["hits"]
-        input("Press enter to see the search results: ")
-        for hit_id, hit in enumerate(hits):
-            print_utils.print_hit(hit_id, hit)
+    logging.info("Setup complete! Starting interactive search interface...")
+    
+    # Start interactive search loop
+    interactive_search_loop(client, index_name, dense_ml_model, sparse_ml_model, search_pipeline_name, pipeline_config)
 
 
 if __name__ == "__main__":
