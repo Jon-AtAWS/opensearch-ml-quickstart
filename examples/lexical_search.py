@@ -8,7 +8,7 @@ This module demonstrates lexical (keyword-based) search using OpenSearch.
 It loads data from the Amazon PQA dataset and provides an interactive
 search interface using traditional text matching.
 
-See cmd_line_params.py for command line parameters.
+See cmd_line_interface.py for command line parameters.
 
 Consider:
  - c, --categories: Comma-separated list of categories to load from the dataset.
@@ -20,8 +20,7 @@ import logging
 import os
 import sys
 
-import cmd_line_params
-import print_utils
+import cmd_line_interface
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from client import OsMlClientWrapper, get_client, index_utils
@@ -36,49 +35,21 @@ logging.basicConfig(
 )
 
 
-def interactive_search_loop(client, index_name):
+def build_lexical_query(query_text, **kwargs):
     """
-    Provide an interactive search interface for user queries.
+    Build lexical search query for keyword-based matching.
     
     Parameters:
-        client (OsMlClientWrapper): OpenSearch ML client wrapper
-        index_name (str): Name of the index to search
-    """
-    print_utils.print_search_interface_header(index_name, "Lexical Search")
+        query_text (str): The search query text
+        **kwargs: Additional parameters (unused)
     
-    while True:
-        try:
-            query_text = print_utils.print_search_prompt()
-            
-            if query_text.lower().strip() in ['quit', 'exit', 'q']:
-                print_utils.print_goodbye()
-                break
-                
-            if not query_text.strip():
-                print_utils.print_empty_query_warning()
-                continue
-            
-            # Build lexical search query
-            search_query = {
-                "size": 3,
-                "query": {"match": {"chunk": query_text}},
-            }
-            
-            print_utils.print_executing_search()
-            print_utils.print_query(search_query)
-
-            # Execute search and display results
-            search_results = client.os_client.search(index=index_name, body=search_query)
-            
-            # Print search results using the print_utils function
-            print_utils.print_search_results(search_results)
-                    
-        except KeyboardInterrupt:
-            print_utils.print_search_interrupted()
-            break
-        except Exception as e:
-            logging.error(f"Search error: {e}")
-            print_utils.print_search_error(e)
+    Returns:
+        dict: OpenSearch query dictionary
+    """
+    return {
+        "size": 3,
+        "query": {"match": {"chunk": query_text}},
+    }
 
 
 def main():
@@ -91,7 +62,7 @@ def main():
     3. Loads dataset into OpenSearch index
     4. Provides interactive search interface
     """
-    args = cmd_line_params.get_command_line_args()
+    args = cmd_line_interface.get_command_line_args()
 
     # The index name for lexical search. Could be a command line argument. For
     # simplicity, use a fixed name here.
@@ -131,8 +102,13 @@ def main():
 
     logging.info("Setup complete! Starting interactive search interface...")
     
-    # Start interactive search loop
-    interactive_search_loop(client, index_name)
+    # Start interactive search loop using the generic function
+    cmd_line_interface.interactive_search_loop(
+        client=client,
+        index_name=index_name,
+        model_info="Lexical Search",
+        query_builder_func=build_lexical_query
+    )
 
 if __name__ == "__main__":
     main()

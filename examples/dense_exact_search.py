@@ -19,8 +19,7 @@ import logging
 import os
 import sys
 
-import cmd_line_params
-import print_utils
+import cmd_line_interface
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from client import OsMlClientWrapper, get_client, index_utils
@@ -68,57 +67,29 @@ def create_index_settings(base_mapping_path, index_config):
     return settings
 
 
-def interactive_search_loop(client, index_name, ml_model):
+def build_dense_exact_query(query_text, ml_model=None, **kwargs):
     """
-    Provide an interactive search interface for user queries.
+    Build neural search query for dense exact vector search.
     
     Parameters:
-        client (OsMlClientWrapper): OpenSearch ML client wrapper
-        index_name (str): Name of the index to search
+        query_text (str): The search query text
         ml_model: ML model instance for generating embeddings
-    """
-    print_utils.print_search_interface_header(index_name, ml_model.model_id())
+        **kwargs: Additional parameters (unused)
     
-    while True:
-        try:
-            query_text = print_utils.print_search_prompt()
-            
-            if query_text.lower().strip() in ['quit', 'exit', 'q']:
-                print_utils.print_goodbye()
-                break
-                
-            if not query_text.strip():
-                print_utils.print_empty_query_warning()
-                continue
-            
-            # Build neural search query for semantic matching
-            search_query = {
-                "size": 3,
-                "query": {
-                    "neural": {
-                        "chunk_embedding": {
-                            "query_text": query_text,
-                            "model_id": ml_model.model_id(),
-                        }
-                    }
-                },
+    Returns:
+        dict: OpenSearch query dictionary
+    """
+    return {
+        "size": 3,
+        "query": {
+            "neural": {
+                "chunk_embedding": {
+                    "query_text": query_text,
+                    "model_id": ml_model.model_id(),
+                }
             }
-            
-            print_utils.print_executing_search()
-            print_utils.print_query(search_query)
-
-            # Execute semantic search and display results
-            search_results = client.os_client.search(index=index_name, body=search_query)
-            
-            # Print search results using the print_utils function
-            print_utils.print_search_results(search_results)
-                    
-        except KeyboardInterrupt:
-            print_utils.print_search_interrupted()
-            break
-        except Exception as e:
-            logging.error(f"Search error: {e}")
-            print_utils.print_search_error(e)
+        },
+    }
 
 
 def main():
@@ -131,7 +102,7 @@ def main():
     3. Loads dataset with vector embeddings
     4. Provides interactive semantic search interface
     """
-    args = cmd_line_params.get_command_line_args()
+    args = cmd_line_interface.get_command_line_args()
     
     if args.opensearch_type != "aos":
         logging.error(
@@ -213,8 +184,14 @@ def main():
 
     logging.info("Setup complete! Starting interactive search interface...")
     
-    # Start interactive search loop
-    interactive_search_loop(client, index_name, ml_model)
+    # Start interactive search loop using the generic function
+    cmd_line_interface.interactive_search_loop(
+        client=client,
+        index_name=index_name,
+        model_info=ml_model.model_id(),
+        query_builder_func=build_dense_exact_query,
+        ml_model=ml_model
+    )
 
 
 if __name__ == "__main__":

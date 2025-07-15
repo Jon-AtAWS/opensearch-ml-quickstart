@@ -8,8 +8,7 @@ import sys
 import uuid
 from typing import Dict
 
-import cmd_line_params
-import print_utils
+import cmd_line_interface
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from client import (OsMlClientWrapper, get_client, get_client_configs,
@@ -79,83 +78,65 @@ def create_text_gen_model():
     return llm_model_id
 
 
-def interactive_search_loop(client, index_name, ml_model, text_gen_model_id, search_pipeline_name, memory_id):
+def process_conversational_results(search_results, **kwargs):
     """
-    Provide an interactive conversational search interface for user queries.
+    Custom result processor for conversational search that handles both search results and LLM answers.
     
     Parameters:
-        client (OsMlClientWrapper): OpenSearch ML client wrapper
-        index_name (str): Name of the index to search
-        ml_model: ML model instance for generating embeddings
-        text_gen_model_id (str): ID of the text generation model
-        search_pipeline_name (str): Name of the search pipeline
-        memory_id (str): ID of the conversation memory
+        search_results (dict): OpenSearch search response
+        **kwargs: Additional parameters (unused)
     """
-    print_utils.print_search_interface_header(index_name, f"Embedding: {ml_model.model_id()}, LLM: {text_gen_model_id}")
+    import logging
     
-    while True:
-        try:
-            question = print_utils.print_search_prompt()
-            
-            if question.lower().strip() in ['quit', 'exit', 'q']:
-                print_utils.print_goodbye()
-                break
-                
-            if not question.strip():
-                print_utils.print_empty_query_warning()
-                continue
-            
-            # Build conversational search query with RAG
-            search_query = {
-                "size": 3,
-                "query": {
-                    "neural_sparse": {
-                        "chunk_embedding": {
-                            "query_text": question,
-                            "model_id": ml_model.model_id(),
-                        }
-                    }
-                },
-                "ext": {
-                    "generative_qa_parameters": {
-                        "llm_model": "bedrock/claude",
-                        "llm_question": question,
-                        "llm_response_field": "response",
-                        "memory_id": memory_id,
-                        "context_size": 10,
-                        "message_size": 10,
-                        "timeout": 30,
-                    }
-                },
-            }
-            
-            print_utils.print_executing_search()
-            print_utils.print_query(search_query)
+    # Print standard search results
+    cmd_line_interface.print_search_results(search_results)
+    
+    # Extract and print LLM answer
+    if "ext" in search_results and "retrieval_augmented_generation" in search_results["ext"]:
+        cmd_line_interface.print_answer(search_results["ext"]["retrieval_augmented_generation"]["answer"])
+    else:
+        logging.warning("No LLM answer found in response")
 
-            # Execute conversational search and display results
-            response = client.os_client.search(
-                index=index_name, search_pipeline=search_pipeline_name, body=search_query
-            )
-            
-            # Print search results using the print_utils function
-            print_utils.print_search_results(response)
-            
-            # Print the LLM-generated answer
-            if "ext" in response and "retrieval_augmented_generation" in response["ext"]:
-                print_utils.print_answer(response["ext"]["retrieval_augmented_generation"]["answer"])
-            else:
-                logging.warning("No LLM answer found in response")
-                    
-        except KeyboardInterrupt:
-            print_utils.print_search_interrupted()
-            break
-        except Exception as e:
-            logging.error(f"Search error: {e}")
-            print_utils.print_search_error(e)
+
+def build_conversational_query(query_text, ml_model=None, memory_id=None, **kwargs):
+    """
+    Build conversational search query with RAG parameters.
+    
+    Parameters:
+        query_text (str): The search query text
+        ml_model: ML model instance for generating embeddings
+        memory_id (str): ID of the conversation memory
+        **kwargs: Additional parameters (unused)
+    
+    Returns:
+        dict: OpenSearch query dictionary with RAG extensions
+    """
+    return {
+        "size": 3,
+        "query": {
+            "neural_sparse": {
+                "chunk_embedding": {
+                    "query_text": query_text,
+                    "model_id": ml_model.model_id(),
+                }
+            }
+        },
+        "ext": {
+            "generative_qa_parameters": {
+                "llm_model": "bedrock/claude",
+                "llm_question": query_text,
+                "llm_response_field": "response",
+                "memory_id": memory_id,
+                "context_size": 10,
+                "message_size": 10,
+                "timeout": 30,
+            }
+        },
+    }
 
 
 def main():
-    args = cmd_line_params.get_command_line_args()
+    args = cmd_line_interface.get_command_line_args()
 
     host_type = "aos"
     model_type = "sagemaker"
@@ -265,8 +246,17 @@ def main():
 
     logging.info("Setup complete! Starting interactive conversational search interface...")
     
-    # Start interactive search loop
-    interactive_search_loop(client, index_name, ml_model, text_gen_model_id, search_pipeline_name, memory_id)
+    # Start interactive search loop using the generic function
+    cmd_line_interface.interactive_search_loop(
+        client=client,
+        index_name=index_name,
+        model_info=f"Embedding: {ml_model.model_id()}, LLM: {text_gen_model_id}",
+        query_builder_func=build_conversational_query,
+        result_processor_func=process_conversational_results,
+        ml_model=ml_model,
+        memory_id=memory_id,
+        search_params={'search_pipeline': search_pipeline_name}
+    )
 
 
 if __name__ == "__main__":
