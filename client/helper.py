@@ -40,6 +40,7 @@ def get_client(host_type: str) -> OpenSearch:
             "plugins.ml_commons.only_run_on_ml_node": True,
         })
     try:
+        logging.info(f"Setting cluster settings: {{'persistent': {settings}}}")
         client.cluster.put_settings(body={"persistent": settings})
     except Exception as e:
         logging.error(f"Failed to set cluster settings: {e}")
