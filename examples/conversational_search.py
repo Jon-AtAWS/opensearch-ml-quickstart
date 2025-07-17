@@ -111,6 +111,10 @@ def build_conversational_query(query_text, ml_model=None, memory_id=None, **kwar
     Returns:
         dict: OpenSearch query dictionary with RAG extensions
     """
+    if not ml_model:
+        raise ValueError("ML model must be provided for conversational search.")
+    if not memory_id:
+        raise ValueError("Memory ID must be provided for conversational search.")
     return {
         "size": 3,
         "query": {

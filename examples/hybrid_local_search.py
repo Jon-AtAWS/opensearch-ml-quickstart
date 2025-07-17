@@ -108,6 +108,8 @@ def build_hybrid_local_query(query_text, ml_model=None, pipeline_config=None, **
     Returns:
         dict: OpenSearch hybrid query dictionary
     """
+    if not ml_model:
+        raise ValueError("ML model must be provided for hybrid local search.")    
     # Print pipeline config if provided
     if pipeline_config:
         print(f"{LIGHT_RED_HEADER}Search pipeline config:{RESET}")

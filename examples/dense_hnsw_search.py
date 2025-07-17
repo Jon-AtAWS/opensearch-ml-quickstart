@@ -60,6 +60,8 @@ def build_dense_hnsw_query(query_text, ml_model=None, **kwargs):
     Returns:
         dict: OpenSearch query dictionary
     """
+    if not ml_model:
+        raise ValueError("ML model must be provided for dense HNSW search.")
     return {
         "size": 3,
         "query": {

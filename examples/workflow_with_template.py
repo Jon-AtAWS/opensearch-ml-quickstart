@@ -222,6 +222,8 @@ def build_workflow_template_query(query_text, ml_model=None, **kwargs):
     Returns:
         dict: OpenSearch query dictionary
     """
+    if not ml_model:
+        raise ValueError("ML model must be provided for workflow search.")
     return {
         "size": 5,
         "query": {

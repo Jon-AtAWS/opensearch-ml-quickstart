@@ -23,20 +23,22 @@ def handle_index_creation(
     logging.info(f"Index {index_name} exists: {index_exists}")
     logging.info(f"Delete existing index: {delete_existing}")
 
-    if index_exists and delete_existing:
-        logging.info(f"Deleting index {index_name}")
-        os_client.indices.delete(index=index_name)
-    elif delete_existing:
-        logging.info(f"Index {index_name} does not exist. Skipping deletion.")
+    if delete_existing:
+        if index_exists:
+            logging.info(f"Deleting index {index_name}")
+            os_client.indices.delete(index=index_name)
+        else:
+            logging.info(f"Index {index_name} does not exist. Skipping deletion.")
 
     if os_client.indices.exists(index=index_name):
         logging.info(f'index "{index_name}" exists. Skipping index creation.')
-    else:
-        try:
-            response = os_client.indices.create(index_name, body=index_settings)
-            logging.info(f"Create index response: {response}")
-        except Exception as e:
-            logging.error(f"Error creating index {index_name} due to exception: {e}")
+        return
+
+    try:
+        response = os_client.indices.create(index_name, body=index_settings)
+        logging.info(f"Create index response: {response}")
+    except Exception as e:
+        logging.error(f"Error creating index {index_name} due to exception: {e}")
 
 
 def handle_data_loading(os_client: OpenSearch,
@@ -68,8 +70,10 @@ def handle_data_loading(os_client: OpenSearch,
         )
         
 
+SPACE_SEPARATOR = " "
+
+
 def load_category(os_client: OpenSearch, pqa_reader: QAndAFileReader, category, config):
-    SPACE_SEPARATOR = " "
     logging.info(f'Loading category "{category}"')
     docs = []
     number_of_docs = 0
@@ -78,6 +82,7 @@ def load_category(os_client: OpenSearch, pqa_reader: QAndAFileReader, category, 
     ):
         doc["_index"] = config["index_name"]
         doc["_id"] = doc["question_id"]
+        # TODO: Work on a much better way to handle the chunking
         doc["chunk"] = SPACE_SEPARATOR.join(
             [doc["product_description"], doc["brand_name"], doc["item_name"]]
         )
@@ -117,10 +122,12 @@ def get_index_size(client: OpenSearch, index_name, unit="mb"):
     """Get the index size from the opensearch client"""
     if not client.indices.exists(index=index_name):
         return 0
-    return int(
-        client.cat.indices(
+
+    index_size = 0
+    try:
+        index_size = int(client.cat.indices(
             index=index_name, params={"bytes": f"{unit}", "h": "pri.store.size"}
-        )
-    )
-
-
+        ))
+    except Exception as e:
+        logging.error(f"Error getting index size for {index_name}: {e}")
+    return index_size

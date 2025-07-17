@@ -51,6 +51,8 @@ def build_sparse_query(query_text, ml_model=None, **kwargs):
     Returns:
         dict: OpenSearch query dictionary
     """
+    if not ml_model:
+        raise ValueError("ML model must be provided for sparse search.")
     return {
         "size": 3,
         "query": {

@@ -450,6 +450,11 @@ pytest tests/integration/
 
 ### Common Issues
 
+#### Bulk ingestion fails for remote models from throttling
+
+- **Cause**: When using a remote model, SageMaker or Bedrock may throttle calls.
+- **Solution**: use the `--bulk-send-chunk-size` command option to reduce the number of documents sent to OpenSearch.
+
 #### `is_datetime_or_timedelta` Error
 - **Cause**: Pandas version compatibility
 - **Solution**: Use Python 3.10+ and pandas 2.0.3

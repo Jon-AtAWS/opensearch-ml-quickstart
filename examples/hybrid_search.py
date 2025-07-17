@@ -127,6 +127,10 @@ def build_hybrid_query(query_text, dense_ml_model=None, sparse_ml_model=None, pi
     Returns:
         dict: OpenSearch query dictionary
     """
+    if not dense_ml_model:
+        raise ValueError("Dense ML model must be provided for hybrid search.")    
+    if not sparse_ml_model:
+        raise ValueError("Sparse ML model must be provided for hybrid search.")    
     # Print pipeline config if provided
     if pipeline_config:
         print(f"{LIGHT_RED_HEADER}Search pipeline config:{RESET}")
