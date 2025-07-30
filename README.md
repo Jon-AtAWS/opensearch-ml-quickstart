@@ -1,201 +1,203 @@
-# OpenSearch ML quickstart
+# OpenSearch ML Quickstart
 
-This tool kit provides a quickstart for working with OpenSearch and ML models, especially LLMs for vector embeddings to power sementic and semantic sparse search. The code includes client classes for OpenSearch's `ml_commons` plugin that manage connections, and setup for `ml_models` and `ml_model_groups`. 
+The OpenSearch ML Quickstart is a comprehensive toolkit designed to simplify the process of building AI-powered search applications with OpenSearch. This project provides a unified framework for implementing various search capabilities including semantic search, sparse search, hybrid search, and conversational AI. By offering production-ready examples and abstractions for OpenSearch's ML Commons plugin, vector embeddings, and large language models, developers can quickly implement advanced search functionality without deep expertise in each technology.
 
-You can run the code against a self-managed OpenSearch cluster, or an Amazon OpenSearch Service domain. And, you can use either a local or remote-hosted model. All of the model management is in the `<root>/ml_models` directory.
+## 🚀 Features
 
-We've provided code in the `<root>/data_process` directory that can read files from the open source [Amazon-PQA data set](https://registry.opendata.aws/amazon-pqa/). You'll need to navigate to the URL, download and unzip the data, storing all of the files in a local directory (we've provided the `datasets` directory for this purpose, see the README there for further instructions). The PQA data provides an excellent data set to explore lexical and semantic search. You can also find code in `qanda_file_reader.py` with generators for reading one or many categories, and code that enriches the documents with metadata and other product information. Use the data enrichment to experiment with hybrid lexical and semantic search.
+OpenSearch ML Quickstart offers a rich set of capabilities to enhance your search applications. The toolkit supports multiple search types including dense vector search for semantic understanding, sparse vector search for keyword awareness, hybrid search combining both approaches, traditional lexical search, and conversational search powered by RAG. 
 
-We used the PQA data to provide a test bed for exploring different models, and different knn engine parameterizations. `<root>/main.py` runs through a set of tests, defined in `<root>/configs/tasks.py`. You can create tasks for local and remote models, loading some or all of the PQA data to test timing and search requests. See `<root>/client/os_ml_client_wrapper.py` for code that sets up OpenSearch's Neural plugin for ingest.
+The framework is designed with flexibility in mind, supporting various model hosting options including local models, Amazon Bedrock, Amazon SageMaker, and Hugging Face. You can deploy OpenSearch either as a self-managed cluster or through Amazon OpenSearch Service, depending on your operational preferences.
 
-The `MlModel` class provides an abstract base class for using ML models, with 2 direct descendants, `LocalMlModel`, and `RemoteMlModel`. If you're running self-managed, you can load models into your local cluster with the `LocalMlModel` class. Amazon OpenSearch Service does not support local models. Use a connector to Amazon Bedrock, or Amazon Sagemaker with the `OsBedrockMlModel` and the `OsSagemakerMLModel` classes. For OpenSearch Service, you can use the `AosBedrockMlModel` and `AosSagemakerMlModel` classes. You can find the source for these classes in the `<root>/ml_models` folder.
+For developers looking to get started quickly, the toolkit includes over eight complete search implementations with interactive interfaces. The OpenSearch Flow Framework integration enables automated setup processes, while the comprehensive ML model abstraction layer provides a unified interface for different model hosting options.
 
-# Set up and run with the Amazon_PQA data set
-
-## Prerequisites
-
-1. Python 3.10 is required. Currently there's a dependency for pandas 2.0.3 that requires Python 3.10. You can find downloads and installation instructions here: https://www.python.org/downloads/.
-
-1. The [Amazon_PQA data set](https://registry.opendata.aws/amazon-pqa/).
-
-1. Have an OpenSearch cluster or Amazon OpenSearch Service domain running. 
-
-    - For instructions on how to set up an Amazon OpenSearch Service domain, see the documentation here: https://docs.aws.amazon.com/opensearch-service/latest/developerguide/gsgcreate-domain.html
-    
-    - For self-managed OpenSearch you can run with Docker, or deploy onto compute. We've provided a `docker-compose.yml` in the `<root>` folder if you want to run locally on Docker. 
-    
-    - The minium required OpenSearch version is **OpenSearch 2.13.0**. The code has been tested through version 2.13.0, 2.16.0 and Amazon OpenSearch Service 2.13.0.
-
-2. If you are using a remote model, you need to configure an IAM user. The user should have permission to [access the Sagemaker](https://docs.aws.amazon.com/sagemaker/latest/dg/security-iam.html) or [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/security_iam_id-based-policy-examples.html) model. If you are using Bedrock, you need to [secure model access](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html) for the model you want to use.
-
-## Setup
-
-1. We recommend setting up a Python virtual environment. Change directory to the `<root>` folder and then:
+## 📁 Project Structure
 
 ```
-python3 -m venv .venv
-source .venv/bin/activate
+opensearch-ml-quickstart/
+├── examples/                    # Interactive search examples
+│   ├── cmd_line_interface.py   # Unified CLI and interface utilities
+│   ├── dense_exact_search.py   # Dense vector search (exact k-NN)
+│   ├── dense_hnsw_search.py    # Dense vector search (HNSW)
+│   ├── sparse_search.py        # Neural sparse search
+│   ├── hybrid_search.py        # Hybrid dense + sparse search
+│   ├── lexical_search.py       # Traditional keyword search
+│   ├── conversational_search.py # RAG-powered conversational AI
+│   ├── workflow_example.py     # Custom workflow templates
+│   └── workflow_with_template.py # Built-in workflow templates
+├── ml_models/                  # ML model abstraction layer
+├── client/                     # OpenSearch client wrappers
+├── configs/                    # Configuration management
+├── data_process/              # Data processing utilities
+├── mapping/                   # Index mapping utilities
+└── datasets/                  # Sample data storage
 ```
 
-2. Install all the required packages with 
+## 🏗️ Architecture Overview
+
+### ML Model Hierarchy
+
+The architecture of OpenSearch ML Quickstart is centered around a well-designed abstraction layer for ML models. This design allows developers to work with different model types and hosting scenarios through a consistent interface, hiding the complexity of the underlying implementations.
+
+The `ml_models/` directory contains a class hierarchy that abstracts away the differences between local and remote models:
 
 ```
-pip3 install -r requirements.txt
+MlModel (Abstract Base Class)
+├── LocalMlModel                    # Models deployed within OpenSearch cluster
+│   └── Supports: Hugging Face models, ONNX models
+└── RemoteMlModel                   # Models hosted externally via connectors
+    ├── OsBedrockMlModel           # Self-managed OS → Amazon Bedrock
+    ├── OsSagemakerMlModel         # Self-managed OS → Amazon SageMaker  
+    ├── AosBedrockMlModel          # Amazon OpenSearch Service → Bedrock
+    └── AosSagemakerMlModel        # Amazon OpenSearch Service → SageMaker
 ```
 
-# Usage
+The `MlModel` base class serves as the foundation of this hierarchy, providing a unified interface for all model types. It handles the complete model lifecycle including registration, deployment, and deletion, while also managing model groups and versioning. The abstract methods like `model_id()`, `deploy()`, and `delete()` ensure that all derived classes implement the necessary functionality.
 
-## Configure
+For scenarios where models can be deployed directly within the OpenSearch cluster, the `LocalMlModel` class provides support for Hugging Face transformers and ONNX models. This approach is ideal for self-managed clusters with sufficient resources but is not supported on Amazon OpenSearch Service.
 
-Modify files in the `configs` directory with your own values. See below for the different cases of local/managed service, and local/remote models. Be sure to set a correct path for `QANDA_FILE_READER_PATH`
+The `RemoteMlModel` class serves as the base for all externally hosted models, using OpenSearch ML connectors for communication. It handles connector creation and management and supports both dense and sparse embeddings. The derived classes like `AosBedrockMlModel`, `AosSagemakerMlModel`, `OsBedrockMlModel`, and `OsSagemakerMlModel` provide specific implementations for different combinations of OpenSearch deployments and model hosting services.
 
-## Local OpenSearch, local model
+This hierarchical design allows developers to switch between different model hosting options with minimal code changes, making it easy to experiment with different approaches or migrate between deployment strategies.
 
-### configs/.env
+### Client Architecture
 
-In .env you set up credentials for contacting the OpenSearch domain or cluster. If you're running locally, you don't need to set up credentials for an Amazon OpenSearch Service domain, or vice-versa.
+The client architecture in OpenSearch ML Quickstart is designed to simplify interactions with OpenSearch and its ML capabilities. The `client/` directory provides abstractions that hide the complexity of direct API calls and configuration management.
 
-If you're running locally, set these values
+At the core of this architecture is the `OsMlClientWrapper` class, which combines OpenSearch and ML Commons clients into a unified interface. This wrapper provides high-level methods for index management, pipeline setup, k-NN configuration, neural search setup, and model group management. By encapsulating these functionalities, the wrapper allows developers to focus on building search applications rather than dealing with low-level OpenSearch configurations.
 
-```
-OS_USERNAME=<A user with sufficient permissions>
-OS_PASSWORD=<User's password>
-```
+The `get_client()` factory function creates appropriate client instances based on the deployment type, supporting both self-managed OpenSearch clusters and Amazon OpenSearch Service. It handles authentication and connection management, ensuring that the correct credentials and endpoints are used.
 
-Additionally, if you are running OpenSearch at a different port, or using OpenSearch open source, set these variables.
+The `index_utils` module complements the client wrapper by providing utilities for index creation and management, data loading and bulk operations, mapping application and validation, and category-based data processing. These utilities streamline common tasks and ensure consistent behavior across different search implementations.
 
-```
-OS_HOST_URL=localhost
-OS_PORT=9200
-```
+Here's an example of how these components work together:
 
-## Run
+```python
+# Client initialization
+client = OsMlClientWrapper(get_client("aos"))  # or "os"
 
-The simplest way to use the toolkit is to load data into OpenSearch running locally, on Docker desktop, and with a hugging face model loaded into the local, ML node.
+# Index and pipeline setup
+client.setup_for_kNN(ml_model, index_name, pipeline_name, field_map, embedding_type)
 
-1. Start Docker Desktop
-2. Bring up the OpenSearch cluster with docker compose. Be sure to replace the `ExamplePassword!` below with a real password! Make a note of it, you'll need it in a second.
-
-   1. `cd <root>`
-   2. `export OPENSEARCH_INITAL_ADMIN_PASSWORD="<ExamplePassword!>"`
-   3. `docker compose up`
-
-3. Make sure that `OS_PASSWORD` in `<root>/configs/.env` is the same as your `OPENSEARCH_INITIAL_ADMIN_PASSWORD` when you started docker.
-4. To run main.py, be sure your virtual environment is active (`source .venv/bin/activate`), then
-
-    ```
-    cd <root>
-    python main.py --model_type local --host_type os -c adapters --delete_existing --number_of_docs 10   
-    ```
-
-   NOTE: If this is your first time running, it will take a minute for the model to load and deploy. If you're watching the log output, you'll see it busy waiting.
-
-This will load 10 items from the "adapters" category, using the default index, and ingest pipeline names (both: `amazon_pqa`). You can set `number_of_docs` to `-1` if you want to load the whole category. You can omit the `-c adapters` to load the whole data set (or include a comma-separated list for more than 1 category).
-
-Since the above command line does not specify `--cleanup`, the toolkit leaves the index, model, and model group intact in the cluster. You can go to the Dev Tools tab in OpenSearch Dashboards and see the index is there with `GET /_cat/indices`
-
-# Working with remote models
-
-To work with a remote model, you'll need an AWS account, with sufficient permissions to access Amazon Bedrock (Bedrock) or Amazon SageMaker (SageMaker), and to add access for Bedrock models. You can use remote models either with OpenSearch running locally, or Amazon OpenSearch Service (OpenSearch Service) managed clusters. Note, opensearch-ml-quickstart does not work with Amazon OpenSearch Serverless at this time.
-See below for instructions on setting up and running with an OpenSearch Service domain.
-
-## Bedrock
-
-First, set up model access for Amazon Bedrock in the AWS console. From the Bedrock console, scroll down to the **Bedrock Configurations** section in the left navigation panel. Click **Model Access**. Add access for your account (or verify that you have access) to the embeddings model of your choice.
-
-You configure OS_BEDROCK_URL in `<root>/conifgs/.env`.
-
-Set the access and secret key for the account connecting to Bedrock<br>
-`OS_BEDROCK_ACCESS_KEY=<Your AWS Access Key>`
-`OS_BEDROCK_SECRET_KEY=<Your AWS Secret Access Key>`
-
-Set the destination region<br>
-`OS_BEDROCK_REGION=<Destination bedrock region>`
-
-Set the URL where the quickstart will access Bedrock. The URL must be of the form: https://bedrock-runtime.`<region>`.amazonaws.com/model/`<model name>`/invoke. For example, to use Titan text embeddings, specify `https://bedrock-runtime.us-west-2.amazonaws.com/model/amazon.titan-embed-text-v1/invoke`.<br>
-`OS_BEDROCK_URL=<Bedrock URL>`
-
-Depending on your model, set the number of vector dimensions for the generated embeddings. E.g., for Amazon Titan text embeddings, use 1536 dimensions.<br>
-`OS_BEDROCK_MODEL_DIMENSION=1536`
-
-# Working with Amazon OpenSearch Service
-
-You can use opensearch-ml-quickstart to connect to an Amazon OpenSearch Service domain. Opensearch-ml-quickstart does not work with Amazon OpenSearch Serverless collections, you must deploy a managed cluster.
-
-## Create a domain
-
-Follow [the developer guide's instructions](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/gsgcreate-domain.html) to create a domain, with these changes:
-
-1. Under **Network** choose **Public Access**
-2. Under **Fine-grained access control** choose **Create master user**
-   - Set a master user name and password. Record these for later use
-
-## Set up variables in `<root>/configs/.env` for the domain
-
-Set the master user's login credentials<br>
-`AOS_USERNAME=<Your domain's 'Master user' user name>`<br>
-`AOS_PASSWORD=<Your domain's 'Master user' password>`
-
-Set the domain name<br>
-`AOS_DOMAIN_NAME=<Your domain's name>`<br>
-`AOS_REGION=<Your domain's region>`
-
-Set the domain's Domain Endpoint. You can find this on the OpenSearch Service console in the AWS console. Click on **Managed clusters > Domains > <your domain name>** in the left nav to get to your domain's dashboard. Locate the domain endpoint and copy-paste it<br>
-`AOS_HOST_URL=<Your domain's endpoint>`
-
-Set the user name from the IAM user that created the domain and will connect to Bedrock.<br>
-`AOS_AWS_USER_NAME=<Your IAM user name>`
-
-### (Bedrock) Set up variables in `<root>/configs/.env` to connect with the model 
-
-Set the region where you are connecting to Bedrock.<br>
-`AOS_BEDROCK_REGION=<AWS region like us-west-2>`
-
-Opensearch-ml-quickstart creates two roles for the connector. The first role the `AOS_BEDROCK_CREATE_CONNECTOR_ROLE` enables the quickstart to write to OpenSearch Service to create the connector, and to set up fine-grained access control to allow writes. The second role, `AOS_BEDROCK_CONNECTOR_ROLE`, enables OpenSearch Service to call Bedrock to create embeddings.<br>
-`AOS_BEDROCK_CONNECTOR_ROLE_NAME=<Name for the role created role for OpenSearch->Bedrock access>`<br>
-`AOS_BEDROCK_CREATE_CONNECTOR_ROLE_NAME=<Name for the role to create the connector>`
-
-Set the URL and model dimensions for bedrock<br>
-`AOS_BEDROCK_URL=<Set as above: https://bedrock-runtime.us-west-2.amazonaws.com/model/amazon.titan-embed-text-v1/invoke>`<br>
-`AOS_BEDROCK_MODEL_DIMENSION=<Integer: the number of dimensions in the embeddings>`
-
-Run the code
-
-```
-cd <root>
-python main.py --model_type bedrock --host_type aos -c adapters --delete_existing --number_of_docs 10   
+# Model group management
+model_group_id = client.ml_model_group.model_group_id()
 ```
 
-### (SageMaker) Set up variables in `<root>/configs/.env` to connect with the model 
+This architecture enables developers to work with OpenSearch and its ML capabilities through a clean, high-level interface, reducing the learning curve and accelerating development.
 
+## 🎯 Search Examples
 
-# Testing
+OpenSearch ML Quickstart provides a comprehensive set of search examples that demonstrate different approaches to implementing search functionality. These examples serve as both reference implementations and starting points for custom development.
 
-This repo has both unit tests and integration tests. For unit tests, you can test with:
+The `examples/` directory contains eight production-ready search implementations, each focusing on a specific search approach:
 
-```
-pytest tests/unit/
-```
+| Example | Search Type | Use Case |
+|---------|-------------|----------|
+| `dense_exact_search.py` | Dense Vector (Exact k-NN) | High accuracy semantic search |
+| `dense_hnsw_search.py` | Dense Vector (HNSW) | Fast approximate semantic search |
+| `sparse_search.py` | Neural Sparse | Keyword-aware semantic search |
+| `hybrid_search.py` | Dense + Sparse Hybrid | Best of both worlds |
+| `lexical_search.py` | Traditional Keyword | Classic text search |
+| `conversational_search.py` | RAG + LLM | Conversational AI with context |
+| `workflow_example.py` | Custom Workflow | Automated setup with custom templates |
+| `workflow_with_template.py` | Built-in Workflow | Automated setup with OpenSearch templates |
 
-For integration tests, you can test with:
+Each example demonstrates a complete implementation of a specific search approach, including index setup, data loading, model deployment, and interactive search. By studying these examples, developers can understand the tradeoffs between different search approaches and choose the one that best fits their requirements.
 
-```
-pytest tests/integration
-```
+### Unified Command-Line Interface
 
-As it takes longer to run integration test, we strongly recommend you running each integration test file like:
+To ensure consistency across examples and simplify user interaction, all examples use the consolidated `cmd_line_interface.py` module. This module provides a unified command-line interface with consistent argument parsing, interactive search capabilities, and error handling.
 
-```
-pytest tests/integration/main_test.py
-```
+The interface supports argument parsing with consistent CLI options across all examples, making it easy to switch between different search approaches. The interactive search loop provides a generic framework for executing searches with customizable query builders, allowing developers to focus on the search logic rather than the user interface.
 
-Please note that you need to comment out some model type or host type if you have not specified all the copnfigs under `src/config`.
+The user experience is enhanced with colorized output, robust error handling, and multiple quit options. The interface is also designed to be extensible through a callback pattern for custom search logic, enabling developers to adapt it to their specific requirements.
 
-# Troubleshooting
+This unified approach to user interaction ensures that developers can focus on understanding and implementing different search approaches without having to reinvent the wheel for each example.
 
-## is_datetime_or_timedelta
+## 📋 Prerequisites
 
-See also [this GitHub issue](https://github.com/opensearch-project/opensearch-py-ml/issues/263)
+Before getting started with OpenSearch ML Quickstart, you'll need to ensure that your environment meets certain requirements. The toolkit requires Python 3.10 or later, primarily due to compatibility with pandas 2.0.3. You'll also need OpenSearch 2.13.0 or later, with testing having been conducted through version 2.16.0. For local development, Docker Desktop is recommended for running a self-managed OpenSearch cluster.
 
-Opensearch-py-ml requires pandas, which in turn requires this function. OpenSearch-ml-quickstart requires pandas version 2.0.3, and Python 3.10 (lower versions might also work). You can use [Anaconda](https://www.anaconda.com/) to create a Python 3.10 environment, and then use that to create your virtual environment.
+In terms of data, the examples use the Amazon PQA Dataset, which should be downloaded and extracted to the `datasets/` directory. This dataset provides a realistic corpus for demonstrating different search approaches.
+
+OpenSearch ML Quickstart supports two deployment options for OpenSearch. The first option is a self-managed OpenSearch cluster, which can be deployed locally using the provided Docker Compose configuration or as a custom cluster. This option supports both local and remote models. The second option is Amazon OpenSearch Service, which provides a managed OpenSearch domain. This option requires public access configuration and fine-grained access control with a master user, and only supports remote models through Bedrock or SageMaker.
+
+For model hosting, the toolkit supports both local and remote options. Local models, which are only supported with self-managed OpenSearch clusters, include Hugging Face transformers and ONNX models deployed within the OpenSearch cluster. Remote models, which are supported with both deployment options, include Amazon Bedrock foundation models like Titan and Claude, as well as custom model endpoints on Amazon SageMaker. Using remote models requires appropriate AWS IAM permissions.
+
+## 🛠️ Setup and Installation
+
+Setting up OpenSearch ML Quickstart involves several steps, starting with environment setup. After cloning the repository, you'll need to create and activate a virtual environment, then install the required dependencies using pip. This ensures that your development environment has all the necessary packages.
+
+Next, you'll need to download the sample data. The examples use the Amazon PQA dataset, which should be downloaded from the AWS Open Data Registry and extracted to the `datasets/amazon-pqa/` directory. This dataset provides a realistic corpus for demonstrating different search approaches.
+
+Configuration is managed through files in the `configs/` directory. The `.env` file contains environment variables and credentials, the `config.py` file contains application configuration, and the `tasks.py` file contains test task definitions. These files allow you to customize the behavior of the toolkit to suit your specific requirements.
+
+## ⚙️ Configuration Guide
+
+OpenSearch ML Quickstart supports various deployment scenarios, each requiring specific configuration. For local development with a self-managed OpenSearch cluster and local models, you'll need to set up environment variables for OpenSearch credentials and connection details. You can then start the local OpenSearch cluster using Docker Compose and run one of the examples.
+
+For using a self-managed OpenSearch cluster with remote models like Amazon Bedrock, you'll need to configure both OpenSearch credentials and Bedrock access details. This includes AWS access keys, region, model endpoint URL, and model dimension.
+
+When working with Amazon OpenSearch Service and Bedrock, you'll need to configure credentials for both services, including domain name, region, host URL, and IAM roles for connector creation and access. Similar configuration is required for using Amazon OpenSearch Service with SageMaker endpoints.
+
+These configuration options provide flexibility in how you deploy and use OpenSearch ML Quickstart, allowing you to choose the approach that best fits your requirements and constraints.
+
+## 🚀 Usage Examples
+
+OpenSearch ML Quickstart provides several usage examples to help you get started quickly. For local development, you can start a local OpenSearch cluster using Docker Compose, then run one of the example scripts like `dense_exact_search.py`. This will set up the necessary index, load sample data, and start an interactive search interface where you can enter queries and see the results.
+
+For production scenarios, you might want to use more advanced search approaches like hybrid search, which combines dense and sparse vectors for improved relevance. The `hybrid_search.py` example demonstrates this approach, allowing you to specify categories of data to load and the number of documents per category.
+
+If you're interested in conversational AI, the `conversational_search.py` example shows how to implement a RAG-powered conversational search interface. This approach combines retrieval-augmented generation with large language models to provide contextually relevant responses to user queries.
+
+For automated setup, the `workflow_example.py` and `workflow_with_template.py` examples demonstrate how to use the OpenSearch Flow Framework to automate the process of setting up indices, loading data, and deploying models. This approach is particularly useful for production deployments where you want to ensure consistent configuration.
+
+All examples support a common set of command-line options, including the OpenSearch deployment type, data categories to load, number of documents per category, and options for deleting existing indices and controlling bulk operations. This consistency makes it easy to switch between different examples and approaches.
+
+## 🔧 Advanced Configuration
+
+Beyond the basic usage examples, OpenSearch ML Quickstart supports advanced configuration for custom model integration and search implementation. For custom model integration, you can create instances of the appropriate model classes with specific parameters. For example, you can create an `AosBedrockMlModel` instance with custom configuration for using a specific Bedrock model with Amazon OpenSearch Service.
+
+For custom search implementation, you can define your own query builder function that constructs the appropriate OpenSearch query based on the user's input. This function can then be used with the generic search loop provided by the `cmd_line_interface` module, allowing you to customize the search behavior while reusing the interactive interface.
+
+The toolkit also supports workflow templates for automated setup. You can define custom workflow templates that specify the steps for provisioning resources, creating indices, and deploying models. These templates can be used with the OpenSearch Flow Framework to automate the setup process.
+
+These advanced configuration options provide flexibility for adapting OpenSearch ML Quickstart to your specific requirements, whether you're using custom models, implementing specialized search logic, or automating the deployment process.
+
+## 🧪 Testing
+
+OpenSearch ML Quickstart includes a comprehensive test suite to ensure the reliability of its components. The test suite is divided into unit tests and integration tests, allowing you to verify both the individual components and their interactions.
+
+Unit tests focus on testing the behavior of individual classes and functions in isolation, ensuring that they work as expected. These tests can be run quickly and are useful for verifying changes to specific components.
+
+Integration tests verify the interactions between different components, ensuring that they work together correctly. These tests take longer to run but provide more comprehensive validation of the system's behavior. You can run specific integration test files or the entire suite, depending on your needs.
+
+When running tests, you may need to comment out model types or host types in the test files if you haven't configured all options. This allows you to focus on testing the components that are relevant to your specific deployment scenario.
+
+## 🔍 Troubleshooting
+
+When working with OpenSearch ML Quickstart, you may encounter various issues that require troubleshooting. Common issues include compatibility problems with pandas versions, connection timeouts, model deployment failures, and index creation errors.
+
+For pandas compatibility issues, the solution is to use Python 3.10 or later with pandas 2.0.3. Alternatively, you can use Anaconda to manage Python versions and ensure compatibility.
+
+Connection timeouts can occur with both local OpenSearch clusters and Amazon OpenSearch Service. For local clusters, check the Docker container status to ensure that the cluster is running correctly. For Amazon OpenSearch Service, verify that the security group and network access settings allow connections from your environment.
+
+Model deployment failures can occur with both local and remote models. For local models, ensure that the OpenSearch cluster has sufficient resources to host the model. For remote models, verify that your AWS credentials and permissions are correctly configured.
+
+Index creation errors can occur if an index with the same name already exists. Use the `--delete-existing-index` flag to force the deletion of existing indices before creating new ones. Also check for naming conflicts and mapping compatibility issues.
+
+For more detailed troubleshooting, you can enable debug mode by configuring the logging level. This will provide more information about what's happening behind the scenes, helping you identify and resolve issues.
+
+When working with large datasets, you may need to optimize performance by increasing the bulk chunk size, processing specific categories only, or limiting the number of documents per category. For production deployments, consider using HNSW for faster approximate search, implementing hybrid search for better relevance, and configuring appropriate index settings for your specific use case.
+
+## 📚 Additional Resources
+
+To learn more about the technologies used in OpenSearch ML Quickstart, you can refer to the official documentation for OpenSearch, the OpenSearch ML Commons Plugin, Amazon OpenSearch Service, Amazon Bedrock, and Amazon SageMaker. These resources provide detailed information about the underlying technologies and can help you understand how they work together in the context of this toolkit.
+
+## 🤝 Contributing
+
+Contributions to OpenSearch ML Quickstart are welcome. To contribute, fork the repository, create a feature branch, add tests for new functionality, ensure that all tests pass, and submit a pull request. This process ensures that contributions maintain the quality and reliability of the toolkit.
+
+## 📄 License
+
+OpenSearch ML Quickstart is licensed under the Apache License 2.0. This permissive license allows you to use, modify, and distribute the toolkit for both personal and commercial purposes, subject to the terms of the license.
 

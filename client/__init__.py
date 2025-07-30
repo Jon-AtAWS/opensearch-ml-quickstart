@@ -5,7 +5,11 @@ from .os_ml_client_wrapper import OsMlClientWrapper
 from .helper import (
     get_client_configs,
     get_client,
-    get_index_size,
+)
+from .index_utils import (
+    send_bulk_ignore_exceptions,
     load_category,
-    load_dataset,
+    get_index_size,
+    handle_index_creation,
+    handle_data_loading,
 )

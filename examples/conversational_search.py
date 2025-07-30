@@ -1,46 +1,30 @@
 # Copyright opensearch-ml-quickstart contributors
 # SPDX-License-Identifier: Apache-2.0
 
-import os
-import sys
 import json
 import logging
+import os
+import sys
+import uuid
 from typing import Dict
 
+import cmd_line_interface
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from configs import (
-    get_remote_connector_configs,
-    BASE_MAPPING_PATH,
-    PIPELINE_FIELD_MAP,
-    QANDA_FILE_READER_PATH,
-)
-from client import get_client, get_client_configs, load_category, OsMlClientWrapper
+from client import (OsMlClientWrapper, get_client, get_client_configs,
+                    index_utils)
+from configs import (BASE_MAPPING_PATH, PIPELINE_FIELD_MAP,
+                     QANDA_FILE_READER_PATH, get_remote_connector_configs)
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
-from ml_models import (
-    get_ml_model,
-    get_aos_connector_helper,
-    MlModel,
-    RemoteMlModel,
-    AosLlmConnector,
-)
+from ml_models import (AosLlmConnector, MlModel, RemoteMlModel,
+                       get_aos_connector_helper, get_ml_model)
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
     datefmt="%Y-%m-%d:%H:%M:%S",
     level=logging.INFO,
 )
-
-# ANSI escape sequence constants with improved colors
-BOLD = "\033[1m"
-RESET = "\033[0m"
-
-# Headers
-LIGHT_RED_HEADER = "\033[1;31m"
-LIGHT_GREEN_HEADER = "\033[1;32m"
-LIGHT_BLUE_HEADER = "\033[1;34m"
-LIGHT_YELLOW_HEADER = "\033[1;33m"
-LIGHT_PURPLE_HEADER = "\033[1;35m"
 
 
 def create_index_settings(base_mapping_path, index_config):
@@ -61,43 +45,7 @@ def create_index_settings(base_mapping_path, index_config):
     return settings
 
 
-def load_dataset(
-    client: OsMlClientWrapper,
-    ml_model: MlModel,
-    pqa_reader: QAndAFileReader,
-    config: Dict[str, str],
-    index_name: str,
-    pipeline_name: str,
-):
-    if client.os_client.indices.exists(index_name):
-        logging.info(f"Index {index_name} already exists. Skipping loading dataset")
-        return
-
-    logging.info(f"Creating index {index_name}")
-    client.idempotent_create_index(
-        index_name=config["index_name"], settings=config["index_settings"]
-    )
-
-    logging.info("Setting up for KNN")
-    client.setup_for_kNN(
-        ml_model=ml_model,
-        index_name=config["index_name"],
-        pipeline_name=pipeline_name,
-        index_settings=config["index_settings"],
-        pipeline_field_map=config["pipeline_field_map"],
-        embedding_type=config["embedding_type"],
-    )
-
-    for category in config["categories"]:
-        load_category(
-            client=client.os_client,
-            pqa_reader=pqa_reader,
-            category=category,
-            config=config,
-        )
-
-
-def create_llm_model():
+def create_text_gen_model():
     client = OsMlClientWrapper(get_client("aos"))
     connector_configs = get_remote_connector_configs(
         host_type="aos", connector_type="bedrock"
@@ -130,40 +78,98 @@ def create_llm_model():
     return llm_model_id
 
 
+def process_conversational_results(search_results, **kwargs):
+    """
+    Custom result processor for conversational search that handles both search results and LLM answers.
+    
+    Parameters:
+        search_results (dict): OpenSearch search response
+        **kwargs: Additional parameters (unused)
+    """
+    import logging
+    
+    # Print standard search results
+    cmd_line_interface.print_search_results(search_results)
+    
+    # Extract and print LLM answer
+    if "ext" in search_results and "retrieval_augmented_generation" in search_results["ext"]:
+        cmd_line_interface.print_answer(search_results["ext"]["retrieval_augmented_generation"]["answer"])
+    else:
+        logging.warning("No LLM answer found in response")
+
+
+def build_conversational_query(query_text, model_id=None, memory_id=None, **kwargs):
+    """
+    Build conversational search query with RAG parameters.
+    
+    Parameters:
+        query_text (str): The search query text
+        model_id (str): ML model ID for generating embeddings
+        memory_id (str): ID of the conversation memory
+        **kwargs: Additional parameters (unused)
+    
+    Returns:
+        dict: OpenSearch query dictionary with RAG extensions
+    """
+    if not model_id:
+        raise ValueError("Model ID must be provided for conversational search.")
+    if not memory_id:
+        raise ValueError("Memory ID must be provided for conversational search.")
+    return {
+        "size": 3,
+        "query": {
+            "neural_sparse": {
+                "chunk_embedding": {
+                    "query_text": query_text,
+                    "model_id": model_id,
+                }
+            }
+        },
+        "ext": {
+            "generative_qa_parameters": {
+                "llm_model": "bedrock/claude",
+                "llm_question": query_text,
+                "llm_response_field": "response",
+                "memory_id": memory_id,
+                "context_size": 10,
+                "message_size": 10,
+                "timeout": 30,
+            }
+        },
+    }
+
+
 def main():
+    args = cmd_line_interface.get_command_line_args()
+
     host_type = "aos"
     model_type = "sagemaker"
     embedding_type = "sparse"
     index_name = "amazon_pqa_qa_emebedding"
     ingest_pipeline_name = "sparse-ingest-pipeline"
     search_pipeline_name = "conversational-search-pipeline"
-
-    categories = [
-        "earbud headphones",
-        "headsets",
-        "diffusers",
-        "mattresses",
-        "mp3 and mp4 players",
-        "sheet and pillowcase sets",
-        "batteries",
-        "casual",
-        "costumes",
-    ]
-    number_of_docs_per_category = 5000
-    dataset_path = QANDA_FILE_READER_PATH
+    
+    if args.opensearch_type != "aos":
+        logging.error(
+            "This example is designed for Amazon OpenSearch Service (AOS) only."
+        )
+        sys.exit(1)
 
     client = OsMlClientWrapper(get_client(host_type))
     pqa_reader = QAndAFileReader(
-        directory=dataset_path, max_number_of_docs=number_of_docs_per_category
+        directory=QANDA_FILE_READER_PATH,
+        max_number_of_docs=args.number_of_docs_per_category
     )
 
     config = {
         "with_knn": True,
         "pipeline_field_map": PIPELINE_FIELD_MAP,
-        "categories": categories,
+        "categories": args.categories,
         "index_name": index_name,
         "pipeline_name": ingest_pipeline_name,
         "embedding_type": embedding_type,
+        "delete_existing_index": args.delete_existing_index,
+        "bulk_send_chunk_size": args.bulk_send_chunk_size,
     }
 
     model_name = f"{host_type}_{model_type}"
@@ -186,17 +192,30 @@ def main():
         base_mapping_path=BASE_MAPPING_PATH,
         index_config=config,
     )
-
-    load_dataset(
-        client,
-        ml_model,
-        pqa_reader,
-        config,
-        index_name=index_name,
-        pipeline_name=ingest_pipeline_name,
+    
+    index_utils.handle_index_creation(
+        os_client=client.os_client,
+        config=config,
+        delete_existing=config["delete_existing_index"],
     )
 
-    llm_model_id = create_llm_model()
+    logging.info("Setting up for KNN")
+    client.setup_for_kNN(
+        ml_model=ml_model,
+        index_name=config["index_name"],
+        pipeline_name=ingest_pipeline_name,
+        pipeline_field_map=config["pipeline_field_map"],
+        embedding_type=config["embedding_type"],
+    )
+
+    index_utils.handle_data_loading(
+        os_client=client.os_client,
+        pqa_reader=pqa_reader,
+        config=config,
+        no_load=args.no_load,
+    )
+
+    text_gen_model_id = create_text_gen_model()
 
     response = client.os_client.transport.perform_request(
         "PUT",
@@ -207,7 +226,7 @@ def main():
                     "retrieval_augmented_generation": {
                         "tag": "conversation demo",
                         "description": "Demo pipeline Using Bedrock Connector",
-                        "model_id": f"{llm_model_id}",
+                        "model_id": f"{text_gen_model_id}",
                         "context_field_list": [
                             "item_name",
                             "product_description",
@@ -221,80 +240,27 @@ def main():
         },
     )
 
-    conversation_name = f"conversation-{categories[0]}"
+    uuid_str = str(uuid.uuid4())[:8]
+    conversation_name = f"conversation-{uuid_str}"
     response = client.os_client.transport.perform_request(
         "POST", "/_plugins/_ml/memory/", body={"name": conversation_name}
     )
     memory_id = response["memory_id"]
     logging.info(f"Conversation Memory ID: {memory_id}")
 
-    while True:
-        question = input("Please input your question (or 'quit' to quit): ")
-        if question == "quit":
-            break
-        search_query = {
-            "size": 3,
-            "query": {
-                "neural_sparse": {
-                    "chunk_sparse_embedding": {
-                        "query_text": question,
-                        "model_id": ml_model.model_id(),
-                    }
-                }
-            },
-            "ext": {
-                "generative_qa_parameters": {
-                    "llm_model": "bedrock/claude",
-                    "llm_question": question,
-                    "llm_response_field": "response",
-                    "memory_id": memory_id,
-                    "context_size": 10,
-                    "message_size": 10,
-                    "timeout": 30,
-                }
-            },
-        }
-        print(f"{LIGHT_GREEN_HEADER}Search query:{RESET}")
-        print(json.dumps(search_query, indent=4))
-        response = client.os_client.search(
-            index=index_name, search_pipeline=search_pipeline_name, body=search_query
-        )
-        hits = response["hits"]["hits"]
-        input("Press enter to see the search results: ")
-        for hit_id, hit in enumerate(hits):
-            print(
-                "--------------------------------------------------------------------------------"
-            )
-            print()
-            print(
-                f'{LIGHT_PURPLE_HEADER}Item {hit_id + 1} category:{RESET} {hit["_source"]["category_name"]}'
-            )
-            print(
-                f'{LIGHT_YELLOW_HEADER}Item {hit_id + 1} product name:{RESET} {hit["_source"]["item_name"]}'
-            )
-            print()
-            if hit["_source"]["product_description"]:
-                print(f"{LIGHT_BLUE_HEADER}Production description:{RESET}")
-                print(hit["_source"]["product_description"])
-                print()
-            print(
-                f'{LIGHT_RED_HEADER}Question:{RESET} {hit["_source"]["question_text"]}'
-            )
-            for answer_id, answer in enumerate(hit["_source"]["answers"]):
-                print(
-                    f'{LIGHT_GREEN_HEADER}Answer {answer_id + 1}:{RESET} {answer["answer_text"]}'
-                )
-            print()
-        print(
-            "--------------------------------------------------------------------------------"
-        )
-        print()
-        print(f"{LIGHT_YELLOW_HEADER}LLM Answer:{RESET}")
-        print(response["ext"]["retrieval_augmented_generation"]["answer"])
-        print()
-        print(
-            "--------------------------------------------------------------------------------"
-        )
+    logging.info("Setup complete! Starting interactive conversational search interface...")
+    
+    # Start interactive search loop using the generic function
+    cmd_line_interface.interactive_search_loop(
+        client=client,
+        index_name=index_name,
+        model_info=f"Embedding: {ml_model.model_id()}, LLM: {text_gen_model_id}",
+        query_builder_func=build_conversational_query,
+        result_processor_func=process_conversational_results,
+        ml_model=ml_model,
+        memory_id=memory_id,
+        search_params={'search_pipeline': search_pipeline_name}
+    )
 
 
 if __name__ == "__main__":

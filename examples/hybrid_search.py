@@ -7,6 +7,10 @@ import json
 import logging
 from typing import Dict
 
+
+import cmd_line_interface
+
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from configs import (
     get_remote_connector_configs,
@@ -17,11 +21,12 @@ from configs import (
 from client import (
     OsMlClientWrapper,
     get_client,
-    load_category,
+    index_utils,
 )
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
 from ml_models import get_ml_model, MlModel
+
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
@@ -70,8 +75,8 @@ def load_dataset(
     sparse_ml_model: MlModel,
     pqa_reader: QAndAFileReader,
     config: Dict[str, str],
-    index_name: str,
     pipeline_name: str,
+    args: str,
 ):
     logging.info("Adding ingestion pipeline for hybrid search...")
     pipeline_config = {
@@ -93,25 +98,72 @@ def load_dataset(
     }
     client.os_client.ingest.put_pipeline(pipeline_name, body=pipeline_config)
 
-    if client.os_client.indices.exists(index_name):
-        logging.info(f"Index {index_name} already exists. Skipping loading dataset")
-        return
-
-    logging.info(f"Creating index {index_name}")
-    client.idempotent_create_index(
-        index_name=config["index_name"], settings=config["index_settings"]
+    index_utils.handle_index_creation(
+        os_client=client.os_client,
+        config=config,
+        delete_existing=config["delete_existing_index"],
     )
 
-    for category in config["categories"]:
-        load_category(
-            client=client.os_client,
-            pqa_reader=pqa_reader,
-            category=category,
-            config=config,
-        )
+    index_utils.handle_data_loading(
+        os_client=client.os_client,
+        pqa_reader=pqa_reader,
+        config=config,
+        no_load=args.no_load,
+    )
+
+
+def build_hybrid_query(query_text, dense_model_id=None, sparse_model_id=None, pipeline_config=None, **kwargs):
+    """
+    Build hybrid search query combining dense and sparse embeddings.
+    
+    Parameters:
+        query_text (str): The search query text
+        dense_model_id (str): Dense ML model ID for generating embeddings
+        sparse_model_id (str): Sparse ML model ID for generating embeddings
+        pipeline_config (dict): Search pipeline configuration to display
+        **kwargs: Additional parameters (unused)
+    
+    Returns:
+        dict: OpenSearch query dictionary
+    """
+    if not dense_model_id:
+        raise ValueError("Dense model ID must be provided for hybrid search.")    
+    if not sparse_model_id:
+        raise ValueError("Sparse model ID must be provided for hybrid search.")    
+    # Print pipeline config if provided
+    if pipeline_config:
+        print(f"{LIGHT_RED_HEADER}Search pipeline config:{RESET}")
+        print(json.dumps(pipeline_config, indent=4))
+    
+    return {
+        "size": 3,
+        "query": {
+            "hybrid": {
+                "queries": [
+                    {
+                        "neural": {
+                            "chunk_dense_embedding": {
+                                "query_text": query_text,
+                                "model_id": dense_model_id,
+                            }
+                        }
+                    },
+                    {
+                        "neural_sparse": {
+                            "chunk_sparse_embedding": {
+                                "query_text": query_text,
+                                "model_id": sparse_model_id,
+                            }
+                        }
+                    },
+                ]
+            }
+        },
+    }
 
 
 def main():
+    args = cmd_line_interface.get_command_line_args()
     host_type = "aos"
     index_name = "hybrid_search"
     dense_model_type = "sagemaker"
@@ -119,31 +171,20 @@ def main():
     ingest_pipeline_name = "hybrid-ingest-pipeline"
     search_pipeline_name = "hybrid-search-pipeline"
 
-    categories = [
-        "earbud headphones",
-        "headsets",
-        "diffusers",
-        "mattresses",
-        "mp3 and mp4 players",
-        "sheet and pillowcase sets",
-        "batteries",
-        "casual",
-        "costumes",
-    ]
-    number_of_docs_per_category = 5000
-    dataset_path = QANDA_FILE_READER_PATH
-
     client = OsMlClientWrapper(get_client(host_type))
     pqa_reader = QAndAFileReader(
-        directory=dataset_path, max_number_of_docs=number_of_docs_per_category
+        directory=QANDA_FILE_READER_PATH,
+        max_number_of_docs=args.number_of_docs_per_category
     )
 
     config = {
         "with_knn": True,
         "pipeline_field_map": PIPELINE_FIELD_MAP,
-        "categories": categories,
+        "categories": args.categories,
         "index_name": index_name,
         "pipeline_name": ingest_pipeline_name,
+        "delete_existing_index": args.delete_existing_index,
+        "bulk_send_chunk_size": args.bulk_send_chunk_size,
     }
 
     dense_model_name = f"{host_type}_{dense_model_type}"
@@ -188,8 +229,8 @@ def main():
         sparse_ml_model,
         pqa_reader,
         config,
-        index_name=index_name,
         pipeline_name=ingest_pipeline_name,
+        args=args,
     )
 
     logging.info(f"Creating search pipeline {search_pipeline_name}")
@@ -211,71 +252,19 @@ def main():
         "PUT", f"/_search/pipeline/{search_pipeline_name}", body=pipeline_config
     )
 
-    while True:
-        query_text = input("Please input your search query text (or 'quit' to quit): ")
-        if query_text == "quit":
-            break
-        search_query = {
-            "size": 3,
-            "query": {
-                "hybrid": {
-                    "queries": [
-                        {
-                            "neural": {
-                                "chunk_dense_embedding": {
-                                    "query_text": query_text,
-                                    "model_id": dense_ml_model.model_id(),
-                                }
-                            }
-                        },
-                        {
-                            "neural_sparse": {
-                                "chunk_sparse_embedding": {
-                                    "query_text": query_text,
-                                    "model_id": sparse_ml_model.model_id(),
-                                }
-                            }
-                        },
-                    ]
-                }
-            },
-        }
-        print(f"{LIGHT_GREEN_HEADER}Search query:{RESET}")
-        print(json.dumps(search_query, indent=4))
-        print(f"{LIGHT_RED_HEADER}Search pipeline config:{RESET}")
-        print(json.dumps(pipeline_config, indent=4))
-        search_results = client.os_client.search(
-            index=index_name, search_pipeline=search_pipeline_name, body=search_query
-        )
-        hits = search_results["hits"]["hits"]
-        input("Press enter to see the search results: ")
-        for hit_id, hit in enumerate(hits):
-            print(
-                "--------------------------------------------------------------------------------"
-            )
-            print()
-            print(
-                f'{LIGHT_PURPLE_HEADER}Item {hit_id + 1} category:{RESET} {hit["_source"]["category_name"]}'
-            )
-            print(
-                f'{LIGHT_YELLOW_HEADER}Item {hit_id + 1} product name:{RESET} {hit["_source"]["item_name"]}'
-            )
-            print()
-            if hit["_source"]["product_description"]:
-                print(f"{LIGHT_BLUE_HEADER}Production description:{RESET}")
-                print(hit["_source"]["product_description"])
-                print()
-            print(
-                f'{LIGHT_RED_HEADER}Question:{RESET} {hit["_source"]["question_text"]}'
-            )
-            for answer_id, answer in enumerate(hit["_source"]["answers"]):
-                print(
-                    f'{LIGHT_GREEN_HEADER}Answer {answer_id + 1}:{RESET} {answer["answer_text"]}'
-                )
-            print()
-        print(
-            "--------------------------------------------------------------------------------"
-        )
+    logging.info("Setup complete! Starting interactive search interface...")
+    
+    # Start interactive search loop using the generic function
+    cmd_line_interface.interactive_search_loop(
+        client=client,
+        index_name=index_name,
+        model_info=f"Dense: {dense_ml_model.model_id()}, Sparse: {sparse_ml_model.model_id()}",
+        query_builder_func=build_hybrid_query,
+        dense_ml_model=dense_ml_model,
+        sparse_ml_model=sparse_ml_model,
+        pipeline_config=pipeline_config,
+        search_params={'search_pipeline': search_pipeline_name}
+    )
 
 
 if __name__ == "__main__":
