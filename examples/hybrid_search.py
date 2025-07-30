@@ -21,7 +21,7 @@ from configs import (
 from client import (
     OsMlClientWrapper,
     get_client,
-    load_category,
+    index_utils,
 )
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
@@ -75,8 +75,8 @@ def load_dataset(
     sparse_ml_model: MlModel,
     pqa_reader: QAndAFileReader,
     config: Dict[str, str],
-    index_name: str,
     pipeline_name: str,
+    args: str,
 ):
     logging.info("Adding ingestion pipeline for hybrid search...")
     pipeline_config = {
@@ -98,19 +98,18 @@ def load_dataset(
     }
     client.os_client.ingest.put_pipeline(pipeline_name, body=pipeline_config)
 
-    client.handle_index_creation(
-        index_name=index_name,
-        index_settings=config["index_settings"],
+    index_utils.handle_index_creation(
+        os_client=client.os_client,
+        config=config,
         delete_existing=config["delete_existing_index"],
     )
 
-    for category in config["categories"]:
-        load_category(
-            os_client=client.os_client,
-            pqa_reader=pqa_reader,
-            category=category,
-            config=config,
-        )
+    index_utils.handle_data_loading(
+        os_client=client.os_client,
+        pqa_reader=pqa_reader,
+        config=config,
+        no_load=args.no_load,
+    )
 
 
 def build_hybrid_query(query_text, dense_model_id=None, sparse_model_id=None, pipeline_config=None, **kwargs):
@@ -230,8 +229,8 @@ def main():
         sparse_ml_model,
         pqa_reader,
         config,
-        index_name=index_name,
         pipeline_name=ingest_pipeline_name,
+        args=args,
     )
 
     logging.info(f"Creating search pipeline {search_pipeline_name}")
