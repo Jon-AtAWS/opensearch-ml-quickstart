@@ -234,9 +234,6 @@ def build_workflow_template_query(query_text, model_id=None, **kwargs):
                     "k": 10
                 }
             }
-        },
-        "_source": {
-            "includes": ["category_name", "item_name", "product_description", "chunk"]
         }
     }
 

@@ -132,13 +132,19 @@ def print_hit(hit_id, hit):
         print(f"{LIGHT_BLUE_HEADER}Production description:{RESET}")
         print(hit["_source"]["product_description"])
         print()
-    print(
-        f'{LIGHT_RED_HEADER}Question:{RESET} {hit["_source"]["question_text"]}'
-    )
-    for answer_id, answer in enumerate(hit["_source"]["answers"]):
+    if "question_text" in hit["_source"]:
         print(
-            f'{LIGHT_GREEN_HEADER}Answer {answer_id + 1}:{RESET} {answer["answer_text"]}'
+            f'{LIGHT_RED_HEADER}Question:{RESET} {hit["_source"]["question_text"]}'
         )
+    else:       
+        print(f'{LIGHT_RED_HEADER}Question: {RESET} No question text available')
+    if "answers" in hit["_source"]:
+        for answer_id, answer in enumerate(hit["_source"]["answers"]):
+            print(
+                f'{LIGHT_GREEN_HEADER}Answer {answer_id + 1}:{RESET} {answer["answer_text"]}'
+            )
+    else:
+        print(f"{LIGHT_GREEN_HEADER}Answer: {RESET} No answers available")
     print()
 
 
