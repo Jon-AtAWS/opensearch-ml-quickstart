@@ -254,27 +254,27 @@ def setup_and_run_workflow(client, workflow_template):
         return False, None
 
 
-def build_workflow_query(query_text, ml_model=None, **kwargs):
+def build_workflow_query(query_text, model_id=None, **kwargs):
     """
     Build neural search query for dense vector search in workflow example.
     
     Parameters:
         query_text (str): The search query text
-        ml_model: ML model instance for generating embeddings
+        model_id (str): ML model ID for generating embeddings
         **kwargs: Additional parameters (unused)
     
     Returns:
         dict: OpenSearch query dictionary
     """
-    if not ml_model:
-        raise ValueError("ML model must be provided for workflow search.")
+    if not model_id:
+        raise ValueError("Model ID must be provided for workflow search.")
     return {
         "size": 5,
         "query": {
             "neural": {
                 "chunk_embedding": {
                     "query_text": query_text,
-                    "model_id": ml_model.model_id(),
+                    "model_id": model_id,
                     "k": 10
                 }
             }

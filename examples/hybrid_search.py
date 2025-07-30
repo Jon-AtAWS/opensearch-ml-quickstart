@@ -113,24 +113,24 @@ def load_dataset(
         )
 
 
-def build_hybrid_query(query_text, dense_ml_model=None, sparse_ml_model=None, pipeline_config=None, **kwargs):
+def build_hybrid_query(query_text, dense_model_id=None, sparse_model_id=None, pipeline_config=None, **kwargs):
     """
     Build hybrid search query combining dense and sparse embeddings.
     
     Parameters:
         query_text (str): The search query text
-        dense_ml_model: Dense ML model instance for generating embeddings
-        sparse_ml_model: Sparse ML model instance for generating embeddings
+        dense_model_id (str): Dense ML model ID for generating embeddings
+        sparse_model_id (str): Sparse ML model ID for generating embeddings
         pipeline_config (dict): Search pipeline configuration to display
         **kwargs: Additional parameters (unused)
     
     Returns:
         dict: OpenSearch query dictionary
     """
-    if not dense_ml_model:
-        raise ValueError("Dense ML model must be provided for hybrid search.")    
-    if not sparse_ml_model:
-        raise ValueError("Sparse ML model must be provided for hybrid search.")    
+    if not dense_model_id:
+        raise ValueError("Dense model ID must be provided for hybrid search.")    
+    if not sparse_model_id:
+        raise ValueError("Sparse model ID must be provided for hybrid search.")    
     # Print pipeline config if provided
     if pipeline_config:
         print(f"{LIGHT_RED_HEADER}Search pipeline config:{RESET}")
@@ -145,7 +145,7 @@ def build_hybrid_query(query_text, dense_ml_model=None, sparse_ml_model=None, pi
                         "neural": {
                             "chunk_dense_embedding": {
                                 "query_text": query_text,
-                                "model_id": dense_ml_model.model_id(),
+                                "model_id": dense_model_id,
                             }
                         }
                     },
@@ -153,7 +153,7 @@ def build_hybrid_query(query_text, dense_ml_model=None, sparse_ml_model=None, pi
                         "neural_sparse": {
                             "chunk_sparse_embedding": {
                                 "query_text": query_text,
-                                "model_id": sparse_ml_model.model_id(),
+                                "model_id": sparse_model_id,
                             }
                         }
                     },

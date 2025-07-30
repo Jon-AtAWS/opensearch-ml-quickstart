@@ -252,6 +252,30 @@ def interactive_search_loop(client, index_name, model_info, query_builder_func, 
     """
     import logging
     
+    # Extract model objects and convert to model IDs for query builders
+    processed_kwargs = kwargs.copy()
+    
+    # Handle single ml_model parameter
+    if 'ml_model' in processed_kwargs:
+        ml_model = processed_kwargs.pop('ml_model')
+        if ml_model is None:
+            raise ValueError("ML model cannot be None when required for search.")
+        processed_kwargs['model_id'] = ml_model.model_id()
+    
+    # Handle dense_ml_model parameter (for hybrid search)
+    if 'dense_ml_model' in processed_kwargs:
+        dense_ml_model = processed_kwargs.pop('dense_ml_model')
+        if dense_ml_model is None:
+            raise ValueError("Dense ML model cannot be None when required for search.")
+        processed_kwargs['dense_model_id'] = dense_ml_model.model_id()
+    
+    # Handle sparse_ml_model parameter (for hybrid search)
+    if 'sparse_ml_model' in processed_kwargs:
+        sparse_ml_model = processed_kwargs.pop('sparse_ml_model')
+        if sparse_ml_model is None:
+            raise ValueError("Sparse ML model cannot be None when required for search.")
+        processed_kwargs['sparse_model_id'] = sparse_ml_model.model_id()
+    
     print_search_interface_header(index_name, model_info)
     
     while True:
@@ -267,13 +291,13 @@ def interactive_search_loop(client, index_name, model_info, query_builder_func, 
                 continue
             
             # Build search query using the provided function
-            search_query = query_builder_func(query_text, **kwargs)
+            search_query = query_builder_func(query_text, **processed_kwargs)
             
             print_executing_search()
             print_query(search_query)
             
             # Execute search with any additional search parameters
-            search_params = kwargs.get('search_params', {})
+            search_params = processed_kwargs.get('search_params', {})
             search_results = client.os_client.search(
                 index=index_name, 
                 body=search_query,
@@ -282,7 +306,7 @@ def interactive_search_loop(client, index_name, model_info, query_builder_func, 
             
             # Process results if custom processor provided
             if result_processor_func:
-                result_processor_func(search_results, **kwargs)
+                result_processor_func(search_results, **processed_kwargs)
             else:
                 print_search_results(search_results)
                     

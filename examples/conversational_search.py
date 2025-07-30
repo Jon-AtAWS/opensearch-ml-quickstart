@@ -98,21 +98,21 @@ def process_conversational_results(search_results, **kwargs):
         logging.warning("No LLM answer found in response")
 
 
-def build_conversational_query(query_text, ml_model=None, memory_id=None, **kwargs):
+def build_conversational_query(query_text, model_id=None, memory_id=None, **kwargs):
     """
     Build conversational search query with RAG parameters.
     
     Parameters:
         query_text (str): The search query text
-        ml_model: ML model instance for generating embeddings
+        model_id (str): ML model ID for generating embeddings
         memory_id (str): ID of the conversation memory
         **kwargs: Additional parameters (unused)
     
     Returns:
         dict: OpenSearch query dictionary with RAG extensions
     """
-    if not ml_model:
-        raise ValueError("ML model must be provided for conversational search.")
+    if not model_id:
+        raise ValueError("Model ID must be provided for conversational search.")
     if not memory_id:
         raise ValueError("Memory ID must be provided for conversational search.")
     return {
@@ -121,7 +121,7 @@ def build_conversational_query(query_text, ml_model=None, memory_id=None, **kwar
             "neural_sparse": {
                 "chunk_embedding": {
                     "query_text": query_text,
-                    "model_id": ml_model.model_id(),
+                    "model_id": model_id,
                 }
             }
         },

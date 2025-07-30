@@ -95,21 +95,21 @@ def create_index_settings(base_mapping_path, index_config):
     return settings
 
 
-def build_hybrid_local_query(query_text, ml_model=None, pipeline_config=None, **kwargs):
+def build_hybrid_local_query(query_text, model_id=None, pipeline_config=None, **kwargs):
     """
     Build hybrid search query combining lexical (BM25) and dense vector search.
     
     Parameters:
         query_text (str): The search query text
-        ml_model: Local ML model instance for generating embeddings
+        model_id (str): Local ML model ID for generating embeddings
         pipeline_config (dict): Search pipeline configuration to display
         **kwargs: Additional parameters (unused)
     
     Returns:
         dict: OpenSearch hybrid query dictionary
     """
-    if not ml_model:
-        raise ValueError("ML model must be provided for hybrid local search.")    
+    if not model_id:
+        raise ValueError("Model ID must be provided for hybrid local search.")    
     # Print pipeline config if provided
     if pipeline_config:
         print(f"{LIGHT_RED_HEADER}Search pipeline config:{RESET}")
@@ -132,7 +132,7 @@ def build_hybrid_local_query(query_text, ml_model=None, pipeline_config=None, **
                         "neural": {
                             "chunk_embedding": {
                                 "query_text": query_text,
-                                "model_id": ml_model.model_id(),
+                                "model_id": model_id,
                                 "k": 10,
                                 "boost": 1.0
                             }

@@ -39,27 +39,27 @@ def create_index_settings(base_mapping_path, index_config):
     return settings
 
 
-def build_sparse_query(query_text, ml_model=None, **kwargs):
+def build_sparse_query(query_text, model_id=None, **kwargs):
     """
     Build neural sparse search query.
     
     Parameters:
         query_text (str): The search query text
-        ml_model: ML model instance for generating embeddings
+        model_id (str): ML model ID for generating embeddings
         **kwargs: Additional parameters (unused)
     
     Returns:
         dict: OpenSearch query dictionary
     """
-    if not ml_model:
-        raise ValueError("ML model must be provided for sparse search.")
+    if not model_id:
+        raise ValueError("Model ID must be provided for sparse search.")
     return {
         "size": 3,
         "query": {
             "neural_sparse": {
                 "chunk_embedding": {
                     "query_text": query_text,
-                    "model_id": ml_model.model_id(),
+                    "model_id": model_id,
                 }
             }
         },

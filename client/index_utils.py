@@ -4,6 +4,9 @@ from opensearchpy import helpers, OpenSearch
 from data_process import QAndAFileReader
 
 
+SPACE_SEPARATOR = " "
+
+
 def handle_index_creation(
     os_client: OpenSearch,
     config: Dict[str, str],
@@ -69,9 +72,6 @@ def handle_data_loading(os_client: OpenSearch,
             config=config,
         )
         
-
-SPACE_SEPARATOR = " "
-
 
 def load_category(os_client: OpenSearch, pqa_reader: QAndAFileReader, category, config):
     logging.info(f'Loading category "{category}"')
