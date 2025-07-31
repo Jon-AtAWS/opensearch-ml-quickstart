@@ -244,6 +244,87 @@ def print_empty_query_warning():
     print("Please enter a valid search query.")
 
 
+def print_agent_response(agent_response):
+    """
+    Print the agent's response in a formatted way.
+    
+    Parameters:
+        agent_response (dict): Agent response containing inference results
+    """
+    if "inference_results" in agent_response:
+        for result in agent_response["inference_results"]:
+            if "output" in result:
+                for output in result["output"]:
+                    if "result" in output:
+                        print(f"\n{LIGHT_GREEN_HEADER}Agent Response:{RESET}")
+                        print(output["result"])
+                        print("\n" + "="*80 + "\n")
+    else:
+        print("No response from agent")
+
+
+def print_agent_query(query_body):
+    """
+    Print the agent query in a formatted way.
+    
+    Parameters:
+        query_body (dict): Agent query parameters
+    """
+    print(f"{LIGHT_GREEN_HEADER}Agent Query:{RESET}")
+    print(json.dumps(query_body, indent=4))
+    print("--------------------------------------------------------------------------------")
+
+
+def interactive_agent_loop(client, agent_id, model_info, agent_executor_func):
+    """
+    Interactive loop for conversational agent queries.
+    
+    Parameters:
+        client (OsMlClientWrapper): OpenSearch ML client wrapper
+        agent_id (str): ID of the conversational agent
+        model_info (str): Model information for display
+        agent_executor_func (callable): Function that executes agent queries
+    """
+    import logging
+    
+    print_search_interface_header("Conversational Agent", model_info)
+    
+    while True:
+        try:
+            query_text = print_search_prompt()
+            
+            if query_text.lower().strip() in ['quit', 'exit', 'q']:
+                print_goodbye()
+                break
+                
+            if not query_text.strip():
+                print_empty_query_warning()
+                continue
+            
+            # Build agent query
+            query_body = {
+                "parameters": {
+                    "question": query_text
+                }
+            }
+            
+            print_executing_search()
+            print_agent_query(query_body)
+            
+            # Execute agent query using the provided function
+            agent_response = agent_executor_func(client, agent_id, query_body)
+            
+            # Process and display results
+            print_agent_response(agent_response)
+                    
+        except KeyboardInterrupt:
+            print_search_interrupted()
+            break
+        except Exception as e:
+            logging.error(f"Agent query error: {e}")
+            print_search_error(e)
+
+
 def interactive_search_loop(client, index_name, model_info, query_builder_func, result_processor_func=None, **kwargs):
     """
     Generic interactive search interface for user queries.

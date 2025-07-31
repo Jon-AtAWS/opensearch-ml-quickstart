@@ -178,13 +178,6 @@ def main():
         max_number_of_docs=args.number_of_docs_per_category
     )
 
-
-    ping = client.os_client.transport.perform_request(
-        "GET", f"/"
-    )
-    logging.info(f"Connected to OpenSearch: {json.dumps(ping, indent=2)}")
-
-
     config = {
         "with_knn": True,
         "pipeline_field_map": PIPELINE_FIELD_MAP,
