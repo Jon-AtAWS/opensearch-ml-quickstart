@@ -23,8 +23,12 @@ import cmd_line_interface
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from client import OsMlClientWrapper, get_client, index_utils
-from configs import (BASE_MAPPING_PATH, PIPELINE_FIELD_MAP,
-                     QANDA_FILE_READER_PATH, get_remote_connector_configs)
+from configs import (
+    BASE_MAPPING_PATH,
+    PIPELINE_FIELD_MAP,
+    QANDA_FILE_READER_PATH,
+    get_remote_connector_configs,
+)
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
 from ml_models import get_ml_model
@@ -39,11 +43,11 @@ logging.basicConfig(
 def create_index_settings(base_mapping_path, index_config):
     """
     Create OpenSearch index settings for dense vector search.
-    
+
     Parameters:
         base_mapping_path (str): Path to base mapping configuration
         index_config (dict): Configuration containing pipeline and model settings
-    
+
     Returns:
         dict: Updated index settings with k-NN vector configuration
     """
@@ -70,12 +74,12 @@ def create_index_settings(base_mapping_path, index_config):
 def build_dense_exact_query(query_text, model_id=None, **kwargs):
     """
     Build neural search query for dense exact vector search.
-    
+
     Parameters:
         query_text (str): The search query text
         model_id (str): ML model ID for generating embeddings
         **kwargs: Additional parameters (unused)
-    
+
     Returns:
         dict: OpenSearch query dictionary
     """
@@ -97,7 +101,7 @@ def build_dense_exact_query(query_text, model_id=None, **kwargs):
 def main():
     """
     Main function to run dense exact search example.
-    
+
     This function:
     1. Initializes OpenSearch client and ML model
     2. Configures k-NN index settings
@@ -105,7 +109,7 @@ def main():
     4. Provides interactive semantic search interface
     """
     args = cmd_line_interface.get_command_line_args()
-    
+
     if args.opensearch_type != "aos":
         logging.error(
             "This example is designed for Amazon OpenSearch Service (AOS) only."
@@ -185,14 +189,14 @@ def main():
     )
 
     logging.info("Setup complete! Starting interactive search interface...")
-    
+
     # Start interactive search loop using the generic function
     cmd_line_interface.interactive_search_loop(
         client=client,
         index_name=index_name,
         model_info=ml_model.model_id(),
         query_builder_func=build_dense_exact_query,
-        ml_model=ml_model
+        ml_model=ml_model,
     )
 
 

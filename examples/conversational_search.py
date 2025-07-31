@@ -11,14 +11,22 @@ from typing import Dict
 import cmd_line_interface
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from client import (OsMlClientWrapper, get_client, get_client_configs,
-                    index_utils)
-from configs import (BASE_MAPPING_PATH, PIPELINE_FIELD_MAP,
-                     QANDA_FILE_READER_PATH, get_remote_connector_configs)
+from client import OsMlClientWrapper, get_client, get_client_configs, index_utils
+from configs import (
+    BASE_MAPPING_PATH,
+    PIPELINE_FIELD_MAP,
+    QANDA_FILE_READER_PATH,
+    get_remote_connector_configs,
+)
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
-from ml_models import (AosLlmConnector, MlModel, RemoteMlModel,
-                       get_aos_connector_helper, get_ml_model)
+from ml_models import (
+    AosLlmConnector,
+    MlModel,
+    RemoteMlModel,
+    get_aos_connector_helper,
+    get_ml_model,
+)
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
@@ -81,19 +89,24 @@ def create_text_gen_model():
 def process_conversational_results(search_results, **kwargs):
     """
     Custom result processor for conversational search that handles both search results and LLM answers.
-    
+
     Parameters:
         search_results (dict): OpenSearch search response
         **kwargs: Additional parameters (unused)
     """
     import logging
-    
+
     # Print standard search results
     cmd_line_interface.print_search_results(search_results)
-    
+
     # Extract and print LLM answer
-    if "ext" in search_results and "retrieval_augmented_generation" in search_results["ext"]:
-        cmd_line_interface.print_answer(search_results["ext"]["retrieval_augmented_generation"]["answer"])
+    if (
+        "ext" in search_results
+        and "retrieval_augmented_generation" in search_results["ext"]
+    ):
+        cmd_line_interface.print_answer(
+            search_results["ext"]["retrieval_augmented_generation"]["answer"]
+        )
     else:
         logging.warning("No LLM answer found in response")
 
@@ -101,13 +114,13 @@ def process_conversational_results(search_results, **kwargs):
 def build_conversational_query(query_text, model_id=None, memory_id=None, **kwargs):
     """
     Build conversational search query with RAG parameters.
-    
+
     Parameters:
         query_text (str): The search query text
         model_id (str): ML model ID for generating embeddings
         memory_id (str): ID of the conversation memory
         **kwargs: Additional parameters (unused)
-    
+
     Returns:
         dict: OpenSearch query dictionary with RAG extensions
     """
@@ -148,7 +161,7 @@ def main():
     index_name = "amazon_pqa_qa_emebedding"
     ingest_pipeline_name = "sparse-ingest-pipeline"
     search_pipeline_name = "conversational-search-pipeline"
-    
+
     if args.opensearch_type != "aos":
         logging.error(
             "This example is designed for Amazon OpenSearch Service (AOS) only."
@@ -158,7 +171,7 @@ def main():
     client = OsMlClientWrapper(get_client(host_type))
     pqa_reader = QAndAFileReader(
         directory=QANDA_FILE_READER_PATH,
-        max_number_of_docs=args.number_of_docs_per_category
+        max_number_of_docs=args.number_of_docs_per_category,
     )
 
     config = {
@@ -192,7 +205,7 @@ def main():
         base_mapping_path=BASE_MAPPING_PATH,
         index_config=config,
     )
-    
+
     index_utils.handle_index_creation(
         os_client=client.os_client,
         config=config,
@@ -248,8 +261,10 @@ def main():
     memory_id = response["memory_id"]
     logging.info(f"Conversation Memory ID: {memory_id}")
 
-    logging.info("Setup complete! Starting interactive conversational search interface...")
-    
+    logging.info(
+        "Setup complete! Starting interactive conversational search interface..."
+    )
+
     # Start interactive search loop using the generic function
     cmd_line_interface.interactive_search_loop(
         client=client,
@@ -259,7 +274,7 @@ def main():
         result_processor_func=process_conversational_results,
         ml_model=ml_model,
         memory_id=memory_id,
-        search_params={'search_pipeline': search_pipeline_name}
+        search_params={"search_pipeline": search_pipeline_name},
     )
 
 

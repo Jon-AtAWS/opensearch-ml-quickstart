@@ -49,6 +49,6 @@ class LocalMlModel(MlModel):
             model_version=model_version,
             model_format=model_format,
             model_group_id=self._model_group_id,
-            deploy_model= True,
+            deploy_model=True,
             wait_until_deployed=True,
         )
