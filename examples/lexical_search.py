@@ -38,11 +38,11 @@ logging.basicConfig(
 def build_lexical_query(query_text, **kwargs):
     """
     Build lexical search query for keyword-based matching.
-    
+
     Parameters:
         query_text (str): The search query text
         **kwargs: Additional parameters (unused)
-    
+
     Returns:
         dict: OpenSearch query dictionary
     """
@@ -55,7 +55,7 @@ def build_lexical_query(query_text, **kwargs):
 def main():
     """
     Main function to run lexical search example.
-    
+
     This function:
     1. Parses command line arguments
     2. Initializes OpenSearch client and data reader
@@ -101,14 +101,15 @@ def main():
     )
 
     logging.info("Setup complete! Starting interactive search interface...")
-    
+
     # Start interactive search loop using the generic function
     cmd_line_interface.interactive_search_loop(
         client=client,
         index_name=index_name,
         model_info="Lexical Search",
-        query_builder_func=build_lexical_query
+        query_builder_func=build_lexical_query,
     )
+
 
 if __name__ == "__main__":
     main()

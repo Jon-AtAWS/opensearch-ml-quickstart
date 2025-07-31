@@ -9,8 +9,12 @@ import cmd_line_interface
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from client import OsMlClientWrapper, get_client, index_utils
-from configs import (BASE_MAPPING_PATH, PIPELINE_FIELD_MAP,
-                     QANDA_FILE_READER_PATH, get_remote_connector_configs)
+from configs import (
+    BASE_MAPPING_PATH,
+    PIPELINE_FIELD_MAP,
+    QANDA_FILE_READER_PATH,
+    get_remote_connector_configs,
+)
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
 from ml_models import get_ml_model
@@ -51,12 +55,12 @@ def create_index_settings(base_mapping_path, index_config):
 def build_dense_hnsw_query(query_text, model_id=None, **kwargs):
     """
     Build neural search query for HNSW vector search.
-    
+
     Parameters:
         query_text (str): The search query text
         model_id (str): ML model ID for generating embeddings
         **kwargs: Additional parameters (unused)
-    
+
     Returns:
         dict: OpenSearch query dictionary
     """
@@ -77,7 +81,7 @@ def build_dense_hnsw_query(query_text, model_id=None, **kwargs):
 
 def main():
     args = cmd_line_interface.get_command_line_args()
-    
+
     if args.opensearch_type != "aos":
         logging.error(
             "This example is designed for Amazon OpenSearch Service (AOS) only."
@@ -95,7 +99,7 @@ def main():
     client = OsMlClientWrapper(get_client(host_type))
     pqa_reader = QAndAFileReader(
         directory=QANDA_FILE_READER_PATH,
-        max_number_of_docs=args.number_of_docs_per_category
+        max_number_of_docs=args.number_of_docs_per_category,
     )
 
     config = {
@@ -154,14 +158,14 @@ def main():
     )
 
     logging.info("Setup complete! Starting interactive search interface...")
-    
+
     # Start interactive search loop using the generic function
     cmd_line_interface.interactive_search_loop(
         client=client,
         index_name=index_name,
         model_info=ml_model.model_id(),
         query_builder_func=build_dense_hnsw_query,
-        ml_model=ml_model
+        ml_model=ml_model,
     )
 
 

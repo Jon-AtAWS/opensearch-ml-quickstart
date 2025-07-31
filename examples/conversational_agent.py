@@ -23,14 +23,22 @@ import sys
 import cmd_line_interface
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from client import (OsMlClientWrapper, get_client, get_client_configs,
-                    index_utils)
-from configs import (BASE_MAPPING_PATH, PIPELINE_FIELD_MAP,
-                     QANDA_FILE_READER_PATH, get_remote_connector_configs)
+from client import OsMlClientWrapper, get_client, get_client_configs, index_utils
+from configs import (
+    BASE_MAPPING_PATH,
+    PIPELINE_FIELD_MAP,
+    QANDA_FILE_READER_PATH,
+    get_remote_connector_configs,
+)
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
-from ml_models import (AosLlmConnector, MlModel, RemoteMlModel,
-                       get_aos_connector_helper, get_ml_model)
+from ml_models import (
+    OsLlmConnector,
+    MlModel,
+    RemoteMlModel,
+    get_aos_connector_helper,
+    get_ml_model,
+)
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
@@ -42,11 +50,11 @@ logging.basicConfig(
 def create_index_settings(base_mapping_path, index_config):
     """
     Create OpenSearch index settings for conversational agent.
-    
+
     Parameters:
         base_mapping_path (str): Path to base mapping configuration
         index_config (dict): Configuration containing pipeline and model settings
-    
+
     Returns:
         dict: Updated index settings with dense vector configuration
     """
@@ -72,35 +80,27 @@ def create_index_settings(base_mapping_path, index_config):
 def create_llm_model(client: OsMlClientWrapper):
     """
     Create and deploy LLM model for conversational agent.
-    
+
     Parameters:
         client (OsMlClientWrapper): OpenSearch ML client wrapper
-    
+
     Returns:
         str: Model ID of the deployed LLM model
     """
     connector_configs = get_remote_connector_configs(
-        host_type="aos", connector_type="bedrock"
+        host_type="os", connector_type="bedrock"
     )
-    connector_configs[
-        "llm_arn"
-    ] = "arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0"
-    connector_configs["connector_role_name"] = "bedrock_llm_connector_role"
-    connector_configs[
-        "create_connector_role_name"
-    ] = "bedrock_llm_create_connector_role"
-    
+
     logging.info(f"LLM connector configs:\n{connector_configs}")
-    
+
     aos_connector_helper = get_aos_connector_helper(get_client_configs("aos"))
-    aos_llm_connector = AosLlmConnector(
+    aos_llm_connector = OsLlmConnector(
         os_client=client.os_client,
         connector_configs=connector_configs,
-        aos_connector_helper=aos_connector_helper,
     )
-    
+
     logging.info(f"LLM connector ID: {aos_llm_connector.connector_id()}")
-    
+
     model_group_id = client.ml_model_group.model_group_id()
     llm_model = RemoteMlModel(
         os_client=client.os_client,
@@ -109,24 +109,26 @@ def create_llm_model(client: OsMlClientWrapper):
         model_group_id=model_group_id,
         model_name="Amazon Bedrock Claude 3.5 Sonnet for Agent",
     )
-    
+
     llm_model_id = llm_model.model_id()
     logging.info(f"LLM model ID: {llm_model_id}")
     return llm_model_id
 
 
-def create_conversational_agent(client: OsMlClientWrapper,
-                                index_name: str,
-                                embedding_model_id: str,
-                                llm_model_id: str):
+def create_conversational_agent(
+    client: OsMlClientWrapper,
+    index_name: str,
+    embedding_model_id: str,
+    llm_model_id: str,
+):
     """
     Create a conversational agent with the specified LLM model and tools.
-    
+
     Parameters:
         client (OsMlClientWrapper): OpenSearch ML client wrapper
         llm_model_id (str): ID of the LLM model
         tools (list): List of tools for the agent
-    
+
     Returns:
         str: Agent ID
     """
@@ -139,8 +141,8 @@ def create_conversational_agent(client: OsMlClientWrapper,
             "parameters": {
                 "max_iterations": 5,
                 "stop_when_no_tool_found": True,
-                "response_filter": "$.completion"
-            }
+                "response_filter": "$.completion",
+            },
         },
         "memory": {
             "type": "conversation_index",
@@ -156,28 +158,32 @@ def create_conversational_agent(client: OsMlClientWrapper,
                     "input": "${parameters.question}",
                     "embedding_field": "chunk_embedding",
                     "source_field": "chunk",
-                    "doc_size": 5
-                }
+                    "doc_size": 5,
+                },
             },
             {
                 "type": "MLModelTool",
                 "description": "Use the LLM model to generate answers based on search results",
                 "parameters": {
                     "model_id": llm_model_id,
-                    "prompt": " ".join(["\n\nHuman:You are a professional data analyst.",
-                                    "You will always answer a question based on the given context first.",
-                                    "If the answer is not directly shown in the context, you will analyze",
-                                    "the data and find the answer. If you don't know the answer, just say",
-                                    "you don't know.\n\n",
-                                    "Context:\n${parameters.VectorDBTool.output}\n\n",
-                                    "Human:${parameters.question}\n\nAssistant:"])
-                }
-            }
-        ]
+                    "prompt": " ".join(
+                        [
+                            "\n\nHuman:You are a professional data analyst.",
+                            "You will always answer a question based on the given context first.",
+                            "If the answer is not directly shown in the context, you will analyze",
+                            "the data and find the answer. If you don't know the answer, just say",
+                            "you don't know.\n\n",
+                            "Context:\n${parameters.VectorDBTool.output}\n\n",
+                            "Human:${parameters.question}\n\nAssistant:",
+                        ]
+                    ),
+                },
+            },
+        ],
     }
-    
+
     logging.info(f"Creating conversational agent: {json.dumps(agent_config, indent=2)}")
-    
+
     try:
         response = client.os_client.transport.perform_request(
             "POST", "/_plugins/_ml/agents/_register", body=agent_config
@@ -185,7 +191,7 @@ def create_conversational_agent(client: OsMlClientWrapper,
     except Exception as e:
         logging.error(f"Failed to create conversational agent: {e}")
         raise
-    
+
     agent_id = response["agent_id"]
     logging.info(f"Created conversational agent with ID: {agent_id}")
     return agent_id
@@ -194,16 +200,18 @@ def create_conversational_agent(client: OsMlClientWrapper,
 def execute_agent_query(client, agent_id, query_body):
     """
     Execute a query against the conversational agent.
-    
+
     Parameters:
         client (OsMlClientWrapper): OpenSearch ML client wrapper
         agent_id (str): ID of the conversational agent
         query_body (dict): Query parameters
-    
+
     Returns:
         dict: Agent response
     """
-    logging.info(f"Executing query for agent {agent_id}: {json.dumps(query_body, indent=2)}")
+    logging.info(
+        f"Executing query for agent {agent_id}: {json.dumps(query_body, indent=2)}"
+    )
     try:
         response = client.os_client.transport.perform_request(
             "POST", f"/_plugins/_ml/agents/{agent_id}/_execute", body=query_body
@@ -217,29 +225,25 @@ def execute_agent_query(client, agent_id, query_body):
 def build_agent_query(query_text, agent_id=None, **kwargs):
     """
     Build conversational agent query.
-    
+
     Parameters:
         query_text (str): The user's question
         agent_id (str): ID of the conversational agent
         **kwargs: Additional parameters (unused)
-    
+
     Returns:
         dict: Agent execution request
     """
     if not agent_id:
         raise ValueError("Agent ID must be provided for conversational agent.")
-    
-    return {
-        "parameters": {
-            "question": query_text
-        }
-    }
+
+    return {"parameters": {"question": query_text}}
 
 
 def main():
     """
     Main function to run conversational agent example.
-    
+
     This function:
     1. Sets up the knowledge base with embeddings
     2. Creates and deploys LLM model
@@ -263,7 +267,7 @@ def main():
     client = OsMlClientWrapper(get_client(host_type))
     pqa_reader = QAndAFileReader(
         directory=QANDA_FILE_READER_PATH,
-        max_number_of_docs=args.number_of_docs_per_category
+        max_number_of_docs=args.number_of_docs_per_category,
     )
 
     config = {
@@ -331,19 +335,23 @@ def main():
 
     # Create conversational agent
     logging.info("Creating conversational agent...")
-    agent_id = create_conversational_agent(client,
-                                           index_name=index_name,
-                                           embedding_model_id=embedding_ml_model.model_id(),
-                                           llm_model_id=llm_model_id)
+    agent_id = create_conversational_agent(
+        client,
+        index_name=index_name,
+        embedding_model_id=embedding_ml_model.model_id(),
+        llm_model_id=llm_model_id,
+    )
 
-    logging.info("Setup complete! Starting interactive conversational agent interface...")
-    
+    logging.info(
+        "Setup complete! Starting interactive conversational agent interface..."
+    )
+
     # Start interactive agent loop using the generic function from cmd_line_interface
     cmd_line_interface.interactive_agent_loop(
         client=client,
         agent_id=agent_id,
         model_info=f"Agent: {agent_id}, LLM: {llm_model_id}, Embedding: {embedding_ml_model.model_id()}",
-        agent_executor_func=execute_agent_query
+        agent_executor_func=execute_agent_query,
     )
 
 

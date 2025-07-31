@@ -8,6 +8,7 @@ from ml_models import MlModel, MlModelGroup
 
 import os
 import sys
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import index_utils
 
@@ -90,7 +91,7 @@ class OsMlClientWrapper:
         logging.info(f"sparse_pipeline_config: {pipeline_field_map}")
         logging.info("Adding sparse pipeline...")
         self.os_client.ingest.put_pipeline(pipeline_name, body=pipeline_config)
-        
+
     def setup_for_kNN(
         self,
         ml_model: MlModel,

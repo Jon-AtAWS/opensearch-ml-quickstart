@@ -31,8 +31,12 @@ import cmd_line_interface
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from client import OsMlClientWrapper, get_client, index_utils
-from configs import (BASE_MAPPING_PATH, PIPELINE_FIELD_MAP,
-                     QANDA_FILE_READER_PATH, get_remote_connector_configs)
+from configs import (
+    BASE_MAPPING_PATH,
+    PIPELINE_FIELD_MAP,
+    QANDA_FILE_READER_PATH,
+    get_remote_connector_configs,
+)
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
 from ml_models import get_ml_model
@@ -51,29 +55,26 @@ RESET = "\033[0m"
 def create_index_settings(base_mapping_path, index_config):
     """
     Create OpenSearch index settings for hybrid lexical and dense vector search.
-    
+
     Parameters:
         base_mapping_path (str): Path to base mapping configuration
         index_config (dict): Configuration containing pipeline and model settings
-    
+
     Returns:
         dict: Updated index settings with k-NN vector configuration and text fields
     """
     settings = get_base_mapping(base_mapping_path)
     pipeline_name = index_config["pipeline_name"]
     model_dimension = index_config["model_dimensions"]
-    
+
     # Configure hybrid settings for both lexical and vector search
     hybrid_settings = {
-        "settings": {
-            "index": {"knn": True}, 
-            "default_pipeline": pipeline_name
-        },
+        "settings": {"index": {"knn": True}, "default_pipeline": pipeline_name},
         "mappings": {
             "properties": {
                 "chunk": {
                     "type": "text",
-                    "analyzer": "standard"  # Enable lexical search on chunk field
+                    "analyzer": "standard",  # Enable lexical search on chunk field
                 },
                 "chunk_embedding": {
                     "type": "knn_vector",
@@ -82,12 +83,9 @@ def create_index_settings(base_mapping_path, index_config):
                         "name": "hnsw",
                         "space_type": "l2",
                         "engine": "nmslib",
-                        "parameters": {
-                            "ef_construction": 128,
-                            "m": 24
-                        }
-                    }
-                }
+                        "parameters": {"ef_construction": 128, "m": 24},
+                    },
+                },
             }
         },
     }
@@ -98,56 +96,49 @@ def create_index_settings(base_mapping_path, index_config):
 def build_hybrid_local_query(query_text, model_id=None, pipeline_config=None, **kwargs):
     """
     Build hybrid search query combining lexical (BM25) and dense vector search.
-    
+
     Parameters:
         query_text (str): The search query text
         model_id (str): Local ML model ID for generating embeddings
         pipeline_config (dict): Search pipeline configuration to display
         **kwargs: Additional parameters (unused)
-    
+
     Returns:
         dict: OpenSearch hybrid query dictionary
     """
     if not model_id:
-        raise ValueError("Model ID must be provided for hybrid local search.")    
+        raise ValueError("Model ID must be provided for hybrid local search.")
     # Print pipeline config if provided
     if pipeline_config:
         print(f"{LIGHT_RED_HEADER}Search pipeline config:{RESET}")
         print(json.dumps(pipeline_config, indent=4))
-    
+
     return {
         "size": 5,
         "query": {
             "hybrid": {
                 "queries": [
-                    {
-                        "match": {
-                            "chunk": {
-                                "query": query_text,
-                                "boost": 1.0
-                            }
-                        }
-                    },
+                    {"match": {"chunk": {"query": query_text, "boost": 1.0}}},
                     {
                         "neural": {
                             "chunk_embedding": {
                                 "query_text": query_text,
                                 "model_id": model_id,
                                 "k": 10,
-                                "boost": 1.0
+                                "boost": 1.0,
                             }
                         }
-                    }
+                    },
                 ]
             }
-        }
+        },
     }
 
 
 def main():
     """
     Main function to run hybrid local search example.
-    
+
     This function:
     1. Initializes local OpenSearch client and Hugging Face model
     2. Configures hybrid index settings for lexical and vector search
@@ -156,7 +147,7 @@ def main():
     5. Provides interactive hybrid search interface
     """
     args = cmd_line_interface.get_command_line_args()
-    
+
     if args.opensearch_type != "os":
         logging.error(
             "This example is designed for local OpenSearch clusters only. Use --opensearch-type os"
@@ -175,7 +166,7 @@ def main():
     client = OsMlClientWrapper(get_client(host_type))
     pqa_reader = QAndAFileReader(
         directory=QANDA_FILE_READER_PATH,
-        max_number_of_docs=args.number_of_docs_per_category
+        max_number_of_docs=args.number_of_docs_per_category,
     )
 
     config = {
@@ -198,9 +189,9 @@ def main():
         "embedding_type": embedding_type,
         "model_format": "TORCH_SCRIPT",
     }
-    
+
     logging.info(f"Initializing local Hugging Face model: {model_name}")
-    
+
     ml_model = get_ml_model(
         host_type=host_type,
         model_type=model_type,
@@ -209,7 +200,7 @@ def main():
         os_client=client.os_client,
         ml_commons_client=client.ml_commons_client,
     )
-    
+
     config.update(model_config)
     config["index_settings"] = create_index_settings(
         base_mapping_path=BASE_MAPPING_PATH,
@@ -250,19 +241,21 @@ def main():
                     "normalization": {"technique": "min_max"},
                     "combination": {
                         "technique": "arithmetic_mean",
-                        "parameters": {"weights": [0.4, 0.6]}  # Favor semantic search slightly
+                        "parameters": {
+                            "weights": [0.4, 0.6]
+                        },  # Favor semantic search slightly
                     },
                 }
             }
         ],
     }
-    
+
     client.os_client.transport.perform_request(
         "PUT", f"/_search/pipeline/{search_pipeline_name}", body=pipeline_config
     )
 
     logging.info("Setup complete! Starting interactive hybrid search interface...")
-    
+
     # Start interactive search loop using the generic function
     cmd_line_interface.interactive_search_loop(
         client=client,
@@ -271,7 +264,7 @@ def main():
         query_builder_func=build_hybrid_local_query,
         ml_model=ml_model,
         pipeline_config=pipeline_config,
-        search_params={'search_pipeline': search_pipeline_name}
+        search_params={"search_pipeline": search_pipeline_name},
     )
 
 
