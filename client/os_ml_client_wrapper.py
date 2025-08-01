@@ -4,7 +4,7 @@
 import logging
 from opensearchpy import OpenSearch
 from opensearch_py_ml.ml_commons import MLCommonClient
-from ml_models import MlModel, MlModelGroup
+from models import MlModel, MlModelGroup
 
 import os
 import sys
@@ -78,7 +78,7 @@ class OsMlClientWrapper:
         pipeline_config = self._dense_pipeline_config(
             pipeline_field_map=pipeline_field_map
         )
-        logging.info(f"dense_pipeline_config: {pipeline_field_map}")
+        logging.info(f"{pipeline_name}: {pipeline_field_map}")
         logging.info("Adding dense pipeline...")
         self.os_client.ingest.put_pipeline(pipeline_name, body=pipeline_config)
 

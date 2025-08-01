@@ -3,32 +3,41 @@
 
 import logging
 from opensearchpy import OpenSearch
-from configs import get_client_configs, MINIMUM_OPENSEARCH_VERSION
+from configs.configuration_manager import get_opensearch_config, get_minimum_opensearch_version
 
 
 def get_client(host_type: str) -> OpenSearch:
-    configs = get_client_configs(host_type)
-    logging.info(f"Connecting to OpenSearch with configs\n{configs}")
-    port = configs["port"]
-    host_url = configs["host_url"]
-    username = configs["username"]
-    password = configs["password"]
-    hosts = [{"host": host_url, "port": port}] if port else host_url
+    """
+    Create and configure an OpenSearch client for the specified host type.
+    
+    Parameters:
+        host_type (str): Either "os" (self-managed) or "aos" (Amazon OpenSearch Service)
+    
+    Returns:
+        OpenSearch: Configured OpenSearch client
+    """
+    opensearch_config = get_opensearch_config(host_type)
+    
+    logging.info(f"Connecting to OpenSearch: {opensearch_config.host_url}:{opensearch_config.port}")
+    
+    hosts = [{"host": opensearch_config.host_url, "port": opensearch_config.port}] if opensearch_config.port else opensearch_config.host_url
     client = OpenSearch(
         hosts=hosts,
-        http_auth=(username, password),
+        http_auth=(opensearch_config.username, opensearch_config.password),
         use_ssl=True,
         verify_certs=False,
         ssl_assert_hostname=False,
         ssl_show_warn=False,
     )
     check_client_version(client)
+    
     # AOS does not support local hosting of ML models, but local OpenSearch does
     # support it. So set the allow_registering_model_via_url and
     # only_run_on_ml_node settings to whether or not the host_type is "os"
     # (local OpenSearch).
     settings = {
         "plugins.ml_commons.memory_feature_enabled": True,
+        "plugins.ml_commons.agent_framework_enabled": True,
         "plugins.ml_commons.rag_pipeline_feature_enabled": True,
         "plugins.ml_commons.trusted_connector_endpoints_regex": [
             "^https://bedrock-runtime\\..*[a-z0-9-]\\.amazonaws\\.com/.*$"
@@ -54,12 +63,13 @@ def parse_version(version: str):
 
 def check_client_version(client: OpenSearch):
     """
-    Checks if the given version is at least the mininum version
+    Checks if the given version is at least the minimum version
     """
     info = client.info()
     version = info["version"]["number"]
-    if parse_version(version) < parse_version(MINIMUM_OPENSEARCH_VERSION):
+    minimum_version = get_minimum_opensearch_version()
+    if parse_version(version) < parse_version(minimum_version):
         raise ValueError(
-            f"The mininum required version for opensearch cluster is {MINIMUM_OPENSEARCH_VERSION}"
+            f"The minimum required version for opensearch cluster is {minimum_version}"
         )
 

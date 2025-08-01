@@ -7,11 +7,11 @@ from opensearch_py_ml.ml_commons import MLCommonClient
 
 from client import get_client
 from configs import get_remote_connector_configs
-from ml_models import (
-    OsSagemakerMlConnector,
+from models import (
     RemoteMlModel,
     MlModelGroup,
 )
+from connectors import OsSagemakerMlConnector
 
 
 def test():

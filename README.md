@@ -24,7 +24,7 @@ opensearch-ml-quickstart/
 │   ├── conversational_search.py # RAG-powered conversational AI
 │   ├── workflow_example.py     # Custom workflow templates
 │   └── workflow_with_template.py # Built-in workflow templates
-├── ml_models/                  # ML model abstraction layer
+├── models/                     # ML model abstraction layer
 ├── client/                     # OpenSearch client wrappers
 ├── configs/                    # Configuration management
 ├── data_process/              # Data processing utilities
@@ -38,7 +38,7 @@ opensearch-ml-quickstart/
 
 The architecture of OpenSearch ML Quickstart is centered around a well-designed abstraction layer for ML models. This design allows developers to work with different model types and hosting scenarios through a consistent interface, hiding the complexity of the underlying implementations.
 
-The `ml_models/` directory contains a class hierarchy that abstracts away the differences between local and remote models:
+The `models/` directory contains a class hierarchy that abstracts away the differences between local and remote models:
 
 ```
 MlModel (Abstract Base Class)

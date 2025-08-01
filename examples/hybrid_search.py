@@ -25,7 +25,7 @@ from client import (
 )
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
-from ml_models import get_ml_model, MlModel
+from models import get_ml_model, MlModel
 
 
 logging.basicConfig(

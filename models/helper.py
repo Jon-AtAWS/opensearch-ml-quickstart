@@ -12,11 +12,13 @@ from .ml_model import MlModel
 from .ml_model_group import MlModelGroup
 from .local_ml_model import LocalMlModel
 from .remote_ml_model import RemoteMlModel
-from .os_bedrock_ml_connector import OsBedrockMlConnector
-from .os_sagemaker_ml_connector import OsSagemakerMlConnector
-from .aos_bedrock_ml_connector import AosBedrockMlConnector
-from .aos_sagemaker_ml_connector import AosSagemakerMlConnector
-from .aos_connector_helper import AosConnectorHelper
+from connectors import (
+    OsBedrockMlConnector,
+    OsSagemakerMlConnector,
+    AosBedrockMlConnector,
+    AosSagemakerMlConnector,
+    AosConnectorHelper,
+)
 
 
 def get_aos_connector_helper(configs) -> AosConnectorHelper:

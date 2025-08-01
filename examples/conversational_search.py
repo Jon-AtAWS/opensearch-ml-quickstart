@@ -20,13 +20,13 @@ from configs import (
 )
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
-from ml_models import (
-    AosLlmConnector,
+from models import (
     MlModel,
     RemoteMlModel,
     get_aos_connector_helper,
     get_ml_model,
 )
+from connectors import AosLlmConnector
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",

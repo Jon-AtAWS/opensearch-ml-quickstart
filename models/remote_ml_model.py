@@ -7,8 +7,8 @@ from opensearchpy import OpenSearch
 from opensearch_py_ml.ml_commons import MLCommonClient
 
 from .ml_model import MlModel
-from .ml_connector import MlConnector
-from configs import parse_arg_from_configs, ML_BASE_URI
+from connectors import MlConnector
+from configs.configuration_manager import get_ml_base_uri
 
 
 class RemoteMlModel(MlModel):
@@ -72,14 +72,14 @@ class RemoteMlModel(MlModel):
             "deploy": True,
         }
         response = self._os_client.http.post(
-            url=f"{ML_BASE_URI}/models/_register",
+            url=f"{get_ml_base_uri()}/models/_register",
             body=model_deploy_payload,
         )
         task_id = response["task_id"]
 
         # validate model deployment task
         time.sleep(1)
-        response = self._os_client.http.get(url=f"{ML_BASE_URI}/tasks/{task_id}")
+        response = self._os_client.http.get(url=f"{get_ml_base_uri()}/tasks/{task_id}")
         state = response["state"]
         if state != "COMPLETED":
             raise Exception(f"Model deployment task {task_id} is not COMPLETED!")

@@ -17,7 +17,7 @@ from client import (
     load_dataset,
     OsMlClientWrapper,
 )
-from ml_models import get_ml_model
+from models import get_ml_model
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
 

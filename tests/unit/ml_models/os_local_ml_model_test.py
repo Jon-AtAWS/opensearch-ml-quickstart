@@ -6,7 +6,7 @@ from unittest.mock import patch
 from opensearch_py_ml.ml_commons import MLCommonClient
 
 from client import get_client
-from ml_models import get_ml_model_group, LocalMlModel
+from models import get_ml_model_group, LocalMlModel
 
 
 def test():

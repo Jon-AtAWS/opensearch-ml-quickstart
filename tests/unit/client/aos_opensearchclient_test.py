@@ -7,8 +7,9 @@ from opensearch_py_ml.ml_commons import MLCommonClient
 
 from configs import get_remote_connector_configs
 from client import get_client, get_client_configs, OsMlClientWrapper
-from ml_models import get_aos_connector_helper
-from ml_models import AosBedrockMlConnector, AosSagemakerMlConnector, RemoteMlModel
+from models import get_aos_connector_helper
+from models import RemoteMlModel
+from connectors import AosBedrockMlConnector, AosSagemakerMlConnector
 
 
 def test():

@@ -6,11 +6,10 @@ from opensearchpy import OpenSearch
 from opensearch_py_ml.ml_commons import MLCommonClient
 
 from .ml_model import MlModel
-from configs import (
-    parse_arg_from_configs,
-    DEFAULT_LOCAL_MODEL_NAME,
-    DEFAULT_MODEL_FORMAT,
-    DEFAULT_MODEL_VERSION,
+from configs.configuration_manager import (
+    get_default_local_model_name,
+    get_default_model_format,
+    get_default_model_version,
 )
 
 
@@ -23,10 +22,14 @@ class LocalMlModel(MlModel):
         os_client: OpenSearch,
         ml_commons_client: MLCommonClient,
         model_group_id,
-        model_name=DEFAULT_LOCAL_MODEL_NAME,
+        model_name=None,
         model_description=DEFAULT_LOCAL_MODEL_DESCRIPTION,
         model_configs=dict(),
     ) -> None:
+        # Use configuration manager default if model_name not provided
+        if model_name is None:
+            model_name = get_default_local_model_name()
+            
         super().__init__(
             os_client,
             ml_commons_client,
@@ -38,12 +41,12 @@ class LocalMlModel(MlModel):
 
     @overrides
     def _register_model(self):
-        model_version = parse_arg_from_configs(
-            self._model_configs, "model_version", DEFAULT_MODEL_VERSION
-        )
-        model_format = parse_arg_from_configs(
-            self._model_configs, "model_format", DEFAULT_MODEL_FORMAT
-        )
+        # Get model version from config or use default from configuration manager
+        model_version = self._model_configs.get("model_version", get_default_model_version())
+        
+        # Get model format from config or use default from configuration manager
+        model_format = self._model_configs.get("model_format", get_default_model_format())
+        
         self._ml_commons_client.register_pretrained_model(
             model_name=self._model_name,
             model_version=model_version,
