@@ -5,7 +5,8 @@ import json
 from typing import Dict
 
 from opensearchpy import OpenSearch
-from configs import validate_configs, get_client_configs
+from configs import validate_configs
+from configs.configuration_manager import get_opensearch_config
 from opensearch_py_ml.ml_commons import MLCommonClient
 
 from .ml_model import MlModel
@@ -57,7 +58,14 @@ def get_ml_model(
         connector_name = f"{host_type}_{model_type}_{embedding_type}"
 
     if host_type == "aos":
-        aos_connector_helper = get_aos_connector_helper(get_client_configs("aos"))
+        aos_config = get_opensearch_config("aos")
+        aos_connector_helper = get_aos_connector_helper({
+            "region": aos_config.region,
+            "username": aos_config.username,
+            "password": aos_config.password,
+            "domain_name": aos_config.domain_name,
+            "aws_user_name": aos_config.aws_user_name,
+        })
 
     if model_type == "local":
         return LocalMlModel(

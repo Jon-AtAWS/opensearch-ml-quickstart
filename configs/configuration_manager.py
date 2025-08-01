@@ -577,6 +577,14 @@ def get_default_model_format() -> str:
     """Get the default model format."""
     return get_raw_config_value("DEFAULT_MODEL_FORMAT", "TORCH_SCRIPT")
 
+def get_pipeline_field_map() -> Dict[str, str]:
+    """Get the pipeline field mapping."""
+    return get_raw_config_value("PIPELINE_FIELD_MAP", {"chunk": "chunk_embedding"})
+
+def get_pipeline_field_map() -> Dict[str, str]:
+    """Get the pipeline field mapping."""
+    return get_raw_config_value("PIPELINE_FIELD_MAP", {"chunk": "chunk_embedding"})
+
 # Legacy compatibility constants (computed from configuration)
 PROJECT_ROOT = get_project_root()
 BASE_MAPPING_PATH = get_base_mapping_path()

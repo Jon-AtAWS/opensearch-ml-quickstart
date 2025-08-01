@@ -11,3 +11,4 @@ from .os_bedrock_ml_connector import OsBedrockMlConnector
 from .os_llm_connector import OsLlmConnector
 from .os_sagemaker_ml_connector import OsSagemakerMlConnector
 from .aos_connector_helper import AosConnectorHelper
+from .helper import get_remote_connector_configs

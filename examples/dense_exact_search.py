@@ -23,12 +23,12 @@ import cmd_line_interface
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from client import OsMlClientWrapper, get_client, index_utils
-from configs import (
-    BASE_MAPPING_PATH,
-    PIPELINE_FIELD_MAP,
-    QANDA_FILE_READER_PATH,
-    get_remote_connector_configs,
+from configs.configuration_manager import (
+    get_base_mapping_path,
+    get_pipeline_field_map,
+    get_qanda_file_reader_path,
 )
+from connectors.helper import get_remote_connector_configs
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
 from models import get_ml_model
@@ -127,13 +127,13 @@ def main():
     # Initialize OpenSearch client and data reader
     client = OsMlClientWrapper(get_client(host_type))
     pqa_reader = QAndAFileReader(
-        directory=QANDA_FILE_READER_PATH,
+        directory=get_qanda_file_reader_path(),
         max_number_of_docs=args.number_of_docs_per_category,
     )
 
     config = {
         "with_knn": True,
-        "pipeline_field_map": PIPELINE_FIELD_MAP,
+        "pipeline_field_map": get_pipeline_field_map(),
         "categories": args.categories,
         "index_name": index_name,
         "pipeline_name": pipeline_name,
@@ -159,7 +159,7 @@ def main():
     config.update(model_config)
 
     config["index_settings"] = create_index_settings(
-        base_mapping_path=BASE_MAPPING_PATH,
+        base_mapping_path=get_base_mapping_path(),
         index_config=config,
     )
 
