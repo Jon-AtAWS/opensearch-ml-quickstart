@@ -585,6 +585,57 @@ def get_pipeline_field_map() -> Dict[str, str]:
     """Get the pipeline field mapping."""
     return get_raw_config_value("PIPELINE_FIELD_MAP", {"chunk": "chunk_embedding"})
 
+
+def get_client_configs(host_type: str) -> Dict[str, str]:
+    """
+    Get client configuration for OpenSearch connection.
+    
+    Args:
+        host_type: Either 'os' for self-managed OpenSearch or 'aos' for Amazon OpenSearch Service
+        
+    Returns:
+        Dictionary containing client configuration parameters
+        
+    Raises:
+        ValueError: If host_type is not 'os' or 'aos', or if required configs are missing
+    """
+    if host_type not in {"os", "aos"}:
+        raise ValueError("host_type must either be 'os' or 'aos'")
+    
+    opensearch_config = get_opensearch_config(host_type)
+    
+    # Build the configuration dictionary
+    configs = {
+        "port": opensearch_config.port,
+        "host_url": opensearch_config.host_url,
+        "username": opensearch_config.username,
+        "password": opensearch_config.password,
+    }
+    
+    # Add AOS-specific configurations
+    if host_type == "aos":
+        configs.update({
+            "domain_name": opensearch_config.domain_name,
+            "region": opensearch_config.region,
+            "aws_user_name": opensearch_config.aws_user_name,
+        })
+    
+    # Validate required configurations
+    required_args = ["host_url", "username", "password"]
+    missing_configs = []
+    for required_arg in required_args:
+        if required_arg not in configs or configs[required_arg] is None:
+            missing_configs.append(required_arg)
+    
+    if missing_configs:
+        raise ValueError(
+            f"Missing required configuration(s): {', '.join(missing_configs)}. "
+            f"Please specify these values in the configuration."
+        )
+    
+    return configs
+
+
 # Legacy compatibility constants (computed from configuration)
 PROJECT_ROOT = get_project_root()
 BASE_MAPPING_PATH = get_base_mapping_path()
