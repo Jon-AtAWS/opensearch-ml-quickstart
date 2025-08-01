@@ -181,9 +181,28 @@ class AosConnectorHelper:
         headers = {"Content-Type": "application/json"}
 
         r = requests.post(url, auth=awsauth, json=payload, headers=headers)
-        # print(r.text)
-        connector_id = json.loads(r.text)["connector_id"]
-        return connector_id
+        
+        # Debug: Log the response
+        logging.info(f"Connector creation response status: {r.status_code}")
+        logging.info(f"Connector creation response text: {r.text}")
+        
+        try:
+            response_json = json.loads(r.text)
+            logging.info(f"Connector creation response JSON keys: {list(response_json.keys())}")
+            
+            if "connector_id" in response_json:
+                connector_id = response_json["connector_id"]
+                logging.info(f"Successfully extracted connector_id: {connector_id}")
+                return connector_id
+            else:
+                logging.error(f"connector_id not found in response. Available keys: {list(response_json.keys())}")
+                logging.error(f"Full response: {response_json}")
+                raise KeyError("connector_id not found in response")
+                
+        except json.JSONDecodeError as e:
+            logging.error(f"Failed to parse JSON response: {e}")
+            logging.error(f"Raw response: {r.text}")
+            raise
 
     def create_connector_with_role(
         self,

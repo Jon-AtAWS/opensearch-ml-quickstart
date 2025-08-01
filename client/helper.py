@@ -40,7 +40,10 @@ def get_client(host_type: str) -> OpenSearch:
         "plugins.ml_commons.agent_framework_enabled": True,
         "plugins.ml_commons.rag_pipeline_feature_enabled": True,
         "plugins.ml_commons.trusted_connector_endpoints_regex": [
-            "^https://bedrock-runtime\\..*[a-z0-9-]\\.amazonaws\\.com/.*$"
+            # Bedrock runtime endpoints
+            "^https://bedrock-runtime\\..*[a-z0-9-]\\.amazonaws\\.com/.*$",
+            # SageMaker runtime endpoints  
+            "^https://runtime\\.sagemaker\\..*[a-z0-9-]\\.amazonaws\\.com/.*$"
         ]
     }
     if host_type == "os":
