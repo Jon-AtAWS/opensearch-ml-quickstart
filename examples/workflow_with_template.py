@@ -30,12 +30,12 @@ import cmd_line_interface
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from client import OsMlClientWrapper, get_client, index_utils
-from configs import (
-    BASE_MAPPING_PATH,
-    PIPELINE_FIELD_MAP,
-    QANDA_FILE_READER_PATH,
-    get_remote_connector_configs,
+from configs.configuration_manager import (
+    get_base_mapping_path,
+    get_pipeline_field_map,
+    get_qanda_file_reader_path,
 )
+from connectors.helper import get_remote_connector_configs
 from data_process import QAndAFileReader
 from mapping import get_base_mapping
 from models import get_ml_model
@@ -97,7 +97,7 @@ def add_additional_field_mappings(os_client: OpenSearch, index_name):
     logging.info(f"Adding additional field mappings to {index_name}")
 
     # Read the base mapping from the specified path
-    index_config = get_base_mapping(BASE_MAPPING_PATH)
+    index_config = get_base_mapping(get_base_mapping_path())
     properties = index_config.get("mappings", None)
 
     if not properties:
@@ -275,14 +275,14 @@ def main():
     # Initialize OpenSearch client and data reader
     client = OsMlClientWrapper(get_client(host_type))
     pqa_reader = QAndAFileReader(
-        directory=QANDA_FILE_READER_PATH,
+        directory=get_qanda_file_reader_path(),
         max_number_of_docs=args.number_of_docs_per_category,
     )
 
     # Configuration dictionary
     config = {
         "with_knn": True,
-        "pipeline_field_map": PIPELINE_FIELD_MAP,
+        "pipeline_field_map": get_pipeline_field_map(),
         "index_name": index_name,
         "pipeline_name": pipeline_name,
         "embedding_type": embedding_type,
