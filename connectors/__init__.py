@@ -3,14 +3,14 @@
 
 # Base connector classes
 from .ml_connector import MlConnector
-from .embedding_connector import EmbeddingConnector
+from .embedding_connector import EmbeddingConnector  # Universal embedding connector
 from .llm_connector import LlmConnector
 
-# OpenSearch-type specific base classes
+# OpenSearch-type specific base classes (legacy)
 from .aos_ml_connector import AosMlConnector
 from .os_ml_connector import OsMlConnector
 
-# Legacy specific connector implementations
+# Legacy specific connector implementations (deprecated - use EmbeddingConnector instead)
 from .aos_bedrock_ml_connector import AosBedrockMlConnector
 from .aos_llm_connector import AosLlmConnector
 from .aos_sagemaker_ml_connector import AosSagemakerMlConnector
