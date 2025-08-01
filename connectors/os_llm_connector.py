@@ -3,7 +3,7 @@
 
 from overrides import overrides
 
-from configs import validate_configs
+from configs.configuration_manager import validate_configs
 from .os_ml_connector import OsMlConnector
 
 

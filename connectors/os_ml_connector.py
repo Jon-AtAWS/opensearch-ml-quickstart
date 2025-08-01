@@ -4,7 +4,7 @@
 from overrides import overrides
 
 from .ml_connector import MlConnector
-from configs import validate_configs, ML_BASE_URI
+from configs.configuration_manager import validate_configs, get_ml_base_uri
 
 
 class OsMlConnector(MlConnector):
@@ -16,7 +16,7 @@ class OsMlConnector(MlConnector):
     @overrides
     def _create_connector_with_payload(self, connector_create_payload):
         response = self._os_client.http.post(
-            url=f"{ML_BASE_URI}/connectors/_create",
+            url=f"{get_ml_base_uri()}/connectors/_create",
             body=connector_create_payload,
         )
         self._connector_id = response["connector_id"]

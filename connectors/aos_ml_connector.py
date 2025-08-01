@@ -5,7 +5,7 @@ from abc import abstractmethod
 from overrides import overrides
 from opensearchpy import OpenSearch
 
-from configs import validate_configs
+from configs.configuration_manager import validate_configs
 from .ml_connector import MlConnector
 from .aos_connector_helper import AosConnectorHelper
 

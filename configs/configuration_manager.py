@@ -636,6 +636,29 @@ def get_client_configs(host_type: str) -> Dict[str, str]:
     return configs
 
 
+def validate_configs(configs: Dict[str, Any], required_args: list) -> None:
+    """
+    Validate that required configuration keys are present and not None.
+    
+    Args:
+        configs: Dictionary containing configuration values
+        required_args: List of required configuration keys
+        
+    Raises:
+        ValueError: If any required configuration is missing or None
+    """
+    missing_configs = []
+    for required_arg in required_args:
+        if required_arg not in configs or configs[required_arg] is None:
+            missing_configs.append(required_arg)
+    
+    if missing_configs:
+        raise ValueError(
+            f"Missing or None configuration(s): {', '.join(missing_configs)}. "
+            f"Please specify these values in the configuration."
+        )
+
+
 # Legacy compatibility constants (computed from configuration)
 PROJECT_ROOT = get_project_root()
 BASE_MAPPING_PATH = get_base_mapping_path()

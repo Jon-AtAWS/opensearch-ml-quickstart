@@ -5,8 +5,7 @@ import json
 from typing import Dict
 
 from opensearchpy import OpenSearch
-from configs import validate_configs
-from configs.configuration_manager import get_opensearch_config
+from configs.configuration_manager import validate_configs, get_opensearch_config
 from opensearch_py_ml.ml_commons import MLCommonClient
 
 from .ml_model import MlModel

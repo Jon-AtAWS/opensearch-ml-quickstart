@@ -3,12 +3,12 @@
 
 import logging
 from data_process import QAndAFileReader
-from configs import get_config, QANDA_FILE_READER_PATH
+from configs.configuration_manager import get_raw_config_value, get_qanda_file_reader_path
 
 
 def test():
     logging.info("Testing qanda file reader...")
-    reader = QAndAFileReader(directory=QANDA_FILE_READER_PATH)
+    reader = QAndAFileReader(directory=get_qanda_file_reader_path())
     for category in reader.amazon_pqa_category_names():
         logging.info(f"category: {category}")
         logging.info(f"file size: {reader.file_size(category)}")

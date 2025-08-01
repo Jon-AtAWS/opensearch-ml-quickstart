@@ -6,7 +6,7 @@ from unittest.mock import patch
 from opensearch_py_ml.ml_commons import MLCommonClient
 
 from client import get_client
-from configs import get_remote_connector_configs
+from connectors.helper import get_remote_connector_configs
 from models import (
     RemoteMlModel,
     MlModelGroup,

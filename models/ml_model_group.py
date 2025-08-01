@@ -6,7 +6,7 @@ from opensearchpy import OpenSearch
 from opensearch_py_ml import ml_commons
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-from configs import ML_BASE_URI, DELETE_RESOURCE_WAIT_TIME, DELETE_RESOURCE_RETRY_TIME
+from configs.configuration_manager import get_ml_base_uri, get_delete_resource_wait_time, get_delete_resource_retry_time
 
 
 class MlModelGroup:
@@ -51,7 +51,7 @@ class MlModelGroup:
     def _register_model_group(self):
         logging.info(f"Registering model group {self._model_group_name}")
         register_result = self._os_client.http.post(
-            url=f"{ML_BASE_URI}/model_groups/_register",
+            url=f"{get_ml_base_uri()}/model_groups/_register",
             body={
                 "name": self._model_group_name,
                 "description": "This is a public model group",
@@ -62,7 +62,7 @@ class MlModelGroup:
     def _get_all_model_groups(self):
         try:
             search_result = self._os_client.http.get(
-                url=f"{ML_BASE_URI}/model_groups/_search", body={"size": 10000}
+                url=f"{get_ml_base_uri()}/model_groups/_search", body={"size": 10000}
             )
             if not search_result:
                 return []
@@ -86,8 +86,8 @@ class MlModelGroup:
         return None
 
     @retry(
-        stop=stop_after_attempt(DELETE_RESOURCE_RETRY_TIME),
-        wait=wait_fixed(DELETE_RESOURCE_WAIT_TIME),
+        stop=stop_after_attempt(get_delete_resource_retry_time()),
+        wait=wait_fixed(get_delete_resource_wait_time()),
     )
     def _delete_model_group(self, model_group_id):
         user_input = (
@@ -103,7 +103,7 @@ class MlModelGroup:
         try:
             logging.info(f"Deleting model group {model_group_id}")
             self._os_client.http.delete(
-                url=f"{ML_BASE_URI}/model_groups/{model_group_id}",
+                url=f"{get_ml_base_uri()}/model_groups/{model_group_id}",
                 body={},
             )
             logging.info(f"Deleted model group {model_group_id}")

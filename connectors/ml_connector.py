@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from opensearchpy import OpenSearch
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-from configs import ML_BASE_URI, DELETE_RESOURCE_WAIT_TIME, DELETE_RESOURCE_RETRY_TIME
+from configs.configuration_manager import get_ml_base_uri, get_delete_resource_wait_time, get_delete_resource_retry_time
 
 
 # parent abstract class for all connectors
@@ -107,7 +107,7 @@ class MlConnector(ABC):
             raise ValueError("search_query needs to be a dictionary")
 
         return self._os_client.http.post(
-            url=f"{ML_BASE_URI}/connectors/_search", body=search_query
+            url=f"{get_ml_base_uri()}/connectors/_search", body=search_query
         )
 
     # name == None to return all connector ids
@@ -131,8 +131,8 @@ class MlConnector(ABC):
             return []
 
     @retry(
-        stop=stop_after_attempt(DELETE_RESOURCE_RETRY_TIME),
-        wait=wait_fixed(DELETE_RESOURCE_WAIT_TIME),
+        stop=stop_after_attempt(get_delete_resource_retry_time()),
+        wait=wait_fixed(get_delete_resource_wait_time()),
     )
     def _delete_connector(self, connector_id):
         user_input = (
@@ -147,7 +147,7 @@ class MlConnector(ABC):
 
         try:
             logging.info(f"Deleting connector {connector_id}")
-            self._os_client.http.delete(url=f"{ML_BASE_URI}/connectors/{connector_id}")
+            self._os_client.http.delete(url=f"{get_ml_base_uri()}/connectors/{connector_id}")
             logging.info(f"Deleted connector {connector_id}")
         except Exception as e:
             logging.error(
