@@ -36,10 +36,9 @@ from mapping import get_base_mapping, mapping_update
 from models import (
     MlModel,
     RemoteMlModel,
-    get_aos_connector_helper,
     get_ml_model,
 )
-from connectors import OsLlmConnector
+from connectors import LlmConnector
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
@@ -80,7 +79,7 @@ def create_index_settings(base_mapping_path, index_config):
 
 def create_llm_model(client: OsMlClientWrapper):
     """
-    Create and deploy LLM model for conversational agent.
+    Create and deploy LLM model for conversational agent using the LlmConnector.
 
     Parameters:
         client (OsMlClientWrapper): OpenSearch ML client wrapper
@@ -88,25 +87,26 @@ def create_llm_model(client: OsMlClientWrapper):
     Returns:
         str: Model ID of the deployed LLM model
     """
-    connector_configs = get_remote_connector_configs(
-        host_type="os", connector_type="bedrock"
-    )
-
+    # Get base connector configs for local OpenSearch + Bedrock
+    connector_configs = get_remote_connector_configs("bedrock", "os")
+    
     logging.info(f"LLM connector configs:\n{connector_configs}")
 
-    aos_connector_helper = get_aos_connector_helper(get_client_configs("aos"))
-    aos_llm_connector = OsLlmConnector(
+    # Create the LLM connector (uses basic auth for local OpenSearch, credentials for Bedrock)
+    llm_connector = LlmConnector(
         os_client=client.os_client,
+        os_type="os",
         connector_configs=connector_configs,
     )
 
-    logging.info(f"LLM connector ID: {aos_llm_connector.connector_id()}")
+    logging.info(f"LLM connector ID: {llm_connector.connector_id()}")
 
+    # Create the remote ML model using the connector
     model_group_id = client.ml_model_group.model_group_id()
     llm_model = RemoteMlModel(
         os_client=client.os_client,
         ml_commons_client=client.ml_commons_client,
-        ml_connector=aos_llm_connector,
+        ml_connector=llm_connector,
         model_group_id=model_group_id,
         model_name="Amazon Bedrock Claude 3.5 Sonnet for Agent",
     )

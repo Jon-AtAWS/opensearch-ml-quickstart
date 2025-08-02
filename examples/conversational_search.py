@@ -18,14 +18,13 @@ from configs.configuration_manager import (
     get_pipeline_field_map,
     get_qanda_file_reader_path,
 )
+from connectors import LlmConnector
 from connectors.helper import get_remote_connector_configs
-from connectors.aos_llm_connector import AosLlmConnector
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
 from models import (
     MlModel,
     RemoteMlModel,
-    get_aos_connector_helper,
     get_ml_model,
 )
 
@@ -55,33 +54,50 @@ def create_index_settings(base_mapping_path, index_config):
 
 
 def create_text_gen_model():
+    """
+    Create a text generation model using the LlmConnector.
+    
+    Returns:
+        str: The model ID of the created LLM model
+    """
     client = OsMlClientWrapper(get_client("aos"))
-    connector_configs = get_remote_connector_configs(
-        host_type="aos", connector_type="bedrock"
-    )
-    connector_configs[
-        "llm_arn"
-    ] = "arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0"
+    
+    # Get base connector configs and add LLM-specific overrides
+    connector_configs = get_remote_connector_configs("bedrock", "aos")
+    connector_configs["llm_arn"] = "arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0"
     connector_configs["connector_role_name"] = "bedrock_llm_connector_role"
-    connector_configs[
-        "create_connector_role_name"
-    ] = "bedrock_llm_create_connector_role"
+    connector_configs["create_connector_role_name"] = "bedrock_llm_create_connector_role"
+    
     logging.info(f"connector_configs:\n{connector_configs}")
-    aos_connector_helper = get_aos_connector_helper(get_client_configs("aos"))
-    aosLlmConnector = AosLlmConnector(
+    
+    # Get AOS client configs for domain info
+    aos_configs = get_client_configs("aos")
+    
+    # Create the LLM connector
+    llm_connector = LlmConnector(
         os_client=client.os_client,
-        connector_configs=connector_configs,
-        aos_connector_helper=aos_connector_helper,
+        os_type="aos",
+        opensearch_domain_url=aos_configs["host_url"],
+        opensearch_domain_arn=f"arn:aws:es:{aos_configs['region']}:*:domain/{aos_configs['domain_name']}",
+        opensearch_username=aos_configs["username"],
+        opensearch_password=aos_configs["password"],
+        aws_user_name=aos_configs["aws_user_name"],
+        region=aos_configs["region"],
+        connector_configs=connector_configs
     )
-    logging.info(f"connector id of the llm connector: {aosLlmConnector.connector_id()}")
+    
+    logging.info(f"connector id of the llm connector: {llm_connector.connector_id()}")
+    
+    # Create the remote ML model using the connector
     model_group_id = client.ml_model_group.model_group_id()
     llm_model = RemoteMlModel(
         os_client=client.os_client,
         ml_commons_client=client.ml_commons_client,
-        ml_connector=aosLlmConnector,
+        ml_connector=llm_connector,
         model_group_id=model_group_id,
         model_name="Amazon Bedrock claude 3.5",
     )
+    
     llm_model_id = llm_model.model_id()
     logging.info(f"Model id of the llm model: {llm_model_id}")
     return llm_model_id
@@ -186,6 +202,9 @@ def main():
         "bulk_send_chunk_size": args.bulk_send_chunk_size,
     }
 
+    # Create embedding model for sparse search
+    from connectors.helper import get_remote_connector_configs
+    
     model_name = f"{host_type}_{model_type}"
     model_config = get_remote_connector_configs(
         host_type=host_type, connector_type=model_type
@@ -229,8 +248,10 @@ def main():
         no_load=args.no_load,
     )
 
+    # Create text generation model using the new universal LlmConnector
     text_gen_model_id = create_text_gen_model()
 
+    # Create search pipeline for conversational search
     response = client.os_client.transport.perform_request(
         "PUT",
         f"/_search/pipeline/{search_pipeline_name}",
@@ -254,6 +275,7 @@ def main():
         },
     )
 
+    # Create conversation memory
     uuid_str = str(uuid.uuid4())[:8]
     conversation_name = f"conversation-{uuid_str}"
     response = client.os_client.transport.perform_request(

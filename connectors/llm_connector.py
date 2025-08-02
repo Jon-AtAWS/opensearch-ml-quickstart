@@ -4,65 +4,96 @@
 """
 LLM Connector Module
 
-This module provides the base class for all Large Language Model (LLM) connectors.
-LLM connectors are responsible for connecting to language models that generate
-text responses, typically used for conversational AI, text generation, and
-question-answering tasks.
-
-The LlmConnector class serves as an abstract base for all LLM connectors,
-handling common functionality like model parameter configuration, response
-formatting, and generation settings.
+This module provides the universal connector for Bedrock LLM models.
+The LlmConnector class handles connections to Bedrock Claude models for
+conversational AI and text generation tasks.
 """
 
 import logging
-from abc import abstractmethod
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any, Optional
 from opensearchpy import OpenSearch
 
+from configs.configuration_manager import validate_configs, get_ml_base_uri
+from connectors.helper import get_remote_connector_configs, create_connector_with_iam_roles, create_connector_with_basic_auth
 from .ml_connector import MlConnector
 
 
 class LlmConnector(MlConnector):
     """
-    Abstract base class for all Large Language Model (LLM) connectors.
+    Universal connector for Bedrock LLM models.
     
-    This class provides common functionality for LLM connectors including:
-    - Model parameter validation (temperature, max_tokens, etc.)
-    - Response format handling
-    - Common LLM-specific configuration validation
-    - Standardized LLM connector interface
+    This class provides a unified interface for LLM connectors across different
+    OpenSearch deployment types (AOS and self-managed OpenSearch).
     
-    Subclasses should implement OpenSearch-type specific functionality
-    (e.g., AOS vs self-managed OpenSearch) and model provider specifics
-    (e.g., Bedrock vs SageMaker).
+    Only supports Bedrock Claude models.
     """
     
-    DEFAULT_CONNECTOR_NAME = "Large Language Model Connector"
-    DEFAULT_CONNECTOR_DESCRIPTION = "Connector for large language models that generate text responses"
-    
-    # Default model parameters
-    DEFAULT_TEMPERATURE = 0.7
-    DEFAULT_MAX_TOKENS = 1000
-    DEFAULT_TOP_P = 0.9
-    DEFAULT_TOP_K = 50
+    DEFAULT_CONNECTOR_NAME = "Amazon Bedrock LLM Connector"
+    DEFAULT_CONNECTOR_DESCRIPTION = "Connector to Amazon Bedrock language models"
     
     def __init__(
         self,
         os_client: OpenSearch,
+        os_type: str,
+        opensearch_domain_url: Optional[str] = None,
+        opensearch_domain_arn: Optional[str] = None,
+        opensearch_username: Optional[str] = None,
+        opensearch_password: Optional[str] = None,
+        aws_user_name: Optional[str] = None,
+        region: Optional[str] = None,
         connector_name: Optional[str] = None,
         connector_description: Optional[str] = None,
         connector_configs: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
-        Initialize the LLM connector.
+        Initialize the LLM connector for Bedrock.
         
         Args:
             os_client: OpenSearch client instance
-            connector_name: Name for the connector (optional)
-            connector_description: Description for the connector (optional)
-            connector_configs: Configuration dictionary for the connector
+            os_type: OpenSearch deployment type ('aos' or 'os')
+            opensearch_domain_url: OpenSearch domain URL (required for AOS)
+            opensearch_domain_arn: OpenSearch domain ARN (required for AOS)
+            opensearch_username: OpenSearch username (required for AOS)
+            opensearch_password: OpenSearch password (required for AOS)
+            aws_user_name: AWS IAM user name (required for AOS)
+            region: AWS region (required for AOS)
+            connector_name: Custom connector name (optional)
+            connector_description: Custom connector description (optional)
+            connector_configs: Override configurations (optional, will auto-load if not provided)
+        
+        Raises:
+            ValueError: If os_type or required parameters are invalid
         """
-        connector_configs = connector_configs or {}
+        # Validate os_type
+        if os_type not in {"aos", "os"}:
+            raise ValueError(f"os_type must be 'aos' or 'os', got: {os_type}")
+        
+        self._os_type = os_type
+        
+        # Store AOS-specific parameters
+        if os_type == "aos":
+            if not all([opensearch_domain_url, opensearch_domain_arn, opensearch_username, 
+                       opensearch_password, aws_user_name, region]):
+                raise ValueError("AOS deployments require: opensearch_domain_url, opensearch_domain_arn, "
+                               "opensearch_username, opensearch_password, aws_user_name, region")
+            
+            self._opensearch_domain_url = opensearch_domain_url
+            self._opensearch_domain_arn = opensearch_domain_arn
+            self._opensearch_username = opensearch_username
+            self._opensearch_password = opensearch_password
+            self._aws_user_name = aws_user_name
+            self._region = region
+        
+        # Auto-load configuration if not provided
+        if connector_configs is None:
+            connector_configs = get_remote_connector_configs("bedrock", os_type)
+            logging.info(f"Auto-loaded Bedrock configuration for {os_type.upper()}")
+        
+        # Set default names if not provided
+        if connector_name is None:
+            connector_name = self.DEFAULT_CONNECTOR_NAME
+        if connector_description is None:
+            connector_description = self.DEFAULT_CONNECTOR_DESCRIPTION
         
         super().__init__(
             os_client=os_client,
@@ -71,239 +102,136 @@ class LlmConnector(MlConnector):
             connector_configs=connector_configs
         )
         
-        # Extract LLM-specific configurations with defaults
-        self._temperature = connector_configs.get("temperature", self.DEFAULT_TEMPERATURE)
-        self._max_tokens = connector_configs.get("max_tokens", self.DEFAULT_MAX_TOKENS)
-        self._top_p = connector_configs.get("top_p", self.DEFAULT_TOP_P)
-        self._top_k = connector_configs.get("top_k", self.DEFAULT_TOP_K)
-        self._stop_sequences = connector_configs.get("stop_sequences", [])
-        self._system_prompt = connector_configs.get("system_prompt")
-        
-        # Model-specific configurations
-        self._model_name = connector_configs.get("model_name")
-        self._model_version = connector_configs.get("model_version")
-        
-        # Validate model parameters
-        self._validate_model_parameters()
-        
-        logging.info(f"Initialized {self.__class__.__name__} with model: {self._model_name}")
-    
-    def _validate_model_parameters(self) -> None:
-        """
-        Validate LLM model parameters.
-        
-        Raises:
-            ValueError: If model parameters are invalid
-        """
-        # Validate temperature
-        if not 0.0 <= self._temperature <= 2.0:
-            raise ValueError(f"Temperature must be between 0.0 and 2.0, got: {self._temperature}")
-        
-        # Validate max_tokens
-        if self._max_tokens <= 0:
-            raise ValueError(f"max_tokens must be positive, got: {self._max_tokens}")
-        
-        # Validate top_p
-        if not 0.0 <= self._top_p <= 1.0:
-            raise ValueError(f"top_p must be between 0.0 and 1.0, got: {self._top_p}")
-        
-        # Validate top_k
-        if self._top_k <= 0:
-            raise ValueError(f"top_k must be positive, got: {self._top_k}")
-    
-    @abstractmethod
-    def _validate_llm_configs(self) -> None:
-        """
-        Validate LLM-specific configurations.
-        
-        This method should be implemented by subclasses to validate
-        configurations specific to their LLM provider and OpenSearch deployment type.
-        
-        Raises:
-            ValueError: If required configurations are missing or invalid
-        """
-        pass
+        logging.info(f"Initialized {self.__class__.__name__} for Bedrock on {os_type.upper()}")
     
     def _validate_configs(self) -> None:
         """
-        Validate all connector configurations.
+        Validate LLM connector configurations.
+        """
+        if self._os_type == "aos":
+            # AOS requires IAM role configurations
+            required_args = [
+                "llm_arn",  # Bedrock model ARN
+                "connector_role_name",  # IAM role for connector
+                "create_connector_role_name",  # IAM role for creation
+                "region",  # AWS region
+            ]
+        else:  # os_type == "os"
+            # Self-managed OpenSearch requires AWS credentials
+            required_args = [
+                "access_key",  # AWS access key
+                "secret_key",  # AWS secret key
+                "region",  # AWS region
+            ]
         
-        This method calls both the base validation and LLM-specific validation.
-        """
-        # Call LLM-specific validation
-        self._validate_llm_configs()
+        validate_configs(self._connector_configs, required_args)
     
-    @abstractmethod
-    def _get_llm_model_config(self) -> Dict[str, Any]:
+    def _get_connector_create_payload_filename(self) -> str:
         """
-        Get LLM model specific configuration.
+        Get the connector payload filename for Claude.
         
         Returns:
-            Dictionary containing LLM model configuration
+            Filename for the Claude connector payload
         """
-        pass
+        return "claude_3.5_sonnet_v2.json"
     
-    def get_model_parameters(self) -> Dict[str, Any]:
+    def _fill_in_connector_create_payload(self, connector_create_payload):
         """
-        Get the current model parameters.
-        
-        Returns:
-            Dictionary containing model parameters
-        """
-        params = {
-            "temperature": self._temperature,
-            "max_tokens": self._max_tokens,
-            "top_p": self._top_p,
-            "top_k": self._top_k,
-        }
-        
-        if self._stop_sequences:
-            params["stop_sequences"] = self._stop_sequences
-            
-        return params
-    
-    def get_model_name(self) -> Optional[str]:
-        """
-        Get the model name.
-        
-        Returns:
-            Model name as string, or None if not configured
-        """
-        return self._model_name
-    
-    def get_model_version(self) -> Optional[str]:
-        """
-        Get the model version.
-        
-        Returns:
-            Model version as string, or None if not configured
-        """
-        return self._model_version
-    
-    def get_system_prompt(self) -> Optional[str]:
-        """
-        Get the system prompt.
-        
-        Returns:
-            System prompt as string, or None if not configured
-        """
-        return self._system_prompt
-    
-    def update_model_parameters(
-        self,
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
-        top_p: Optional[float] = None,
-        top_k: Optional[int] = None,
-        stop_sequences: Optional[List[str]] = None,
-    ) -> None:
-        """
-        Update model parameters.
+        Fill in the connector creation payload with configuration values.
         
         Args:
-            temperature: Sampling temperature (0.0 to 2.0)
-            max_tokens: Maximum tokens to generate
-            top_p: Nucleus sampling parameter (0.0 to 1.0)
-            top_k: Top-k sampling parameter
-            stop_sequences: List of stop sequences
+            connector_create_payload: Base payload template
+            
+        Returns:
+            Filled payload ready for connector creation
         """
-        if temperature is not None:
-            if not 0.0 <= temperature <= 2.0:
-                raise ValueError(f"Temperature must be between 0.0 and 2.0, got: {temperature}")
-            self._temperature = temperature
+        # Common payload fields
+        connector_create_payload["name"] = self._connector_name
+        connector_create_payload["description"] = self._connector_description
+        connector_create_payload["parameters"]["region"] = self._connector_configs["region"]
+        connector_create_payload["version"] = self._connector_configs.get("connector_version", "1")
         
-        if max_tokens is not None:
-            if max_tokens <= 0:
-                raise ValueError(f"max_tokens must be positive, got: {max_tokens}")
-            self._max_tokens = max_tokens
+        # Add OS-specific configurations
+        if self._os_type == "os":
+            # For self-managed OpenSearch, add AWS credentials
+            credential = {
+                "access_key": self._connector_configs["access_key"],
+                "secret_key": self._connector_configs["secret_key"],
+            }
+            connector_create_payload["credential"] = credential
         
-        if top_p is not None:
-            if not 0.0 <= top_p <= 1.0:
-                raise ValueError(f"top_p must be between 0.0 and 1.0, got: {top_p}")
-            self._top_p = top_p
-        
-        if top_k is not None:
-            if top_k <= 0:
-                raise ValueError(f"top_k must be positive, got: {top_k}")
-            self._top_k = top_k
-        
-        if stop_sequences is not None:
-            self._stop_sequences = stop_sequences
-        
-        logging.info(f"Updated model parameters for {self.__class__.__name__}")
+        return connector_create_payload
     
-    def format_prompt(
-        self,
-        user_input: str,
-        context: Optional[str] = None,
-        conversation_history: Optional[List[Dict[str, str]]] = None
-    ) -> str:
+    def _create_connector_with_payload(self, connector_create_payload):
         """
-        Format a prompt for the LLM.
+        Create the connector using the appropriate method based on OpenSearch type.
         
         Args:
-            user_input: The user's input/question
-            context: Optional context information (e.g., from RAG)
-            conversation_history: Optional conversation history
-            
-        Returns:
-            Formatted prompt string
+            connector_create_payload: Filled connector payload
         """
-        prompt_parts = []
-        
-        # Add system prompt if configured
-        if self._system_prompt:
-            prompt_parts.append(f"System: {self._system_prompt}")
-        
-        # Add context if provided
-        if context:
-            prompt_parts.append(f"Context: {context}")
-        
-        # Add conversation history if provided
-        if conversation_history:
-            for turn in conversation_history:
-                role = turn.get("role", "user")
-                content = turn.get("content", "")
-                prompt_parts.append(f"{role.title()}: {content}")
-        
-        # Add current user input
-        prompt_parts.append(f"User: {user_input}")
-        prompt_parts.append("Assistant:")
-        
-        return "\n\n".join(prompt_parts)
+        if self._os_type == "aos":
+            # Use IAM roles for both OpenSearch access and Bedrock access
+            connector_role_inline_policy = self._get_connector_role_inline_policy()
+            connector_role_name = self._connector_configs["connector_role_name"]
+            create_connector_role_name = self._connector_configs["create_connector_role_name"]
+            
+            self._connector_id = create_connector_with_iam_roles(
+                opensearch_domain_url=self._opensearch_domain_url,
+                opensearch_domain_arn=self._opensearch_domain_arn,
+                opensearch_username=self._opensearch_username,
+                opensearch_password=self._opensearch_password,
+                aws_user_name=self._aws_user_name,
+                region=self._region,
+                connector_role_inline_policy=connector_role_inline_policy,
+                connector_role_name=connector_role_name,
+                create_connector_role_name=create_connector_role_name,
+                connector_payload=connector_create_payload,
+                sleep_time_in_seconds=10,
+            )
+            
+            logging.info(f"Created AOS Bedrock LLM connector with ID: {self._connector_id}")
+            
+        else:  # os_type == "os"
+            # Use basic auth for OpenSearch access, credentials in payload for Bedrock access
+            self._connector_id = create_connector_with_basic_auth(
+                os_client=self._os_client,
+                connector_payload=connector_create_payload,
+            )
+            
+            logging.info(f"Created OS Bedrock LLM connector with ID: {self._connector_id}")
     
-    def get_connector_info(self) -> Dict[str, Any]:
+    def _get_connector_role_inline_policy(self) -> Dict[str, Any]:
         """
-        Get comprehensive connector information.
+        Get the IAM role inline policy for Bedrock access.
         
         Returns:
-            Dictionary containing connector information including LLM-specific details
+            IAM policy document for Bedrock access
         """
-        base_info = {
-            "connector_id": self.connector_id(),
-            "connector_name": self._connector_name,
-            "connector_description": self._connector_description,
-            "model_parameters": self.get_model_parameters(),
-        }
+        if self._os_type != "aos":
+            raise ValueError("Connector role policy is only needed for AOS deployments")
         
-        if self._model_name:
-            base_info["model_name"] = self._model_name
-            
-        if self._model_version:
-            base_info["model_version"] = self._model_version
-            
-        if self._system_prompt:
-            base_info["system_prompt"] = self._system_prompt
-            
-        return base_info
+        llm_arn = self._connector_configs["llm_arn"]
+        return {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Resource": [llm_arn],
+                    "Action": ["bedrock:InvokeModel"],
+                }
+            ],
+        }
+    
+    def get_os_type(self) -> str:
+        """Get the OpenSearch deployment type."""
+        return self._os_type
     
     def __str__(self) -> str:
         """String representation of the LLM connector."""
         return (
             f"{self.__class__.__name__}("
             f"id={self.connector_id()}, "
-            f"model={self._model_name}, "
-            f"temp={self._temperature})"
+            f"os_type={self._os_type})"
         )
     
     def __repr__(self) -> str:
@@ -312,7 +240,6 @@ class LlmConnector(MlConnector):
             f"{self.__class__.__name__}("
             f"connector_id='{self.connector_id()}', "
             f"name='{self._connector_name}', "
-            f"model_name='{self._model_name}', "
-            f"temperature={self._temperature}, "
-            f"max_tokens={self._max_tokens})"
+            f"os_type='{self._os_type}', "
+            f"region='{self._connector_configs.get('region')}')"
         )

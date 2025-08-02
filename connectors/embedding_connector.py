@@ -19,9 +19,8 @@ from typing import Dict, Any, Optional, List
 from opensearchpy import OpenSearch
 
 from configs.configuration_manager import validate_configs, get_ml_base_uri
-from connectors.helper import get_remote_connector_configs
+from connectors.helper import get_remote_connector_configs, create_connector_with_iam_roles, create_connector_with_basic_auth
 from .ml_connector import MlConnector
-from .aos_connector_helper import AosConnectorHelper
 
 
 class EmbeddingConnector(MlConnector):
@@ -61,7 +60,12 @@ class EmbeddingConnector(MlConnector):
         os_client: OpenSearch,
         provider: str,
         os_type: str,
-        aos_connector_helper: Optional[AosConnectorHelper] = None,
+        opensearch_domain_url: Optional[str] = None,
+        opensearch_domain_arn: Optional[str] = None,
+        opensearch_username: Optional[str] = None,
+        opensearch_password: Optional[str] = None,
+        aws_user_name: Optional[str] = None,
+        region: Optional[str] = None,
         connector_name: Optional[str] = None,
         connector_description: Optional[str] = None,
         connector_configs: Optional[Dict[str, Any]] = None,
@@ -73,7 +77,12 @@ class EmbeddingConnector(MlConnector):
             os_client: OpenSearch client instance
             provider: Model provider ('bedrock' or 'sagemaker')
             os_type: OpenSearch deployment type ('aos' or 'os')
-            aos_connector_helper: Helper for AOS role management (required for AOS)
+            opensearch_domain_url: OpenSearch domain URL (required for AOS)
+            opensearch_domain_arn: OpenSearch domain ARN (required for AOS)
+            opensearch_username: OpenSearch username (required for AOS)
+            opensearch_password: OpenSearch password (required for AOS)
+            aws_user_name: AWS IAM user name (required for AOS)
+            region: AWS region (required for AOS)
             connector_name: Custom connector name (optional)
             connector_description: Custom connector description (optional)
             connector_configs: Override configurations (optional, will auto-load if not provided)
@@ -94,11 +103,20 @@ class EmbeddingConnector(MlConnector):
         
         self._provider = provider
         self._os_type = os_type
-        self._aos_connector_helper = aos_connector_helper
         
-        # Validate AOS-specific requirements
-        if os_type == "aos" and aos_connector_helper is None:
-            raise ValueError("aos_connector_helper is required for AOS deployments")
+        # Store AOS-specific parameters
+        if os_type == "aos":
+            if not all([opensearch_domain_url, opensearch_domain_arn, opensearch_username, 
+                       opensearch_password, aws_user_name, region]):
+                raise ValueError("AOS deployments require: opensearch_domain_url, opensearch_domain_arn, "
+                               "opensearch_username, opensearch_password, aws_user_name, region")
+            
+            self._opensearch_domain_url = opensearch_domain_url
+            self._opensearch_domain_arn = opensearch_domain_arn
+            self._opensearch_username = opensearch_username
+            self._opensearch_password = opensearch_password
+            self._aws_user_name = aws_user_name
+            self._region = region
         
         # Auto-load configuration if not provided
         if connector_configs is None:
@@ -350,28 +368,33 @@ class EmbeddingConnector(MlConnector):
             connector_create_payload: Filled connector payload
         """
         if self._os_type == "aos":
-            # Use AOS connector helper for role-based creation
+            # Use IAM roles for both OpenSearch access and outbound service access
             connector_role_inline_policy = self._get_connector_role_inline_policy()
             connector_role_name = self._connector_configs["connector_role_name"]
             create_connector_role_name = self._connector_configs["create_connector_role_name"]
             
-            self._connector_id = self._aos_connector_helper.create_connector_with_role(
-                connector_role_inline_policy,
-                connector_role_name,
-                create_connector_role_name,
-                connector_create_payload,
+            self._connector_id = create_connector_with_iam_roles(
+                opensearch_domain_url=self._opensearch_domain_url,
+                opensearch_domain_arn=self._opensearch_domain_arn,
+                opensearch_username=self._opensearch_username,
+                opensearch_password=self._opensearch_password,
+                aws_user_name=self._aws_user_name,
+                region=self._region,
+                connector_role_inline_policy=connector_role_inline_policy,
+                connector_role_name=connector_role_name,
+                create_connector_role_name=create_connector_role_name,
+                connector_payload=connector_create_payload,
                 sleep_time_in_seconds=10,
             )
             
             logging.info(f"Created AOS {self._provider.title()} connector with ID: {self._connector_id}")
             
         else:  # os
-            # Direct API call for self-managed OpenSearch
-            response = self._os_client.http.post(
-                url=f"{get_ml_base_uri()}/connectors/_create",
-                body=connector_create_payload,
+            # Use basic auth for OpenSearch access, credentials in payload for outbound service access
+            self._connector_id = create_connector_with_basic_auth(
+                os_client=self._os_client,
+                connector_payload=connector_create_payload,
             )
-            self._connector_id = response["connector_id"]
             
             logging.info(f"Created OS {self._provider.title()} connector with ID: {self._connector_id}")
     

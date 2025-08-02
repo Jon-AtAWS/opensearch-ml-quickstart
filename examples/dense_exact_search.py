@@ -28,13 +28,12 @@ from configs.configuration_manager import (
     get_base_mapping_path,
     get_pipeline_field_map,
     get_qanda_file_reader_path,
-    get_opensearch_config,
+    get_client_configs,
 )
 from connectors import EmbeddingConnector
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
 from models import get_ml_model
-from models.helper import get_aos_connector_helper
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
@@ -137,59 +136,25 @@ def main():
         max_number_of_docs=args.number_of_docs_per_category,
     )
 
-    # Get OpenSearch configuration for AOS connector helper
-    try:
-        logging.info("Loading OpenSearch configuration...")
-        opensearch_config = get_opensearch_config(os_type)
-        
-        # Log configuration details (without sensitive info)
-        logging.info(f"  - Domain name: {opensearch_config.domain_name}")
-        logging.info(f"  - Region: {opensearch_config.region}")
-        logging.info(f"  - Username: {opensearch_config.username}")
-        logging.info(f"  - AWS User: {opensearch_config.aws_user_name}")
-        
-        # Prepare configuration for AOS connector helper
-        aos_helper_config = {
-            "region": opensearch_config.region,
-            "domain_name": opensearch_config.domain_name,
-            "username": opensearch_config.username,
-            "password": opensearch_config.password,
-            "aws_user_name": opensearch_config.aws_user_name,
-        }
-        
-        # Validate that required configs are not None
-        missing_configs = [k for k, v in aos_helper_config.items() if v is None]
-        if missing_configs:
-            raise ValueError(f"Missing required AOS configurations: {missing_configs}")
-        
-        # Initialize AOS connector helper
-        logging.info("Initializing AOS connector helper...")
-        aos_helper = get_aos_connector_helper(aos_helper_config)
-        logging.info("✓ AOS connector helper initialized successfully")
-        
-    except Exception as e:
-        logging.error(f"Failed to initialize AOS connector helper: {e}")
-        logging.error("Please ensure your AOS configuration is properly set up.")
-        logging.error("Required environment variables:")
-        logging.error("  - AOS_DOMAIN_NAME")
-        logging.error("  - AOS_REGION") 
-        logging.error("  - AOS_USERNAME")
-        logging.error("  - AOS_PASSWORD")
-        logging.error("  - AOS_AWS_USER_NAME")
-        sys.exit(1)
+    # Get AOS client configs for domain info
+    aos_configs = get_client_configs("aos")
 
     # Initialize the universal EmbeddingConnector
     try:
         logging.info(f"Attempting to initialize EmbeddingConnector...")
         logging.info(f"  - Provider: {provider}")
         logging.info(f"  - OS Type: {os_type}")
-        logging.info(f"  - AOS Helper: {aos_helper is not None}")
         
         embedding_connector = EmbeddingConnector(
             os_client=client.os_client,
             provider=provider,
             os_type=os_type,
-            aos_connector_helper=aos_helper,
+            opensearch_domain_url=aos_configs["host_url"],
+            opensearch_domain_arn=f"arn:aws:es:{aos_configs['region']}:*:domain/{aos_configs['domain_name']}",
+            opensearch_username=aos_configs["username"],
+            opensearch_password=aos_configs["password"],
+            aws_user_name=aos_configs["aws_user_name"],
+            region=aos_configs["region"],
         )
         
         logging.info(f"✓ EmbeddingConnector initialized successfully")

@@ -13,23 +13,8 @@ from .ml_model_group import MlModelGroup
 from .local_ml_model import LocalMlModel
 from .remote_ml_model import RemoteMlModel
 from connectors import (
-    OsBedrockMlConnector,
-    OsSagemakerMlConnector,
-    AosBedrockMlConnector,
-    AosSagemakerMlConnector,
-    AosConnectorHelper,
+    EmbeddingConnector,
 )
-
-
-def get_aos_connector_helper(configs) -> AosConnectorHelper:
-    required_args = ["region", "username", "password", "domain_name", "aws_user_name"]
-    validate_configs(configs, required_args)
-    region = configs["region"]
-    username = configs["username"]
-    password = configs["password"]
-    domain_name = configs["domain_name"]
-    aws_username = configs["aws_user_name"]
-    return AosConnectorHelper(region, domain_name, username, password, aws_username)
 
 
 def get_ml_model_group(os_client, ml_commons_client) -> MlModelGroup:
@@ -47,24 +32,12 @@ def get_ml_model(
     os_client: OpenSearch,
     ml_commons_client: MLCommonClient,
 ) -> MlModel:
-    aos_connector_helper = None
-
     model_name = model_config.get("model_name", None)
     embedding_type = model_config.get("embedding_type", "dense")
 
     if model_type != "local":
         model_name = f"{host_type}_{model_type}_{embedding_type}"
         connector_name = f"{host_type}_{model_type}_{embedding_type}"
-
-    if host_type == "aos":
-        aos_config = get_opensearch_config("aos")
-        aos_connector_helper = get_aos_connector_helper({
-            "region": aos_config.region,
-            "username": aos_config.username,
-            "password": aos_config.password,
-            "domain_name": aos_config.domain_name,
-            "aws_user_name": aos_config.aws_user_name,
-        })
 
     if model_type == "local":
         return LocalMlModel(
@@ -75,32 +48,58 @@ def get_ml_model(
             model_configs=model_config,
         )
     elif model_type == "sagemaker" and host_type == "os":
-        ml_connector = OsSagemakerMlConnector(
+        # Use the new universal EmbeddingConnector for OS SageMaker
+        ml_connector = EmbeddingConnector(
             os_client=os_client,
+            provider="sagemaker",
+            os_type="os",
             connector_name=connector_name,
-            connector_configs=model_config,
-        )
-
-    elif model_type == "sagemaker" and host_type == "aos":
-        ml_connector = AosSagemakerMlConnector(
-            os_client=os_client,
-            connector_name=connector_name,
-            aos_connector_helper=aos_connector_helper,
             connector_configs=model_config,
         )
     elif model_type == "bedrock" and host_type == "os":
-        ml_connector = OsBedrockMlConnector(
+        # Use the new universal EmbeddingConnector for OS Bedrock
+        ml_connector = EmbeddingConnector(
             os_client=os_client,
+            provider="bedrock",
+            os_type="os",
+            connector_name=connector_name,
+            connector_configs=model_config,
+        )
+    elif model_type == "sagemaker" and host_type == "aos":
+        # Use the new universal EmbeddingConnector for AOS SageMaker
+        aos_config = get_opensearch_config("aos")
+        ml_connector = EmbeddingConnector(
+            os_client=os_client,
+            provider="sagemaker",
+            os_type="aos",
+            opensearch_domain_url=aos_config.host_url,
+            opensearch_domain_arn=f"arn:aws:es:{aos_config.region}:*:domain/{aos_config.domain_name}",
+            opensearch_username=aos_config.username,
+            opensearch_password=aos_config.password,
+            aws_user_name=aos_config.aws_user_name,
+            region=aos_config.region,
             connector_name=connector_name,
             connector_configs=model_config,
         )
     elif model_type == "bedrock" and host_type == "aos":
-        ml_connector = AosBedrockMlConnector(
+        # Use the new universal EmbeddingConnector for AOS Bedrock
+        aos_config = get_opensearch_config("aos")
+        ml_connector = EmbeddingConnector(
             os_client=os_client,
+            provider="bedrock",
+            os_type="aos",
+            opensearch_domain_url=aos_config.host_url,
+            opensearch_domain_arn=f"arn:aws:es:{aos_config.region}:*:domain/{aos_config.domain_name}",
+            opensearch_username=aos_config.username,
+            opensearch_password=aos_config.password,
+            aws_user_name=aos_config.aws_user_name,
+            region=aos_config.region,
             connector_name=connector_name,
-            aos_connector_helper=aos_connector_helper,
             connector_configs=model_config,
         )
+    else:
+        raise ValueError(f"Unsupported combination: host_type='{host_type}', model_type='{model_type}'")
+    
     return RemoteMlModel(
         os_client=os_client,
         ml_commons_client=ml_commons_client,

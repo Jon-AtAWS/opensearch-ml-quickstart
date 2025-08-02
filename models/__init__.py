@@ -8,5 +8,4 @@ from .remote_ml_model import RemoteMlModel
 from .helper import (
     get_ml_model,
     get_ml_model_group,
-    get_aos_connector_helper,
 )
