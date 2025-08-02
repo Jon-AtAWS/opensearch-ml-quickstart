@@ -30,7 +30,7 @@ from configs.configuration_manager import (
     get_pipeline_field_map,
     get_qanda_file_reader_path,
 )
-from connectors.helper import get_remote_connector_configs
+from connectors.helper import get_remote_connector_configs, get_raw_config_value
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
 from models import (
@@ -89,6 +89,7 @@ def create_llm_model(client: OsMlClientWrapper):
     """
     # Get base connector configs for local OpenSearch + Bedrock
     connector_configs = get_remote_connector_configs("bedrock", "os")
+    connector_configs["dense_url"] = get_raw_config_value("BEDROCK_LLM_URL")
     
     logging.info(f"LLM connector configs:\n{connector_configs}")
 
@@ -108,7 +109,7 @@ def create_llm_model(client: OsMlClientWrapper):
         ml_commons_client=client.ml_commons_client,
         ml_connector=llm_connector,
         model_group_id=model_group_id,
-        model_name="Amazon Bedrock Claude 3.5 Sonnet for Agent",
+        model_name=f"Amazon Bedrock {get_raw_config_value('BEDROCK_LLM_MODEL_NAME')} for Agent",
     )
 
     llm_model_id = llm_model.model_id()

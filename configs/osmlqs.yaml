@@ -2,73 +2,86 @@
 # This file uses a flat YAML structure (variable: value format)
 
 # Project paths and environment
-QANDA_FILE_READER_PATH: ./datasets
-
-# OpenSearch configuration
-MINIMUM_OPENSEARCH_VERSION: 2.19.0
+QANDA_FILE_READER_PATH: ./datasets/amazon_pqa
 
 # ML connectors, models and model_groups
 ML_BASE_URI: /_plugins/_ml
 DELETE_RESOURCE_WAIT_TIME: 5
 DELETE_RESOURCE_RETRY_TIME: 5
 
-# Default model configuration
-DEFAULT_LOCAL_MODEL_NAME: huggingface/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
-DEFAULT_MODEL_VERSION: 1.0.1
-DEFAULT_MODEL_FORMAT: TORCH_SCRIPT
-
 # Pipeline configuration
 PIPELINE_FIELD_MAP:
   chunk: chunk_embedding
 
+# =============================================================================
+# OPENSEARCH DEPLOYMENT CONFIGURATION
+# =============================================================================
+
+MINIMUM_OPENSEARCH_VERSION: 2.19.0
+
 # OpenSource (OS) OpenSearch
-OS_USERNAME: 
-OS_PASSWORD: 
-OS_HOST_URL: 
-OS_PORT: 
+OS_HOST_URL: localhost
+OS_PORT: 9200
 
 # Amazon OpenSearch Service (AOS)
-AOS_USERNAME: 
-AOS_PASSWORD: 
 AOS_DOMAIN_NAME: 
 AOS_HOST_URL: 
-AOS_PORT: 
-AOS_REGION: 
-AOS_AWS_USER_NAME: 
+AOS_PORT:
 
-# OS + Sagemaker configurations
-OS_SAGEMAKER_ACCESS_KEY: 
-OS_SAGEMAKER_SECRET_KEY: 
-OS_SAGEMAKER_REGION: 
-OS_SAGEMAKER_CONNECTOR_VERSION: 
-OS_SAGEMAKER_SPARSE_URL: 
-OS_SAGEMAKER_DENSE_URL: 
-OS_SAGEMAKER_DENSE_MODEL_DIMENSION: 
+# =============================================================================
+# AUTHENTICATION CONFIGURATION
+# =============================================================================
 
-# AOS + Sagemaker configurations
-AOS_SAGEMAKER_SPARSE_ARN: 
-AOS_SAGEMAKER_DENSE_ARN: 
-AOS_SAGEMAKER_CONNECTOR_ROLE_NAME: 
-AOS_SAGEMAKER_CREATE_CONNECTOR_ROLE_NAME: 
-AOS_SAGEMAKER_REGION: 
-AOS_SAGEMAKER_CONNECTOR_VERSION: 1.0
-AOS_SAGEMAKER_SPARSE_URL: 
-AOS_SAGEMAKER_DENSE_URL: 
-AOS_SAGEMAKER_DENSE_MODEL_DIMENSION: 
+OPENSEARCH_ADMIN_USER: 
+OPENSEARCH_ADMIN_PASSWORD: 
 
-# OS + Bedrock configurations
-OS_BEDROCK_ACCESS_KEY: 
-OS_BEDROCK_SECRET_KEY: 
-OS_BEDROCK_REGION: 
-OS_BEDROCK_CONNECTOR_VERSION: 1.0
-OS_BEDROCK_URL: 
-OS_BEDROCK_MODEL_DIMENSION: 
+# =============================================================================
+# AWS CONFIGURATION
+# =============================================================================
 
-# AOS + Bedrock configurations
-AOS_BEDROCK_ARN: 
-AOS_BEDROCK_CONNECTOR_ROLE_NAME: 
-AOS_BEDROCK_CREATE_CONNECTOR_ROLE_NAME: 
-AOS_BEDROCK_REGION: 
-AOS_BEDROCK_CONNECTOR_VERSION: 1.0
-AOS_BEDROCK_URL: 
-AOS_BEDROCK_MODEL_DIMENSION: 
+AWS_REGION: 
+AWS_USER_NAME: 
+AWS_ACCESS_KEY_ID: 
+AWS_SECRET_ACCESS_KEY: 
+
+# Bedrock IAM Roles
+BEDROCK_CONNECTOR_ROLE_NAME: os_ml_qs_bedrock_connector_role
+BEDROCK_CREATE_CONNECTOR_ROLE_NAME: os_ml_qs_create_bedrock_connector_role
+
+# SageMaker IAM Roles
+SAGEMAKER_CONNECTOR_ROLE_NAME: os_ml_qs_sagemaker_connector_role
+SAGEMAKER_CREATE_CONNECTOR_ROLE_NAME: os_ml_create_sagemaker_connector_role
+
+# =============================================================================
+# EMBEDDING MODEL CONFIGURATION
+# =============================================================================
+
+# Local Embedding Model
+LOCAL_EMBEDDING_MODEL_NAME: huggingface/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+LOCAL_EMBEDDING_MODEL_VERSION: 1.0.1
+LOCAL_EMBEDDING_MODEL_FORMAT: TORCH_SCRIPT
+
+# Bedrock Embedding Model
+BEDROCK_EMBEDDING_URL: https://bedrock-runtime.us-west-2.amazonaws.com/model/amazon.titan-embed-text-v1/invoke
+BEDROCK_MODEL_DIMENSION: 1536
+BEDROCK_ARN: arn:aws:bedrock:*::foundation-model/*
+BEDROCK_CONNECTOR_VERSION: 1.0
+
+# SageMaker Embedding Models
+SAGEMAKER_SPARSE_ARN: arn:aws:sagemaker:us-west-2:178161197791:endpoint/Endpoint-RnTylBdf1YZq
+SAGEMAKER_DENSE_ARN: arn:aws:sagemaker:us-west-2:178161197791:endpoint/OpenSearch-sagemaker-041725085039
+SAGEMAKER_CONNECTOR_VERSION: 1.0
+SAGEMAKER_SPARSE_URL: https://runtime.sagemaker.us-west-2.amazonaws.com/endpoints/Endpoint-RnTylBdf1YZq/invocations
+SAGEMAKER_DENSE_URL: https://runtime.sagemaker.us-west-2.amazonaws.com/endpoints/OpenSearch-sagemaker-041725085039/invocations
+SAGEMAKER_DENSE_MODEL_DIMENSION: 384
+
+# =============================================================================
+# LLM MODEL CONFIGURATION
+# =============================================================================
+
+# Bedrock LLM Model
+BEDROCK_LLM_URL: https://bedrock-runtime.us-west-2.amazonaws.com/model/anthropic.claude-3-5-sonnet-20241022-v2:0/invoke
+BEDROCK_LLM_MODEL_NAME: anthropic.claude-3-5-sonnet-20241022-v2:0
+BEDROCK_LLM_ARN: arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0
+BEDROCK_LLM_MAX_TOKENS: 8000
+BEDROCK_LLM_TEMPERATURE: 0.1

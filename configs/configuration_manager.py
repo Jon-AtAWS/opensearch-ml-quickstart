@@ -97,24 +97,33 @@ class ConfigurationManager:
         except (ValueError, TypeError):
             return None
     
+    def _safe_float_convert(self, value: Optional[str]) -> Optional[float]:
+        """Safely convert string to float, returning None if conversion fails."""
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (ValueError, TypeError):
+            return None
+    
     def _build_configurations(self):
         """Build the nested configuration structure using Dynaconf."""
         # OpenSearch configurations
         self._opensearch_configs = {
             OpenSearchType.OS: OpenSearchConfig(
-                username=self._get_config_value("OS_USERNAME"),
-                password=self._get_config_value("OS_PASSWORD"),
+                username=self._get_config_value("OPENSEARCH_ADMIN_USER"),
+                password=self._get_config_value("OPENSEARCH_ADMIN_PASSWORD"),
                 host_url=self._get_config_value("OS_HOST_URL"),
                 port=self._get_config_value("OS_PORT")
             ),
             OpenSearchType.AOS: OpenSearchConfig(
-                username=self._get_config_value("AOS_USERNAME"),
-                password=self._get_config_value("AOS_PASSWORD"),
+                username=self._get_config_value("OPENSEARCH_ADMIN_USER"),
+                password=self._get_config_value("OPENSEARCH_ADMIN_PASSWORD"),
                 host_url=self._get_config_value("AOS_HOST_URL"),
                 port=self._get_config_value("AOS_PORT"),
                 domain_name=self._get_config_value("AOS_DOMAIN_NAME"),
-                region=self._get_config_value("AOS_REGION"),
-                aws_user_name=self._get_config_value("AOS_AWS_USER_NAME")
+                region=self._get_config_value("AWS_REGION"),
+                aws_user_name=self._get_config_value("AWS_USER_NAME")
             )
         }
         
@@ -133,39 +142,40 @@ class ConfigurationManager:
                 },
                 ModelProvider.SAGEMAKER: {
                     ModelType.EMBEDDING: ModelConfig(
-                        access_key=self._get_config_value("OS_SAGEMAKER_ACCESS_KEY"),
-                        secret_key=self._get_config_value("OS_SAGEMAKER_SECRET_KEY"),
-                        region=self._get_config_value("OS_SAGEMAKER_REGION"),
-                        connector_version=self._get_config_value("OS_SAGEMAKER_CONNECTOR_VERSION"),
-                        sparse_url=self._get_config_value("OS_SAGEMAKER_SPARSE_URL"),
-                        dense_url=self._get_config_value("OS_SAGEMAKER_DENSE_URL"),
-                        model_dimension=self._safe_int_convert(self._get_config_value("OS_SAGEMAKER_DENSE_MODEL_DIMENSION"))
+                        access_key=self._get_config_value("AWS_ACCESS_KEY_ID"),
+                        secret_key=self._get_config_value("AWS_SECRET_ACCESS_KEY"),
+                        region=self._get_config_value("AWS_REGION"),
+                        connector_version=self._get_config_value("SAGEMAKER_CONNECTOR_VERSION"),
+                        sparse_url=self._get_config_value("SAGEMAKER_SPARSE_URL"),
+                        dense_url=self._get_config_value("SAGEMAKER_DENSE_URL"),
+                        model_dimension=self._safe_int_convert(self._get_config_value("SAGEMAKER_DENSE_MODEL_DIMENSION"))
                     ),
                     ModelType.LLM: ModelConfig(
-                        access_key=self._get_config_value("OS_SAGEMAKER_ACCESS_KEY"),
-                        secret_key=self._get_config_value("OS_SAGEMAKER_SECRET_KEY"),
-                        region=self._get_config_value("OS_SAGEMAKER_REGION"),
-                        connector_version=self._get_config_value("OS_SAGEMAKER_CONNECTOR_VERSION")
+                        access_key=self._get_config_value("AWS_ACCESS_KEY_ID"),
+                        secret_key=self._get_config_value("AWS_SECRET_ACCESS_KEY"),
+                        region=self._get_config_value("AWS_REGION"),
+                        connector_version=self._get_config_value("SAGEMAKER_CONNECTOR_VERSION")
                     )
                 },
                 ModelProvider.BEDROCK: {
                     ModelType.EMBEDDING: ModelConfig(
-                        access_key=self._get_config_value("OS_BEDROCK_ACCESS_KEY"),
-                        secret_key=self._get_config_value("OS_BEDROCK_SECRET_KEY"),
-                        region=self._get_config_value("OS_BEDROCK_REGION"),
-                        connector_version=self._get_config_value("OS_BEDROCK_CONNECTOR_VERSION"),
-                        endpoint_url=self._get_config_value("OS_BEDROCK_URL"),
+                        access_key=self._get_config_value("AWS_ACCESS_KEY_ID"),
+                        secret_key=self._get_config_value("AWS_SECRET_ACCESS_KEY"),
+                        region=self._get_config_value("AWS_REGION"),
+                        connector_version=self._get_config_value("BEDROCK_CONNECTOR_VERSION"),
+                        endpoint_url=self._get_config_value("BEDROCK_EMBEDDING_URL"),
                         model_name="amazon.titan-embed-text-v1",
-                        model_dimension=self._safe_int_convert(self._get_config_value("OS_BEDROCK_MODEL_DIMENSION"))
+                        model_dimension=self._safe_int_convert(self._get_config_value("BEDROCK_MODEL_DIMENSION"))
                     ),
                     ModelType.LLM: ModelConfig(
-                        access_key=self._get_config_value("OS_BEDROCK_ACCESS_KEY"),
-                        secret_key=self._get_config_value("OS_BEDROCK_SECRET_KEY"),
-                        region=self._get_config_value("OS_BEDROCK_REGION"),
-                        connector_version=self._get_config_value("OS_BEDROCK_CONNECTOR_VERSION"),
-                        model_name="anthropic.claude-3-5-sonnet-20241022-v2:0",
-                        max_tokens=8000,
-                        temperature=0.1
+                        access_key=self._get_config_value("AWS_ACCESS_KEY_ID"),
+                        secret_key=self._get_config_value("AWS_SECRET_ACCESS_KEY"),
+                        region=self._get_config_value("AWS_REGION"),
+                        connector_version=self._get_config_value("BEDROCK_CONNECTOR_VERSION"),
+                        endpoint_url=self._get_config_value("BEDROCK_LLM_URL"),
+                        model_name=self._get_config_value("BEDROCK_LLM_MODEL_NAME"),
+                        max_tokens=self._safe_int_convert(self._get_config_value("BEDROCK_LLM_MAX_TOKENS")),
+                        temperature=self._safe_float_convert(self._get_config_value("BEDROCK_LLM_TEMPERATURE"))
                     )
                 }
             },
@@ -174,43 +184,44 @@ class ConfigurationManager:
             OpenSearchType.AOS: {
                 ModelProvider.SAGEMAKER: {
                     ModelType.EMBEDDING: ModelConfig(
-                        sparse_arn=self._get_config_value("AOS_SAGEMAKER_SPARSE_ARN"),
-                        dense_arn=self._get_config_value("AOS_SAGEMAKER_DENSE_ARN"),
-                        connector_role_name=self._get_config_value("AOS_SAGEMAKER_CONNECTOR_ROLE_NAME"),
-                        create_connector_role_name=self._get_config_value("AOS_SAGEMAKER_CREATE_CONNECTOR_ROLE_NAME"),
-                        region=self._get_config_value("AOS_SAGEMAKER_REGION"),
-                        connector_version=self._get_config_value("AOS_SAGEMAKER_CONNECTOR_VERSION"),
-                        sparse_url=self._get_config_value("AOS_SAGEMAKER_SPARSE_URL"),
-                        dense_url=self._get_config_value("AOS_SAGEMAKER_DENSE_URL"),
-                        model_dimension=self._safe_int_convert(self._get_config_value("AOS_SAGEMAKER_DENSE_MODEL_DIMENSION"))
+                        sparse_arn=self._get_config_value("SAGEMAKER_SPARSE_ARN"),
+                        dense_arn=self._get_config_value("SAGEMAKER_DENSE_ARN"),
+                        connector_role_name=self._get_config_value("SAGEMAKER_CONNECTOR_ROLE_NAME"),
+                        create_connector_role_name=self._get_config_value("SAGEMAKER_CREATE_CONNECTOR_ROLE_NAME"),
+                        region=self._get_config_value("AWS_REGION"),
+                        connector_version=self._get_config_value("SAGEMAKER_CONNECTOR_VERSION"),
+                        sparse_url=self._get_config_value("SAGEMAKER_SPARSE_URL"),
+                        dense_url=self._get_config_value("SAGEMAKER_DENSE_URL"),
+                        model_dimension=self._safe_int_convert(self._get_config_value("SAGEMAKER_DENSE_MODEL_DIMENSION"))
                     ),
                     ModelType.LLM: ModelConfig(
-                        connector_role_name=self._get_config_value("AOS_SAGEMAKER_CONNECTOR_ROLE_NAME"),
-                        create_connector_role_name=self._get_config_value("AOS_SAGEMAKER_CREATE_CONNECTOR_ROLE_NAME"),
-                        region=self._get_config_value("AOS_SAGEMAKER_REGION"),
-                        connector_version=self._get_config_value("AOS_SAGEMAKER_CONNECTOR_VERSION")
+                        connector_role_name=self._get_config_value("SAGEMAKER_CONNECTOR_ROLE_NAME"),
+                        create_connector_role_name=self._get_config_value("SAGEMAKER_CREATE_CONNECTOR_ROLE_NAME"),
+                        region=self._get_config_value("AWS_REGION"),
+                        connector_version=self._get_config_value("SAGEMAKER_CONNECTOR_VERSION")
                     )
                 },
                 ModelProvider.BEDROCK: {
                     ModelType.EMBEDDING: ModelConfig(
-                        role_arn=self._get_config_value("AOS_BEDROCK_ARN"),
-                        connector_role_name=self._get_config_value("AOS_BEDROCK_CONNECTOR_ROLE_NAME"),
-                        create_connector_role_name=self._get_config_value("AOS_BEDROCK_CREATE_CONNECTOR_ROLE_NAME"),
-                        region=self._get_config_value("AOS_BEDROCK_REGION"),
-                        connector_version=self._get_config_value("AOS_BEDROCK_CONNECTOR_VERSION"),
-                        endpoint_url=self._get_config_value("AOS_BEDROCK_URL"),
+                        role_arn=self._get_config_value("BEDROCK_ARN"),
+                        connector_role_name=self._get_config_value("BEDROCK_CONNECTOR_ROLE_NAME"),
+                        create_connector_role_name=self._get_config_value("BEDROCK_CREATE_CONNECTOR_ROLE_NAME"),
+                        region=self._get_config_value("AWS_REGION"),
+                        connector_version=self._get_config_value("BEDROCK_CONNECTOR_VERSION"),
+                        endpoint_url=self._get_config_value("BEDROCK_EMBEDDING_URL"),
                         model_name="amazon.titan-embed-text-v1",
-                        model_dimension=self._safe_int_convert(self._get_config_value("AOS_BEDROCK_MODEL_DIMENSION"))
+                        model_dimension=self._safe_int_convert(self._get_config_value("BEDROCK_MODEL_DIMENSION"))
                     ),
                     ModelType.LLM: ModelConfig(
-                        llm_arn=self._get_config_value("AOS_BEDROCK_ARN"),
-                        connector_role_name=self._get_config_value("AOS_BEDROCK_CONNECTOR_ROLE_NAME"),
-                        create_connector_role_name=self._get_config_value("AOS_BEDROCK_CREATE_CONNECTOR_ROLE_NAME"),
-                        region=self._get_config_value("AOS_BEDROCK_REGION"),
-                        connector_version=self._get_config_value("AOS_BEDROCK_CONNECTOR_VERSION"),
-                        model_name="anthropic.claude-3-5-sonnet-20241022-v2:0",
-                        max_tokens=8000,
-                        temperature=0.1
+                        llm_arn=self._get_config_value("BEDROCK_LLM_ARN"),
+                        connector_role_name=self._get_config_value("BEDROCK_CONNECTOR_ROLE_NAME"),
+                        create_connector_role_name=self._get_config_value("BEDROCK_CREATE_CONNECTOR_ROLE_NAME"),
+                        region=self._get_config_value("AWS_REGION"),
+                        connector_version=self._get_config_value("BEDROCK_CONNECTOR_VERSION"),
+                        endpoint_url=self._get_config_value("BEDROCK_LLM_URL"),
+                        model_name=self._get_config_value("BEDROCK_LLM_MODEL_NAME"),
+                        max_tokens=self._safe_int_convert(self._get_config_value("BEDROCK_LLM_MAX_TOKENS")),
+                        temperature=self._safe_float_convert(self._get_config_value("BEDROCK_LLM_TEMPERATURE"))
                     )
                 }
             }
@@ -506,9 +517,9 @@ def get_config_for(os_type: str, provider: str, model_type: str) -> Dict[str, An
             "ML_BASE_URI": get_ml_base_uri(),
             "DELETE_RESOURCE_WAIT_TIME": get_delete_resource_wait_time(),
             "DELETE_RESOURCE_RETRY_TIME": get_delete_resource_retry_time(),
-            "DEFAULT_LOCAL_MODEL_NAME": get_default_local_model_name(),
-            "DEFAULT_MODEL_VERSION": get_default_model_version(),
-            "DEFAULT_MODEL_FORMAT": get_default_model_format(),
+            "LOCAL_EMBEDDING_MODEL_NAME": get_local_embedding_model_name(),
+            "LOCAL_EMBEDDING_MODEL_VERSION": get_local_embedding_model_version(),
+            "LOCAL_EMBEDDING_MODEL_FORMAT": get_local_embedding_model_format(),
             "PIPELINE_FIELD_MAP": {"chunk": "chunk_embedding"},
         },
         
@@ -562,20 +573,20 @@ def get_delete_resource_retry_time() -> int:
     """Get the retry time for resource deletion operations."""
     return int(get_raw_config_value("DELETE_RESOURCE_RETRY_TIME", 5))
 
-def get_default_local_model_name() -> str:
-    """Get the default local model name."""
+def get_local_embedding_model_name() -> str:
+    """Get the local embedding model name."""
     return get_raw_config_value(
-        "DEFAULT_LOCAL_MODEL_NAME", 
+        "LOCAL_EMBEDDING_MODEL_NAME", 
         "huggingface/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     )
 
-def get_default_model_version() -> str:
-    """Get the default model version."""
-    return get_raw_config_value("DEFAULT_MODEL_VERSION", "1.0.1")
+def get_local_embedding_model_version() -> str:
+    """Get the local embedding model version."""
+    return get_raw_config_value("LOCAL_EMBEDDING_MODEL_VERSION", "1.0.1")
 
-def get_default_model_format() -> str:
-    """Get the default model format."""
-    return get_raw_config_value("DEFAULT_MODEL_FORMAT", "TORCH_SCRIPT")
+def get_local_embedding_model_format() -> str:
+    """Get the local embedding model format."""
+    return get_raw_config_value("LOCAL_EMBEDDING_MODEL_FORMAT", "TORCH_SCRIPT")
 
 def get_pipeline_field_map() -> Dict[str, str]:
     """Get the pipeline field mapping."""
@@ -667,6 +678,6 @@ MINIMUM_OPENSEARCH_VERSION = get_minimum_opensearch_version()
 ML_BASE_URI = get_ml_base_uri()
 DELETE_RESOURCE_WAIT_TIME = get_delete_resource_wait_time()
 DELETE_RESOURCE_RETRY_TIME = get_delete_resource_retry_time()
-DEFAULT_LOCAL_MODEL_NAME = get_default_local_model_name()
-DEFAULT_MODEL_VERSION = get_default_model_version()
-DEFAULT_MODEL_FORMAT = get_default_model_format()
+LOCAL_EMBEDDING_MODEL_NAME = get_local_embedding_model_name()
+LOCAL_EMBEDDING_MODEL_VERSION = get_local_embedding_model_version()
+LOCAL_EMBEDDING_MODEL_FORMAT = get_local_embedding_model_format()

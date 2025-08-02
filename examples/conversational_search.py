@@ -19,7 +19,7 @@ from configs.configuration_manager import (
     get_qanda_file_reader_path,
 )
 from connectors import LlmConnector
-from connectors.helper import get_remote_connector_configs
+from connectors.helper import get_remote_connector_configs, get_raw_config_value
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
 from models import (
@@ -64,9 +64,10 @@ def create_text_gen_model():
     
     # Get base connector configs and add LLM-specific overrides
     connector_configs = get_remote_connector_configs("bedrock", "aos")
-    connector_configs["llm_arn"] = "arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0"
+    connector_configs["llm_arn"] = get_raw_config_value("BEDROCK_LLM_ARN")
     connector_configs["connector_role_name"] = "bedrock_llm_connector_role"
     connector_configs["create_connector_role_name"] = "bedrock_llm_create_connector_role"
+    connector_configs["dense_url"] = get_raw_config_value("BEDROCK_LLM_URL")
     
     logging.info(f"connector_configs:\n{connector_configs}")
     
@@ -95,7 +96,7 @@ def create_text_gen_model():
         ml_commons_client=client.ml_commons_client,
         ml_connector=llm_connector,
         model_group_id=model_group_id,
-        model_name="Amazon Bedrock claude 3.5",
+        model_name=f"Amazon Bedrock {get_raw_config_value('BEDROCK_LLM_MODEL_NAME')}",
     )
     
     llm_model_id = llm_model.model_id()
