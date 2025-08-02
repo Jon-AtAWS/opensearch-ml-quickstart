@@ -34,4 +34,4 @@ from .configuration_manager import (
 )
 
 # Import from tasks
-from .tasks import categories, tasks, PIPELINE_FIELD_MAP
+# Removed tasks.py import as it's no longer used
