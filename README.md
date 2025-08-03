@@ -74,11 +74,13 @@ opensearch-ml-quickstart/
 │   ├── local_ml_model.py             # Local model implementations
 │   ├── remote_ml_model.py            # Remote model base class
 │   ├── ml_model_group.py             # Model group management
-│   ├── helper.py                     # Model factory functions
-│   ├── aos_bedrock_ml_model.py       # AOS + Bedrock integration
-│   ├── aos_sagemaker_ml_model.py     # AOS + SageMaker integration
-│   ├── os_bedrock_ml_model.py        # Self-managed OS + Bedrock
-│   └── os_sagemaker_ml_model.py      # Self-managed OS + SageMaker
+│   └── helper.py                     # Model factory functions
+├── connectors/                       # ML connector implementations
+│   ├── ml_connector.py               # Abstract base connector class
+│   ├── embedding_connector.py        # Embedding model connectors
+│   ├── llm_connector.py              # LLM model connectors
+│   ├── helper.py                     # Connector configuration utilities
+│   └── connector_payloads/           # Connector payload templates
 ├── client/                           # OpenSearch client wrappers
 │   ├── helper.py                     # Client factory and utilities
 │   ├── os_ml_client_wrapper.py       # ML Commons client wrapper
@@ -118,28 +120,39 @@ model_config = get_model_config("aos", "bedrock", "embedding")
 
 The configuration system offers several key advantages that make it easy to manage complex deployments. **Type-safe configuration** uses enum-based validation to ensure that only valid combinations of deployment types and model providers are used, preventing common configuration errors at startup time. **Environment-aware loading** automatically detects configuration sources from .env files, YAML configuration files, and environment variables, providing flexibility in how you manage secrets and settings across different environments. **Built-in validation** checks for required fields and validates configuration combinations, giving you immediate feedback when something is misconfigured. **Flexible deployment support** accommodates multiple OpenSearch and model hosting scenarios without requiring code changes.
 
-The configuration structure follows a hierarchical approach that mirrors the logical organization of your deployment:
+The configuration system uses a **flat YAML structure** in `osmlqs.yaml` that is processed by the `configuration_manager` to create structured, type-safe configuration objects. The flat structure makes it easy to manage environment variables and override specific settings:
 
 ```yaml
-# configs/osmlqs.yaml
-opensearch:
-  os:                                 # Self-managed OpenSearch settings
-    host_url: "localhost:9200"
-    username: "admin"
-    password: "admin"
-  aos:                                # Amazon OpenSearch Service settings
-    domain_name: "my-domain"
-    region: "us-west-2"
+# configs/osmlqs.yaml - Flat structure with descriptive variable names
+# OpenSearch configurations
+OS_HOST_URL: localhost
+OS_PORT: 9200
+OPENSEARCH_ADMIN_USER: admin
+OPENSEARCH_ADMIN_PASSWORD: admin
 
-models:
-  bedrock:                            # Amazon Bedrock model configurations
-    embedding:
-      model_name: "amazon.titan-embed-text-v1"
-      model_dimension: 1536
-    llm:
-      model_name: "anthropic.claude-v2"
-      max_tokens: 1000
+AOS_DOMAIN_NAME: my-domain
+AOS_HOST_URL: https://my-domain.us-west-2.es.amazonaws.com
+AWS_REGION: us-west-2
+
+# Model configurations
+BEDROCK_EMBEDDING_URL: https://bedrock-runtime.us-west-2.amazonaws.com/model/amazon.titan-embed-text-v1/invoke
+BEDROCK_MODEL_DIMENSION: 1536
+BEDROCK_LLM_MODEL_NAME: anthropic.claude-v2
+BEDROCK_LLM_MAX_TOKENS: 1000
+
+# SageMaker configurations
+SAGEMAKER_DENSE_ARN: arn:aws:sagemaker:us-west-2:123456789:endpoint/my-endpoint
+SAGEMAKER_DENSE_MODEL_DIMENSION: 384
 ```
+
+The `configuration_manager` transforms this flat structure into a nested, type-safe configuration hierarchy by:
+
+1. **Loading** the flat YAML using Dynaconf for environment variable support
+2. **Parsing** variable names to determine their logical grouping (OS vs AOS, Bedrock vs SageMaker, etc.)
+3. **Building** structured configuration objects with proper type conversion and validation
+4. **Providing** a clean API that abstracts the flat structure complexity
+
+This approach combines the simplicity of flat configuration files with the benefits of structured, validated configuration objects in your application code.
 
 ### ML Model Hierarchy
 
@@ -152,10 +165,7 @@ MlModel (Abstract Base Class)
 ├── LocalMlModel                      # Models deployed within OpenSearch cluster
 │   └── Supports: Hugging Face models, ONNX models
 └── RemoteMlModel                     # Models hosted externally via connectors
-    ├── OsBedrockMlModel             # Self-managed OS → Amazon Bedrock
-    ├── OsSagemakerMlModel           # Self-managed OS → Amazon SageMaker  
-    ├── AosBedrockMlModel            # Amazon OpenSearch Service → Bedrock
-    └── AosSagemakerMlModel          # Amazon OpenSearch Service → SageMaker
+    └── Uses connector framework for external model integration
 ```
 
 The model factory pattern simplifies the creation of model instances by abstracting away the complexity of choosing the right implementation class:
@@ -181,6 +191,42 @@ llm_model = get_ml_model(
 ```
 
 This architecture provides several key benefits that make it easy to work with different model hosting scenarios. The **unified interface** ensures that all models implement the same `MlModel` interface, so your application code doesn't need to change when you switch between different model types or hosting options. **Easy migration** between hosting options requires minimal code changes, allowing you to start with local development and move to production hosting without rewriting your application. **Type safety** provides automatic validation of model and hosting combinations, preventing invalid configurations at runtime. **Lifecycle management** includes built-in model registration, deployment, and cleanup functionality, handling the complex orchestration required to manage ML models in OpenSearch.
+
+### Connector Architecture
+
+The connector system provides a sophisticated abstraction layer for integrating with external ML services. Connectors handle the complex details of communicating with different model providers, managing authentication, and translating between OpenSearch's ML Commons API and external service protocols.
+
+The connector hierarchy follows a similar pattern to the model system:
+
+```
+MlConnector (Abstract Base Class)
+├── EmbeddingConnector               # Specialized for embedding models
+│   ├── Bedrock embedding connectors
+│   ├── SageMaker embedding connectors
+│   └── Hugging Face embedding connectors
+└── LlmConnector                     # Specialized for large language models
+    ├── Bedrock LLM connectors
+    ├── SageMaker LLM connectors
+    └── Custom LLM endpoint connectors
+```
+
+The connector system provides several key capabilities:
+
+**Service Integration** handles the specifics of different ML service APIs, including authentication, request formatting, and response parsing. **Protocol Translation** converts between OpenSearch's internal model representation and the specific formats required by external services. **Error Handling** provides robust error handling and retry logic for network issues and service failures. **Configuration Management** automatically generates the correct connector configurations based on your deployment type and model provider.
+
+```python
+from connectors.helper import get_remote_connector_configs
+
+# Get connector configuration for Bedrock embedding model
+connector_config = get_remote_connector_configs(
+    host_type="aos",                  # Amazon OpenSearch Service
+    model_type="bedrock",             # Amazon Bedrock
+    embedding_type="embedding"        # Embedding model type
+)
+
+# The connector handles all the complex integration details
+# including authentication, request formatting, and response parsing
+```
 
 ### Client Architecture
 
@@ -225,7 +271,7 @@ The following table outlines the primary search examples included in the toolkit
 | `hybrid_search.py` | Dense + Sparse Hybrid | Best of both worlds | Dense + Sparse models |
 | `lexical_search.py` | Traditional Keyword | Classic text search | None |
 | `conversational_search.py` | RAG + LLM | Conversational AI with context | Embedding + LLM models |
-| `agentic_search.py` | AI Agents | Complex reasoning and planning | LLM model with agent capabilities |
+| `conversational_agent.py` | AI Agents | Complex reasoning and planning | LLM model with agent capabilities |
 
 **Dense Vector Search** examples demonstrate how to implement semantic search using vector embeddings. The exact k-NN approach provides the highest accuracy by computing exact distances between query and document vectors, making it ideal for applications where precision is critical. The HNSW (Hierarchical Navigable Small World) variant trades some accuracy for significantly improved performance, making it suitable for large-scale applications where sub-second response times are required.
 
@@ -254,9 +300,11 @@ The agentic search example represents a breakthrough in search technology, demon
 
 These AI agents can **reason** about complex queries by analyzing the user's intent and breaking down multi-part questions into manageable components. They can **plan** execution strategies by determining the optimal sequence of search operations and data analysis steps needed to provide comprehensive answers. The agents **execute** these plans by performing multiple searches, analyzing intermediate results, and refining their approach based on what they discover. Finally, they can **learn** from feedback and results, adapting their strategies for similar future queries.
 
+Agentic search requires OpenSearch version 3.1, not currently available on Amazon OpenSearch Service.
+
 ```python
 # Example: Agentic search for complex research tasks
-python examples/agentic_search.py --host-type aos --categories "electronics,books" --max-docs 1000
+python examples/conversational_agent.py --host-type os --categories "electronics,books" --max-docs 1000
 
 # The agent can handle queries like:
 # "Find the best wireless headphones under $200 and compare them with similar books about audio technology"
