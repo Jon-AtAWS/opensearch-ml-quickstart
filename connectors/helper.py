@@ -40,8 +40,8 @@ def get_remote_connector_configs(connector_type: str, host_type: str) -> Dict[st
         return configs
     elif connector_type == "sagemaker" and host_type == "aos":
         configs = {
-            "dense_arn": get_raw_config_value("SAGEMAKER_SPARSE_ARN"),
-            "sparse_arn": get_raw_config_value("SAGEMAKER_DENSE_ARN"),
+            "dense_arn": get_raw_config_value("SAGEMAKER_DENSE_ARN"),
+            "sparse_arn": get_raw_config_value("SAGEMAKER_SPARSE_ARN"),
             "connector_role_name": get_raw_config_value("SAGEMAKER_CONNECTOR_ROLE_NAME"),
             "create_connector_role_name": get_raw_config_value("SAGEMAKER_CREATE_CONNECTOR_ROLE_NAME"),
             "region": get_raw_config_value("AWS_REGION"),

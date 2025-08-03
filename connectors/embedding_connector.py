@@ -118,10 +118,17 @@ class EmbeddingConnector(MlConnector):
             self._aws_user_name = aws_user_name
             self._region = region
         
-        # Auto-load configuration if not provided
+        # Auto-load configuration and merge with provided configs
+        auto_loaded_configs = get_remote_connector_configs(provider, os_type)
         if connector_configs is None:
-            connector_configs = get_remote_connector_configs(provider, os_type)
+            connector_configs = auto_loaded_configs
             logging.info(f"Auto-loaded {provider.title()} configuration for {os_type.upper()}")
+        else:
+            # Merge provided configs with auto-loaded ones, giving priority to provided configs
+            merged_configs = auto_loaded_configs.copy()
+            merged_configs.update(connector_configs)
+            connector_configs = merged_configs
+            logging.info(f"Merged provided configuration with auto-loaded {provider.title()} configuration for {os_type.upper()}")
         
         # Set default embedding type based on provider if not specified
         if "embedding_type" not in connector_configs:
