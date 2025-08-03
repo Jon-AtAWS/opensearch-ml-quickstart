@@ -344,7 +344,7 @@ The toolkit requires **Python 3.10 or later** due to its dependency on pandas 2.
 
 ### Data Requirements
 
-The examples in this toolkit use the **Amazon Product Question Answering (PQA) Dataset**, which provides a rich corpus of product-related questions and answers across multiple categories. This dataset is particularly well-suited for demonstrating search capabilities because it contains natural language queries with corresponding contextual information. You'll need to download this dataset from the [AWS Open Data Registry](https://registry.opendata.aws/amazon-pqa/) and extract it to the `datasets/amazon_pqa/` directory in your project root.
+The examples in this toolkit use the **Amazon Product Question Answering (PQA) Dataset**, which provides a rich corpus of product-related questions and answers across multiple categories. This dataset is particularly well-suited for demonstrating search capabilities because it contains natural language queries with corresponding answers and contextual information. You'll need to download this dataset from the [AWS Open Data Registry](https://registry.opendata.aws/amazon-pqa/) and extract it to the `datasets/amazon_pqa/` directory in your project root.
 
 ### Deployment Options
 
@@ -394,44 +394,11 @@ The toolkit uses the Amazon Product Question Answering (PQA) dataset for demonst
 # Extract the downloaded files to datasets/amazon_pqa/ directory
 ```
 
-The dataset should be organized with separate files for different product categories (electronics, books, etc.), allowing you to test search functionality with domain-specific content.
+The dataset is organized with separate files for different product categories (electronics, books, etc.), allowing you to test search functionality with domain-specific content.
 
 ### 3. Configuration Setup
 
-Create your configuration file at `configs/osmlqs.yaml` to specify your OpenSearch deployment and model hosting preferences. The configuration system supports multiple deployment scenarios and automatically validates your settings:
-
-```yaml
-# OpenSearch Configuration - Choose based on your deployment
-opensearch:
-  os:                                 # Self-managed OpenSearch
-    host_url: "localhost:9200"
-    username: "admin"
-    password: "admin"
-  aos:                                # Amazon OpenSearch Service
-    domain_name: "your-domain"
-    region: "us-west-2"
-    host_url: "https://your-domain.us-west-2.es.amazonaws.com"
-
-# Model Configuration - Configure based on your hosting choice
-models:
-  bedrock:                            # Amazon Bedrock models
-    embedding:
-      model_name: "amazon.titan-embed-text-v1"
-      model_dimension: 1536
-      endpoint_url: "https://bedrock-runtime.us-west-2.amazonaws.com"
-    llm:
-      model_name: "anthropic.claude-v2"
-      max_tokens: 1000
-      temperature: 0.7
-
-# AWS Configuration - Required for remote model hosting
-aws:
-  access_key_id: "your-access-key"
-  secret_access_key: "your-secret-key"
-  region: "us-west-2"
-```
-
-The configuration file uses a hierarchical structure that separates OpenSearch settings from model configurations, making it easy to switch between different deployment scenarios without changing your application code.
+Edit the configuration file at `configs/osmlqs.yaml` to specify your OpenSearch deployment and model hosting preferences. The configuration system supports multiple deployment scenarios and automatically validates your settings. The configuration file uses a flat structure with descriptive variable names, making it easy to manage environment variables and override specific settings. The configuration_manager processes this flat structure to create type-safe, structured configuration objects for your application.
 
 ### 4. Environment Variables (Optional)
 
