@@ -1,0 +1,62 @@
+# Test configuration file for unit tests
+QANDA_FILE_READER_PATH: ./datasets/amazon_pqa
+ML_BASE_URI: /_plugins/_ml
+DELETE_RESOURCE_WAIT_TIME: 5
+DELETE_RESOURCE_RETRY_TIME: 5
+MINIMUM_OPENSEARCH_VERSION: 2.13.0
+
+# Pipeline configuration
+PIPELINE_FIELD_MAP:
+  chunk: chunk_embedding
+
+# OpenSource (OS) OpenSearch
+OS_HOST_URL: localhost
+OS_PORT: 9200
+
+# Amazon OpenSearch Service (AOS)
+AOS_DOMAIN_NAME: test-domain
+AOS_HOST_URL: https://test.aos.amazonaws.com
+AOS_PORT: None
+
+# Authentication
+OPENSEARCH_ADMIN_USER: admin
+OPENSEARCH_ADMIN_PASSWORD: password
+
+# AWS Configuration
+AWS_REGION: us-west-2
+AWS_USER_NAME: testuser
+AWS_ACCESS_KEY_ID: test-key
+AWS_SECRET_ACCESS_KEY: test-secret
+
+# Bedrock Configuration
+BEDROCK_EMBEDDING_URL: https://bedrock-runtime.us-west-2.amazonaws.com/model/amazon.titan-embed-text-v1/invoke
+BEDROCK_MODEL_DIMENSION: 1536
+BEDROCK_CONNECTOR_VERSION: 1.0
+BEDROCK_LLM_URL: https://bedrock-runtime.us-west-2.amazonaws.com/model/anthropic.claude-v2/invoke
+BEDROCK_LLM_MODEL_NAME: anthropic.claude-v2
+BEDROCK_LLM_MAX_TOKENS: 1000
+BEDROCK_LLM_TEMPERATURE: 0.7
+BEDROCK_ARN: arn:aws:bedrock:*::foundation-model/*
+BEDROCK_CONNECTOR_ROLE_NAME: test-bedrock-role
+BEDROCK_CREATE_CONNECTOR_ROLE_NAME: test-bedrock-create-role
+BEDROCK_LLM_ARN: arn:aws:bedrock:*::foundation-model/anthropic.claude-v2
+
+# SageMaker Configuration
+SAGEMAKER_SPARSE_ARN: arn:aws:sagemaker:us-west-2:123456789012:endpoint/test-sparse
+SAGEMAKER_DENSE_ARN: arn:aws:sagemaker:us-west-2:123456789012:endpoint/test-dense
+SAGEMAKER_CONNECTOR_VERSION: 1.0
+SAGEMAKER_SPARSE_URL: https://runtime.sagemaker.us-west-2.amazonaws.com/endpoints/test-sparse/invocations
+SAGEMAKER_DENSE_URL: https://runtime.sagemaker.us-west-2.amazonaws.com/endpoints/test-dense/invocations
+SAGEMAKER_DENSE_MODEL_DIMENSION: 384
+SAGEMAKER_CONNECTOR_ROLE_NAME: test-sagemaker-role
+SAGEMAKER_CREATE_CONNECTOR_ROLE_NAME: test-sagemaker-create-role
+
+# Local model configuration
+LOCAL_EMBEDDING_MODEL_NAME: huggingface/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+LOCAL_EMBEDDING_MODEL_VERSION: 1.0.1
+LOCAL_EMBEDDING_MODEL_FORMAT: TORCH_SCRIPT
+
+# Test keys for specific tests
+TEST_KEY: test_value
+KEY1: value1
+KEY2: value2

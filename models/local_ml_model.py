@@ -7,9 +7,9 @@ from opensearch_py_ml.ml_commons import MLCommonClient
 
 from .ml_model import MlModel
 from configs.configuration_manager import (
-    get_default_local_model_name,
-    get_default_model_format,
-    get_default_model_version,
+    get_local_embedding_model_name,
+    get_local_embedding_model_format,
+    get_local_embedding_model_version,
 )
 
 
@@ -28,7 +28,7 @@ class LocalMlModel(MlModel):
     ) -> None:
         # Use configuration manager default if model_name not provided
         if model_name is None:
-            model_name = get_default_local_model_name()
+            model_name = get_local_embedding_model_name()
             
         super().__init__(
             os_client,
@@ -42,10 +42,10 @@ class LocalMlModel(MlModel):
     @overrides
     def _register_model(self):
         # Get model version from config or use default from configuration manager
-        model_version = self._model_configs.get("model_version", get_default_model_version())
+        model_version = self._model_configs.get("model_version", get_local_embedding_model_version())
         
         # Get model format from config or use default from configuration manager
-        model_format = self._model_configs.get("model_format", get_default_model_format())
+        model_format = self._model_configs.get("model_format", get_local_embedding_model_format())
         
         self._ml_commons_client.register_pretrained_model(
             model_name=self._model_name,

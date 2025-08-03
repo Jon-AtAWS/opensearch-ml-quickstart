@@ -67,9 +67,9 @@ class ConfigurationManager:
     
     def __init__(self, config_file_path: str = CONFIG_FILE_PATH):
         self.config_file_path = config_file_path
-        self._setup_dynaconf()
         self._opensearch_configs = {}
         self._model_configurations = {}
+        self._setup_dynaconf()
         self._build_configurations()
     
     def _setup_dynaconf(self):
@@ -323,16 +323,22 @@ class ConfigurationManager:
             "dynaconf_version": getattr(self.settings, '_dynaconf_version', 'unknown')
         }
 
-# Global configuration manager instance
-config_manager = ConfigurationManager()
+# Global configuration manager instance - defined at end to avoid circular imports
+config_manager = None
 
 # Convenience functions
 def get_opensearch_config(os_type: str) -> OpenSearchConfig:
     """Get OpenSearch cluster configuration."""
+    global config_manager
+    if config_manager is None:
+        config_manager = ConfigurationManager()
     return config_manager.get_opensearch_config(os_type)
 
 def get_model_config(os_type: str, provider: str, model_type: str) -> ModelConfig:
     """Get model configuration."""
+    global config_manager
+    if config_manager is None:
+        config_manager = ConfigurationManager()
     return config_manager.get_model_config(os_type, provider, model_type)
 
 def get_embedding_config(os_type: str, provider: str) -> ModelConfig:
@@ -345,22 +351,37 @@ def get_llm_config(os_type: str, provider: str) -> ModelConfig:
 
 def get_raw_config_value(key: str, default=None):
     """Get raw configuration value directly from Dynaconf."""
+    global config_manager
+    if config_manager is None:
+        config_manager = ConfigurationManager()
     return config_manager.get_raw_config_value(key, default)
 
 def reload_config():
     """Reload configuration from file."""
+    global config_manager
+    if config_manager is None:
+        config_manager = ConfigurationManager()
     config_manager.reload_config()
 
 def get_available_combinations() -> list:
     """Get all available configuration combinations."""
+    global config_manager
+    if config_manager is None:
+        config_manager = ConfigurationManager()
     return config_manager.get_available_combinations()
 
 def validate_all_configs() -> Dict[str, list]:
     """Validate all configurations and return any issues."""
+    global config_manager
+    if config_manager is None:
+        config_manager = ConfigurationManager()
     return config_manager.validate_all_configs()
 
 def get_config_info() -> Dict[str, Any]:
     """Get information about the configuration system."""
+    global config_manager
+    if config_manager is None:
+        config_manager = ConfigurationManager()
     return config_manager.get_config_info()
 
 def validate_config_for(config: Dict[str, Any], os_type: str, provider: str, model_type: str):
@@ -542,6 +563,9 @@ def get_config_for(os_type: str, provider: str, model_type: str) -> Dict[str, An
 
 def list_all_config_keys() -> list:
     """List all configuration keys loaded by Dynaconf."""
+    global config_manager
+    if config_manager is None:
+        config_manager = ConfigurationManager()
     return config_manager.list_all_config_keys()
 
 # Additional configuration constants and convenience functions
@@ -555,11 +579,11 @@ def get_base_mapping_path() -> str:
 
 def get_qanda_file_reader_path() -> str:
     """Get the path to the Q&A dataset."""
-    return get_raw_config_value("QANDA_FILE_READER_PATH", "/Users/handler/datasets/amazon_pqa")
+    return get_raw_config_value("QANDA_FILE_READER_PATH", "./datasets/amazon_pqa")
 
 def get_minimum_opensearch_version() -> str:
     """Get the minimum required OpenSearch version."""
-    return get_raw_config_value("MINIMUM_OPENSEARCH_VERSION", "2.19.0")
+    return get_raw_config_value("MINIMUM_OPENSEARCH_VERSION", "2.13.0")
 
 def get_ml_base_uri() -> str:
     """Get the ML base URI for OpenSearch ML Commons."""
@@ -567,11 +591,11 @@ def get_ml_base_uri() -> str:
 
 def get_delete_resource_wait_time() -> int:
     """Get the wait time for resource deletion operations."""
-    return int(get_raw_config_value("DELETE_RESOURCE_WAIT_TIME", 5))
+    return int(get_raw_config_value("DELETE_RESOURCE_WAIT_TIME", "5"))
 
 def get_delete_resource_retry_time() -> int:
     """Get the retry time for resource deletion operations."""
-    return int(get_raw_config_value("DELETE_RESOURCE_RETRY_TIME", 5))
+    return int(get_raw_config_value("DELETE_RESOURCE_RETRY_TIME", "5"))
 
 def get_local_embedding_model_name() -> str:
     """Get the local embedding model name."""
@@ -665,7 +689,7 @@ def validate_configs(configs: Dict[str, Any], required_args: list) -> None:
     
     if missing_configs:
         raise ValueError(
-            f"Missing or None configuration(s): {', '.join(missing_configs)}. "
+            f"Missing required configuration(s): {', '.join(missing_configs)}. "
             f"Please specify these values in the configuration."
         )
 
