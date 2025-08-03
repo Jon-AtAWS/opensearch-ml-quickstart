@@ -96,6 +96,11 @@ def add_additional_field_mappings(os_client: OpenSearch, index_name):
     """
     logging.info(f"Adding additional field mappings to {index_name}")
 
+    # Check if the index exists before trying to add mappings
+    if not os_client.indices.exists(index=index_name):
+        logging.error(f"Index {index_name} does not exist. Cannot add field mappings.")
+        return False
+
     # Read the base mapping from the specified path
     index_config = get_base_mapping(get_base_mapping_path())
     properties = index_config.get("mappings", None)
@@ -105,15 +110,20 @@ def add_additional_field_mappings(os_client: OpenSearch, index_name):
         return True
 
     logging.info(f"Adding {json.dumps(properties, indent=2)}")
-    response = os_client.transport.perform_request(
-        "PUT", f"/{index_name}/_mapping", body=properties
-    )
-    if not response.get("acknowledged"):
-        logging.error("Failed to add additional field mappings")
-        return False
+    
+    try:
+        response = os_client.transport.perform_request(
+            "PUT", f"/{index_name}/_mapping", body=properties
+        )
+        if not response.get("acknowledged"):
+            logging.error("Failed to add additional field mappings")
+            return False
 
-    logging.info("Successfully added additional field mappings")
-    return True
+        logging.info("Successfully added additional field mappings")
+        return True
+    except Exception as e:
+        logging.error(f"Error adding field mappings: {e}")
+        return False
 
 
 def verify_index_creation(client, index_name):
@@ -333,9 +343,12 @@ def main():
         template_success, workflow_id = provision_semantic_search_workflow(
             client, workflow_config=workflow_config
         )
-
-    if not add_additional_field_mappings(client.os_client, index_name=index_name):
-        logging.warning("Continuing without additional field mappings")
+    else:
+        # Index doesn't exist, run the workflow to create it
+        logging.info(f"Index {index_name} doesn't exist. Running workflow to create it.")
+        template_success, workflow_id = provision_semantic_search_workflow(
+            client, workflow_config=workflow_config
+        )
 
     if template_success:
         logging.info(
@@ -345,12 +358,16 @@ def main():
         # Verify that the index was created successfully
         if verify_index_creation(client, index_name):
             logging.info("Index and pipeline are ready for data loading")
+            
+            # Only add additional field mappings if the index exists and was created successfully
+            if not add_additional_field_mappings(client.os_client, index_name=index_name):
+                logging.warning("Continuing without additional field mappings")
         else:
             logging.warning(
                 "Index verification failed, but continuing with data loading"
             )
     else:
-        logging.error("Failed to set up and execute the workflow template. Exiting")
+        logging.error("Failed to set up and execute the semantic search workflow. Exiting")
         sys.exit(1)
 
     # Load data using existing index_utils.handle_data_loading

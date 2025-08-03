@@ -367,6 +367,12 @@ def main():
         template_success, workflow_id = setup_and_run_workflow(
             client, workflow_template
         )
+    else:
+        # Index doesn't exist, run the workflow to create it
+        logging.info(f"Index {index_name} doesn't exist. Running workflow to create it.")
+        template_success, workflow_id = setup_and_run_workflow(
+            client, workflow_template
+        )
 
     if template_success:
         logging.info(
