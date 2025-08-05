@@ -41,14 +41,6 @@ from .configuration_manager import (
     ModelProvider,
     ModelType,
     
-    # Constants
-    ML_BASE_URI,
-    DELETE_RESOURCE_WAIT_TIME,
-    DELETE_RESOURCE_RETRY_TIME,
-    BASE_MAPPING_PATH,
-    QANDA_FILE_READER_PATH,
-    MINIMUM_OPENSEARCH_VERSION,
-    PROJECT_ROOT,
     # Functions
     get_local_dense_embedding_model_dimension,
 )

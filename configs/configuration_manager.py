@@ -702,11 +702,4 @@ def validate_configs(configs: Dict[str, Any], required_args: list) -> None:
         )
 
 
-# Legacy compatibility constants (computed from configuration)
-PROJECT_ROOT = get_project_root()
-BASE_MAPPING_PATH = get_base_mapping_path()
-QANDA_FILE_READER_PATH = get_qanda_file_reader_path()
-MINIMUM_OPENSEARCH_VERSION = get_minimum_opensearch_version()
-ML_BASE_URI = get_ml_base_uri()
-DELETE_RESOURCE_WAIT_TIME = get_delete_resource_wait_time()
-DELETE_RESOURCE_RETRY_TIME = get_delete_resource_retry_time()
+

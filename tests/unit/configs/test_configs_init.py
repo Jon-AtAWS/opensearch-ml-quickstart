@@ -37,12 +37,6 @@ class TestConfigsInit:
         import configs
         
         expected_constants = [
-            'ML_BASE_URI',
-            'DELETE_RESOURCE_WAIT_TIME',
-            'DELETE_RESOURCE_RETRY_TIME',
-            'BASE_MAPPING_PATH',
-            'QANDA_FILE_READER_PATH',
-            'MINIMUM_OPENSEARCH_VERSION',
         ]
         
         for const_name in expected_constants:
@@ -59,15 +53,6 @@ class TestConfigsInit:
         # Test that it returns the expected default value
         result = configs.get_ml_base_uri()
         assert result == "/_plugins/_ml"
-
-    @patch('configs.configuration_manager.ML_BASE_URI', "/_plugins/_ml")
-    def test_constant_delegation(self):
-        """Test that imported constants work correctly"""
-        import configs
-        
-        # This will test that the constant is properly imported
-        # Note: We can't easily mock module-level constants, so we test the import works
-        assert hasattr(configs, 'ML_BASE_URI')
 
     def test_no_tasks_import(self):
         """Test that tasks.py imports are no longer present"""
@@ -98,10 +83,9 @@ class TestConfigsInit:
     def test_import_structure(self):
         """Test the import structure is correct"""
         # Test that we can import specific items
-        from configs import get_ml_base_uri, ML_BASE_URI
+        from configs import get_ml_base_uri
         
         assert callable(get_ml_base_uri)
-        assert isinstance(ML_BASE_URI, str)
 
     def test_all_imports_work(self):
         """Test that all imports in __init__.py work without errors"""
@@ -116,12 +100,6 @@ class TestConfigsInit:
                 get_client_configs,
                 validate_configs,
                 get_raw_config_value,
-                ML_BASE_URI,
-                DELETE_RESOURCE_WAIT_TIME,
-                DELETE_RESOURCE_RETRY_TIME,
-                BASE_MAPPING_PATH,
-                QANDA_FILE_READER_PATH,
-                MINIMUM_OPENSEARCH_VERSION,
             )
             
             # If we get here, all imports worked

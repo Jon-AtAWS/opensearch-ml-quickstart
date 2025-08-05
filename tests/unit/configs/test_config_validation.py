@@ -415,19 +415,23 @@ class TestConfigurationConstants:
     def test_constant_values_are_reasonable(self):
         """Test that constant values are reasonable"""
         from configs.configuration_manager import (
-            ML_BASE_URI, DELETE_RESOURCE_WAIT_TIME, DELETE_RESOURCE_RETRY_TIME,
-            MINIMUM_OPENSEARCH_VERSION
+            get_ml_base_uri, get_delete_resource_wait_time, get_delete_resource_retry_time,
+            get_minimum_opensearch_version
         )
         
-        # Test that constants have reasonable values
-        assert isinstance(ML_BASE_URI, str)
-        assert ML_BASE_URI.startswith("/_plugins/")
+        # Test that functions return reasonable values
+        ml_base_uri = get_ml_base_uri()
+        assert isinstance(ml_base_uri, str)
+        assert ml_base_uri.startswith("/_plugins/")
         
-        assert isinstance(DELETE_RESOURCE_WAIT_TIME, int)
-        assert DELETE_RESOURCE_WAIT_TIME > 0
+        wait_time = get_delete_resource_wait_time()
+        assert isinstance(wait_time, int)
+        assert wait_time > 0
         
-        assert isinstance(DELETE_RESOURCE_RETRY_TIME, int)
-        assert DELETE_RESOURCE_RETRY_TIME > 0
+        retry_time = get_delete_resource_retry_time()
+        assert isinstance(retry_time, int)
+        assert retry_time > 0
         
-        assert isinstance(MINIMUM_OPENSEARCH_VERSION, str)
-        assert "." in MINIMUM_OPENSEARCH_VERSION  # Should be version format
+        version = get_minimum_opensearch_version()
+        assert isinstance(version, str)
+        assert "." in version  # Should be version format
