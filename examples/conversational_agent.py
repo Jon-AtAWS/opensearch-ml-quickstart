@@ -29,6 +29,7 @@ from configs.configuration_manager import (
     get_client_configs,
     get_pipeline_field_map,
     get_qanda_file_reader_path,
+    config_override,  # Add this import
 )
 from connectors.helper import get_remote_connector_configs, get_raw_config_value
 from data_process import QAndAFileReader
@@ -266,11 +267,14 @@ def main():
     embedding_type = "dense"
     ingest_pipeline_name = "agent-dense-ingest-pipeline"
 
-    client = OsMlClientWrapper(get_client(host_type))
+    # Conversational agent requires OpenSearch 3.1+
+    with config_override(MINIMUM_OPENSEARCH_VERSION="3.1.0"):
+        client = OsMlClientWrapper(get_client(host_type))
+    
     pqa_reader = QAndAFileReader(
         directory=get_qanda_file_reader_path(),
         max_number_of_docs=args.number_of_docs_per_category,
-    )
+        )
 
     config = {
         "with_knn": True,

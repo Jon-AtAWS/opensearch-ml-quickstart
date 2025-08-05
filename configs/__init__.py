@@ -34,6 +34,9 @@ from .configuration_manager import (
     get_local_dense_embedding_model_format,
     get_local_dense_embedding_model_dimension,
     
+    # Configuration override context manager
+    config_override,
+    
     # Configuration classes
     OpenSearchConfig,
     ModelConfig,

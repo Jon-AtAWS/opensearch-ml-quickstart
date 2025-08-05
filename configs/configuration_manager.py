@@ -6,9 +6,40 @@ from dataclasses import dataclass
 from typing import Dict, Any, Optional, Union
 from enum import Enum
 from dynaconf import Dynaconf
+from contextlib import contextmanager
+from threading import local
 
 # Configuration file path
 CONFIG_FILE_PATH = os.path.join(os.path.dirname(__file__), "osmlqs.yaml")
+
+# Thread-local storage for configuration overrides
+_config_overrides = local()
+
+@contextmanager
+def config_override(**overrides):
+    """Context manager for temporarily overriding configuration values.
+    
+    Usage:
+        with config_override(MINIMUM_OPENSEARCH_VERSION="3.1.0"):
+            version = get_minimum_opensearch_version()  # Returns "3.1.0"
+    """
+    if not hasattr(_config_overrides, 'stack'):
+        _config_overrides.stack = []
+    
+    _config_overrides.stack.append(overrides)
+    try:
+        yield
+    finally:
+        _config_overrides.stack.pop()
+
+def _get_override_value(key: str, default_value: Any) -> Any:
+    """Check if there's an override for the given key."""
+    if hasattr(_config_overrides, 'stack') and _config_overrides.stack:
+        # Check overrides from most recent to oldest
+        for overrides in reversed(_config_overrides.stack):
+            if key in overrides:
+                return overrides[key]
+    return default_value
 
 class OpenSearchType(Enum):
     OS = "os"
@@ -354,11 +385,14 @@ def get_llm_config(os_type: str, provider: str) -> ModelConfig:
     return get_model_config(os_type, provider, "llm")
 
 def get_raw_config_value(key: str, default=None):
-    """Get raw configuration value directly from Dynaconf."""
+    """Get raw configuration value directly from Dynaconf, checking for overrides first."""
     global config_manager
     if config_manager is None:
         config_manager = ConfigurationManager()
-    return config_manager.get_raw_config_value(key, default)
+    
+    # Check for override first
+    base_value = config_manager.get_raw_config_value(key, default)
+    return _get_override_value(key, base_value)
 
 def reload_config():
     """Reload configuration from file."""

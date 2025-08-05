@@ -490,6 +490,46 @@ class TestModuleFunctions:
         assert result == "./datasets/amazon_pqa"
         mock_get_raw.assert_called_once_with("QANDA_FILE_READER_PATH", "./datasets/amazon_pqa")
 
+    def test_config_override_context_manager(self):
+        """Test configuration override context manager."""
+        from configs.configuration_manager import config_override, get_minimum_opensearch_version
+        
+        # Test normal behavior
+        normal_version = get_minimum_opensearch_version()
+        
+        # Test override
+        with config_override(MINIMUM_OPENSEARCH_VERSION="3.1.0"):
+            override_version = get_minimum_opensearch_version()
+            assert override_version == "3.1.0"
+        
+        # Test that override is gone after context
+        after_version = get_minimum_opensearch_version()
+        assert after_version == normal_version
+        
+    def test_config_override_nested(self):
+        """Test nested configuration overrides."""
+        from configs.configuration_manager import config_override, get_minimum_opensearch_version
+        
+        with config_override(MINIMUM_OPENSEARCH_VERSION="3.0.0"):
+            assert get_minimum_opensearch_version() == "3.0.0"
+            
+            with config_override(MINIMUM_OPENSEARCH_VERSION="3.1.0"):
+                assert get_minimum_opensearch_version() == "3.1.0"
+            
+            # Should revert to outer override
+            assert get_minimum_opensearch_version() == "3.0.0"
+    
+    def test_config_override_multiple_values(self):
+        """Test overriding multiple configuration values."""
+        from configs.configuration_manager import config_override, get_minimum_opensearch_version, get_ml_base_uri
+        
+        with config_override(
+            MINIMUM_OPENSEARCH_VERSION="3.1.0",
+            ML_BASE_URI="/custom/_ml"
+        ):
+            assert get_minimum_opensearch_version() == "3.1.0"
+            assert get_ml_base_uri() == "/custom/_ml"
+
     def test_validate_configs_valid(self):
         """Test validate_configs with valid configuration"""
         configs = {
