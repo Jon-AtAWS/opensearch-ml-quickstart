@@ -237,7 +237,7 @@ class ConfigurationManager:
             os_type = OpenSearchType(os_type)
         
         if os_type not in self._opensearch_configs:
-            raise ValueError(f"OpenSearch configuration not found for {os_type.value}")
+            raise ValueError(f"OpenSearch configuration not found for {os_type.value}. Valid values are os and aos.")
         
         return self._opensearch_configs[os_type]
     
