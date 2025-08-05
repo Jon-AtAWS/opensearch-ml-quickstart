@@ -179,14 +179,16 @@ def main():
         "bulk_send_chunk_size": args.bulk_send_chunk_size,
     }
 
-    # Initialize local Hugging Face model
-    model_name = "huggingface/sentence-transformers/all-MiniLM-L6-v2"
+    # Initialize local Hugging Face model using configuration
+    from configs.configuration_manager import get_local_dense_embedding_model_name, get_local_dense_embedding_model_version, get_local_dense_embedding_model_format, get_local_dense_embedding_model_dimension
+    
+    model_name = get_local_dense_embedding_model_name()
     model_config = {
         "model_name": model_name,
-        "model_version": "1.0.1",
-        "model_dimensions": 384,
+        "model_version": get_local_dense_embedding_model_version(),
+        "model_dimensions": get_local_dense_embedding_model_dimension(),
         "embedding_type": embedding_type,
-        "model_format": "TORCH_SCRIPT",
+        "model_format": get_local_dense_embedding_model_format(),
     }
 
     logging.info(f"Initializing local Hugging Face model: {model_name}")

@@ -283,14 +283,16 @@ def main():
         "bulk_send_chunk_size": args.bulk_send_chunk_size,
     }
 
-    # Create local dense embedding model for knowledge base
-    model_name = "huggingface/sentence-transformers/all-MiniLM-L6-v2"
+    # Create local dense embedding model for knowledge base using configuration
+    from configs.configuration_manager import get_local_dense_embedding_model_name, get_local_dense_embedding_model_version, get_local_dense_embedding_model_format, get_local_dense_embedding_model_dimension
+    
+    model_name = get_local_dense_embedding_model_name()
     model_config = {
         "model_name": model_name,
-        "model_version": "1.0.1",
-        "model_dimensions": 384,
+        "model_version": get_local_dense_embedding_model_version(),
+        "model_dimensions": get_local_dense_embedding_model_dimension(),
         "embedding_type": embedding_type,
-        "model_format": "TORCH_SCRIPT",
+        "model_format": get_local_dense_embedding_model_format(),
     }
     embedding_ml_model = get_ml_model(
         host_type=host_type,

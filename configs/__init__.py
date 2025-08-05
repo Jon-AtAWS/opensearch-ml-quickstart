@@ -29,6 +29,10 @@ from .configuration_manager import (
     validate_all_configs,
     get_config_info,
     get_project_root,
+    get_local_dense_embedding_model_name,
+    get_local_dense_embedding_model_version,
+    get_local_dense_embedding_model_format,
+    get_local_dense_embedding_model_dimension,
     
     # Configuration classes
     OpenSearchConfig,
@@ -43,9 +47,8 @@ from .configuration_manager import (
     DELETE_RESOURCE_RETRY_TIME,
     BASE_MAPPING_PATH,
     QANDA_FILE_READER_PATH,
-    LOCAL_EMBEDDING_MODEL_NAME,
-    LOCAL_EMBEDDING_MODEL_VERSION,
-    LOCAL_EMBEDDING_MODEL_FORMAT,
     MINIMUM_OPENSEARCH_VERSION,
     PROJECT_ROOT,
+    # Functions
+    get_local_dense_embedding_model_dimension,
 )

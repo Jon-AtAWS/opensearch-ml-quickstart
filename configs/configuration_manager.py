@@ -53,6 +53,8 @@ class ModelConfig:
     
     # Model-specific
     model_name: Optional[str] = None
+    model_version: Optional[str] = None
+    model_format: Optional[str] = None
     model_dimension: Optional[int] = None
     sparse_arn: Optional[str] = None
     dense_arn: Optional[str] = None
@@ -133,8 +135,10 @@ class ConfigurationManager:
             OpenSearchType.OS: {
                 ModelProvider.LOCAL: {
                     ModelType.EMBEDDING: ModelConfig(
-                        model_name="sentence-transformers/all-MiniLM-L6-v2",
-                        model_dimension=384
+                        model_name=self._get_config_value("LOCAL_DENSE_EMBEDDING_MODEL", "huggingface/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"),
+                        model_version=self._get_config_value("LOCAL_DENSE_EMBEDDING_VERSION", "1.0.1"),
+                        model_format=self._get_config_value("LOCAL_DENSE_EMBEDDING_FORMAT", "TORCH_SCRIPT"),
+                        model_dimension=384  # Fixed dimension for the model
                     ),
                     ModelType.LLM: ModelConfig(
                         model_name="local-llm-model"
@@ -538,9 +542,9 @@ def get_config_for(os_type: str, provider: str, model_type: str) -> Dict[str, An
             "ML_BASE_URI": get_ml_base_uri(),
             "DELETE_RESOURCE_WAIT_TIME": get_delete_resource_wait_time(),
             "DELETE_RESOURCE_RETRY_TIME": get_delete_resource_retry_time(),
-            "LOCAL_EMBEDDING_MODEL_NAME": get_local_embedding_model_name(),
-            "LOCAL_EMBEDDING_MODEL_VERSION": get_local_embedding_model_version(),
-            "LOCAL_EMBEDDING_MODEL_FORMAT": get_local_embedding_model_format(),
+            "LOCAL_DENSE_EMBEDDING_MODEL": get_local_dense_embedding_model_name(),
+            "LOCAL_DENSE_EMBEDDING_VERSION": get_local_dense_embedding_model_version(),
+            "LOCAL_DENSE_EMBEDDING_FORMAT": get_local_dense_embedding_model_format(),
             "PIPELINE_FIELD_MAP": {"chunk": "chunk_embedding"},
         },
         
@@ -597,20 +601,24 @@ def get_delete_resource_retry_time() -> int:
     """Get the retry time for resource deletion operations."""
     return int(get_raw_config_value("DELETE_RESOURCE_RETRY_TIME", "5"))
 
-def get_local_embedding_model_name() -> str:
-    """Get the local embedding model name."""
+def get_local_dense_embedding_model_name() -> str:
+    """Get the local dense embedding model name."""
     return get_raw_config_value(
-        "LOCAL_EMBEDDING_MODEL_NAME", 
+        "LOCAL_DENSE_EMBEDDING_MODEL", 
         "huggingface/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     )
 
-def get_local_embedding_model_version() -> str:
-    """Get the local embedding model version."""
-    return get_raw_config_value("LOCAL_EMBEDDING_MODEL_VERSION", "1.0.1")
+def get_local_dense_embedding_model_version() -> str:
+    """Get the local dense embedding model version."""
+    return get_raw_config_value("LOCAL_DENSE_EMBEDDING_VERSION", "1.0.1")
 
-def get_local_embedding_model_format() -> str:
-    """Get the local embedding model format."""
-    return get_raw_config_value("LOCAL_EMBEDDING_MODEL_FORMAT", "TORCH_SCRIPT")
+def get_local_dense_embedding_model_format() -> str:
+    """Get the local dense embedding model format."""
+    return get_raw_config_value("LOCAL_DENSE_EMBEDDING_FORMAT", "TORCH_SCRIPT")
+
+def get_local_dense_embedding_model_dimension() -> int:
+    """Get the local dense embedding model dimension."""
+    return 384  # Fixed dimension for paraphrase-multilingual-MiniLM-L12-v2
 
 def get_pipeline_field_map() -> Dict[str, str]:
     """Get the pipeline field mapping."""
@@ -702,6 +710,3 @@ MINIMUM_OPENSEARCH_VERSION = get_minimum_opensearch_version()
 ML_BASE_URI = get_ml_base_uri()
 DELETE_RESOURCE_WAIT_TIME = get_delete_resource_wait_time()
 DELETE_RESOURCE_RETRY_TIME = get_delete_resource_retry_time()
-LOCAL_EMBEDDING_MODEL_NAME = get_local_embedding_model_name()
-LOCAL_EMBEDDING_MODEL_VERSION = get_local_embedding_model_version()
-LOCAL_EMBEDDING_MODEL_FORMAT = get_local_embedding_model_format()

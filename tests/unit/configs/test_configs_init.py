@@ -42,9 +42,6 @@ class TestConfigsInit:
             'DELETE_RESOURCE_RETRY_TIME',
             'BASE_MAPPING_PATH',
             'QANDA_FILE_READER_PATH',
-            'LOCAL_EMBEDDING_MODEL_NAME',
-            'LOCAL_EMBEDDING_MODEL_VERSION',
-            'LOCAL_EMBEDDING_MODEL_FORMAT',
             'MINIMUM_OPENSEARCH_VERSION',
         ]
         
@@ -124,9 +121,6 @@ class TestConfigsInit:
                 DELETE_RESOURCE_RETRY_TIME,
                 BASE_MAPPING_PATH,
                 QANDA_FILE_READER_PATH,
-                LOCAL_EMBEDDING_MODEL_NAME,
-                LOCAL_EMBEDDING_MODEL_VERSION,
-                LOCAL_EMBEDDING_MODEL_FORMAT,
                 MINIMUM_OPENSEARCH_VERSION,
             )
             

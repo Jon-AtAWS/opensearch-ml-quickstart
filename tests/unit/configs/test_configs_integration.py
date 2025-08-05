@@ -239,21 +239,21 @@ class TestConfigurationIntegration:
         """Test embedding model constants with actual configuration"""
         try:
             from configs.configuration_manager import (
-                get_local_embedding_model_name,
-                get_local_embedding_model_version,
-                get_local_embedding_model_format
+                get_local_dense_embedding_model_name,
+                get_local_dense_embedding_model_version,
+                get_local_dense_embedding_model_format
             )
             
             # Test that these return reasonable values
-            model_name = get_local_embedding_model_name()
+            model_name = get_local_dense_embedding_model_name()
             assert isinstance(model_name, str)
             assert len(model_name) > 0
             
-            model_version = get_local_embedding_model_version()
+            model_version = get_local_dense_embedding_model_version()
             assert isinstance(model_version, str)
             assert "." in model_version  # Should be version format like "1.0.1"
             
-            model_format = get_local_embedding_model_format()
+            model_format = get_local_dense_embedding_model_format()
             assert isinstance(model_format, str)
             assert model_format in ["TORCH_SCRIPT", "ONNX"]
             

@@ -39,9 +39,9 @@ class TestConfigurationValidation:
             "BEDROCK_CONNECTOR_VERSION": "1.0",
             "SAGEMAKER_DENSE_ARN": "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test",
             "SAGEMAKER_SPARSE_ARN": "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test-sparse",
-            "LOCAL_EMBEDDING_MODEL_NAME": "test-model",
-            "LOCAL_EMBEDDING_MODEL_VERSION": "1.0.0",
-            "LOCAL_EMBEDDING_MODEL_FORMAT": "TORCH_SCRIPT"
+            "LOCAL_DENSE_EMBEDDING_MODEL": "test-model",
+            "LOCAL_DENSE_EMBEDDING_VERSION": "1.0.0",
+            "LOCAL_DENSE_EMBEDDING_FORMAT": "TORCH_SCRIPT"
         }
 
     @patch('configs.configuration_manager.Dynaconf')
@@ -387,8 +387,8 @@ class TestConfigurationConstants:
         from configs.configuration_manager import (
             get_minimum_opensearch_version, get_ml_base_uri,
             get_delete_resource_wait_time, get_delete_resource_retry_time,
-            get_local_embedding_model_name, get_local_embedding_model_version,
-            get_local_embedding_model_format, get_pipeline_field_map
+            get_local_dense_embedding_model_name, get_local_dense_embedding_model_version,
+            get_local_dense_embedding_model_format, get_pipeline_field_map
         )
         
         # Test that functions have reasonable defaults
@@ -400,8 +400,8 @@ class TestConfigurationConstants:
             (get_ml_base_uri, "/_plugins/_ml"),
             (get_delete_resource_wait_time, 5),
             (get_delete_resource_retry_time, 5),
-            (get_local_embedding_model_version, "1.0.1"),
-            (get_local_embedding_model_format, "TORCH_SCRIPT"),
+            (get_local_dense_embedding_model_version, "1.0.1"),
+            (get_local_dense_embedding_model_format, "TORCH_SCRIPT"),
         ]
         
         for func, expected_default in functions_with_defaults:
@@ -416,8 +416,7 @@ class TestConfigurationConstants:
         """Test that constant values are reasonable"""
         from configs.configuration_manager import (
             ML_BASE_URI, DELETE_RESOURCE_WAIT_TIME, DELETE_RESOURCE_RETRY_TIME,
-            LOCAL_EMBEDDING_MODEL_NAME, LOCAL_EMBEDDING_MODEL_VERSION,
-            LOCAL_EMBEDDING_MODEL_FORMAT, MINIMUM_OPENSEARCH_VERSION
+            MINIMUM_OPENSEARCH_VERSION
         )
         
         # Test that constants have reasonable values
@@ -429,15 +428,6 @@ class TestConfigurationConstants:
         
         assert isinstance(DELETE_RESOURCE_RETRY_TIME, int)
         assert DELETE_RESOURCE_RETRY_TIME > 0
-        
-        assert isinstance(LOCAL_EMBEDDING_MODEL_NAME, str)
-        assert len(LOCAL_EMBEDDING_MODEL_NAME) > 0
-        
-        assert isinstance(LOCAL_EMBEDDING_MODEL_VERSION, str)
-        assert "." in LOCAL_EMBEDDING_MODEL_VERSION  # Should be version format
-        
-        assert isinstance(LOCAL_EMBEDDING_MODEL_FORMAT, str)
-        assert LOCAL_EMBEDDING_MODEL_FORMAT in ["TORCH_SCRIPT", "ONNX"]
         
         assert isinstance(MINIMUM_OPENSEARCH_VERSION, str)
         assert "." in MINIMUM_OPENSEARCH_VERSION  # Should be version format

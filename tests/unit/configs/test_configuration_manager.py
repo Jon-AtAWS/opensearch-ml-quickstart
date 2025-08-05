@@ -19,8 +19,8 @@ from configs.configuration_manager import (
     get_config_for, list_all_config_keys, get_project_root,
     get_base_mapping_path, get_qanda_file_reader_path, get_minimum_opensearch_version,
     get_ml_base_uri, get_delete_resource_wait_time, get_delete_resource_retry_time,
-    get_local_embedding_model_name, get_local_embedding_model_version,
-    get_local_embedding_model_format, get_pipeline_field_map, get_client_configs,
+    get_local_dense_embedding_model_name, get_local_dense_embedding_model_version,
+    get_local_dense_embedding_model_format, get_pipeline_field_map, get_client_configs,
     validate_configs
 )
 
@@ -123,9 +123,9 @@ class TestConfigurationManager:
             "BEDROCK_LLM_ARN": "arn:aws:bedrock:*::foundation-model/claude-3",
             "BEDROCK_LLM_MAX_TOKENS": "8000",
             "BEDROCK_LLM_TEMPERATURE": "0.1",
-            "LOCAL_EMBEDDING_MODEL_NAME": "test-model",
-            "LOCAL_EMBEDDING_MODEL_VERSION": "1.0.0",
-            "LOCAL_EMBEDDING_MODEL_FORMAT": "TORCH_SCRIPT",
+            "LOCAL_DENSE_EMBEDDING_MODEL": "test-model",
+            "LOCAL_DENSE_EMBEDDING_VERSION": "1.0.0",
+            "LOCAL_DENSE_EMBEDDING_FORMAT": "TORCH_SCRIPT",
             "ML_BASE_URI": "/_plugins/_ml",
             "DELETE_RESOURCE_WAIT_TIME": "5",
             "DELETE_RESOURCE_RETRY_TIME": "3",
@@ -420,35 +420,35 @@ class TestModuleFunctions:
         mock_get_raw.assert_called_once_with("DELETE_RESOURCE_RETRY_TIME", "5")
 
     @patch('configs.configuration_manager.get_raw_config_value')
-    def test_get_local_embedding_model_name(self, mock_get_raw):
-        """Test get_local_embedding_model_name function"""
+    def test_get_local_dense_embedding_model_name(self, mock_get_raw):
+        """Test get_local_dense_embedding_model_name function"""
         expected_default = "huggingface/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
         mock_get_raw.return_value = "test-model"
         
-        result = get_local_embedding_model_name()
+        result = get_local_dense_embedding_model_name()
         
         assert result == "test-model"
-        mock_get_raw.assert_called_once_with("LOCAL_EMBEDDING_MODEL_NAME", expected_default)
+        mock_get_raw.assert_called_once_with("LOCAL_DENSE_EMBEDDING_MODEL", expected_default)
 
     @patch('configs.configuration_manager.get_raw_config_value')
-    def test_get_local_embedding_model_version(self, mock_get_raw):
-        """Test get_local_embedding_model_version function"""
+    def test_get_local_dense_embedding_model_version(self, mock_get_raw):
+        """Test get_local_dense_embedding_model_version function"""
         mock_get_raw.return_value = "1.0.1"
         
-        result = get_local_embedding_model_version()
+        result = get_local_dense_embedding_model_version()
         
         assert result == "1.0.1"
-        mock_get_raw.assert_called_once_with("LOCAL_EMBEDDING_MODEL_VERSION", "1.0.1")
+        mock_get_raw.assert_called_once_with("LOCAL_DENSE_EMBEDDING_VERSION", "1.0.1")
 
     @patch('configs.configuration_manager.get_raw_config_value')
-    def test_get_local_embedding_model_format(self, mock_get_raw):
-        """Test get_local_embedding_model_format function"""
+    def test_get_local_dense_embedding_model_format(self, mock_get_raw):
+        """Test get_local_dense_embedding_model_format function"""
         mock_get_raw.return_value = "TORCH_SCRIPT"
         
-        result = get_local_embedding_model_format()
+        result = get_local_dense_embedding_model_format()
         
         assert result == "TORCH_SCRIPT"
-        mock_get_raw.assert_called_once_with("LOCAL_EMBEDDING_MODEL_FORMAT", "TORCH_SCRIPT")
+        mock_get_raw.assert_called_once_with("LOCAL_DENSE_EMBEDDING_FORMAT", "TORCH_SCRIPT")
 
     @patch('configs.configuration_manager.get_raw_config_value')
     def test_get_pipeline_field_map(self, mock_get_raw):

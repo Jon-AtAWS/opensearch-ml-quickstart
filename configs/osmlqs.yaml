@@ -26,7 +26,7 @@ OS_PORT: 9200
 # Amazon OpenSearch Service (AOS)
 AOS_DOMAIN_NAME: 
 AOS_HOST_URL: 
-AOS_PORT:
+AOS_PORT: 
 
 # =============================================================================
 # AUTHENTICATION CONFIGURATION
@@ -56,10 +56,11 @@ SAGEMAKER_CREATE_CONNECTOR_ROLE_NAME: os_ml_create_sagemaker_connector_role
 # EMBEDDING MODEL CONFIGURATION
 # =============================================================================
 
-# Local Embedding Model
-LOCAL_EMBEDDING_MODEL_NAME: huggingface/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
-LOCAL_EMBEDDING_MODEL_VERSION: 1.0.1
-LOCAL_EMBEDDING_MODEL_FORMAT: TORCH_SCRIPT
+# Local Dense Embedding Model
+LOCAL_DENSE_EMBEDDING_MODEL: huggingface/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+LOCAL_DENSE_EMBEDDING_VERSION: 1.0.1
+LOCAL_DENSE_EMBEDDING_NAME: paraphrase-multilingual-MiniLM-L12-v2
+LOCAL_DENSE_EMBEDDING_FORMAT: TORCH_SCRIPT
 
 # Bedrock Embedding Model
 BEDROCK_EMBEDDING_URL: https://bedrock-runtime.us-west-2.amazonaws.com/model/amazon.titan-embed-text-v1/invoke
@@ -68,12 +69,12 @@ BEDROCK_ARN: arn:aws:bedrock:*::foundation-model/*
 BEDROCK_CONNECTOR_VERSION: 1.0
 
 # SageMaker Embedding Models
-SAGEMAKER_SPARSE_ARN: arn:aws:sagemaker:us-west-2:178161197791:endpoint/Endpoint-RnTylBdf1YZq
-SAGEMAKER_DENSE_ARN: arn:aws:sagemaker:us-west-2:178161197791:endpoint/OpenSearch-sagemaker-041725085039
+SAGEMAKER_SPARSE_ARN: 
+SAGEMAKER_DENSE_ARN: 
 SAGEMAKER_CONNECTOR_VERSION: 1.0
-SAGEMAKER_SPARSE_URL: https://runtime.sagemaker.us-west-2.amazonaws.com/endpoints/Endpoint-RnTylBdf1YZq/invocations
-SAGEMAKER_DENSE_URL: https://runtime.sagemaker.us-west-2.amazonaws.com/endpoints/OpenSearch-sagemaker-041725085039/invocations
-SAGEMAKER_DENSE_MODEL_DIMENSION: 384
+SAGEMAKER_SPARSE_URL: 
+SAGEMAKER_DENSE_URL: 
+SAGEMAKER_DENSE_MODEL_DIMENSION: 
 
 # =============================================================================
 # LLM MODEL CONFIGURATION
@@ -85,3 +86,4 @@ BEDROCK_LLM_MODEL_NAME: anthropic.claude-3-5-sonnet-20241022-v2:0
 BEDROCK_LLM_ARN: arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0
 BEDROCK_LLM_MAX_TOKENS: 8000
 BEDROCK_LLM_TEMPERATURE: 0.1
+
