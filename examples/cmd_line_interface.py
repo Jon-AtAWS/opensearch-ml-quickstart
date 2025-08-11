@@ -386,43 +386,20 @@ def interactive_search_loop(
 
     print_search_interface_header(index_name, model_info)
 
-    # If question is provided, execute once and return
-    if question:
-        try:
-            # Build search query using the provided function
-            search_query = query_builder_func(question, **processed_kwargs)
-
-            print_executing_search()
-            print_query(search_query)
-
-            # Execute search with any additional search parameters
-            search_params = processed_kwargs.get("search_params", {})
-            search_results = client.os_client.search(
-                index=index_name, body=search_query, **search_params
-            )
-
-            # Process results if custom processor provided
-            if result_processor_func:
-                result_processor_func(search_results, **processed_kwargs)
-            else:
-                print_search_results(search_results)
-                
-        except Exception as e:
-            logging.error(f"Search error: {e}")
-            print_search_error(e)
-        return
-
     while True:
         try:
-            query_text = print_search_prompt()
+            if question:
+                query_text = question
+            else:
+                query_text = print_search_prompt()
 
-            if query_text.lower().strip() in ["quit", "exit", "q"]:
-                print_goodbye()
-                break
+                if query_text.lower().strip() in ["quit", "exit", "q"]:
+                    print_goodbye()
+                    break
 
-            if not query_text.strip():
-                print_empty_query_warning()
-                continue
+                if not query_text.strip():
+                    print_empty_query_warning()
+                    continue
 
             # Build search query using the provided function
             search_query = query_builder_func(query_text, **processed_kwargs)
@@ -441,10 +418,16 @@ def interactive_search_loop(
                 result_processor_func(search_results, **processed_kwargs)
             else:
                 print_search_results(search_results)
-
+                
+            # Break out if question was provided (single execution)
+            if question:
+                break
+                
         except KeyboardInterrupt:
             print_search_interrupted()
             break
         except Exception as e:
             logging.error(f"Search error: {e}")
             print_search_error(e)
+            if question:
+                break
