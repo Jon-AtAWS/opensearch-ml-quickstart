@@ -111,6 +111,7 @@ def main():
         index_name=index_name,
         model_info="Lexical Search",
         query_builder_func=build_lexical_query,
+        question=args.question,
     )
 
 

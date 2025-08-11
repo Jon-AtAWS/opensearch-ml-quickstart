@@ -157,7 +157,7 @@ def create_conversational_agent(
                 "description": "Search the Amazon PQA knowledge base for product information, questions, and answers",
                 "parameters": {
                     "model_id": embedding_model_id,
-                    "index": [index_name],
+                    "index": "conversational_agent_knowledge_base",
                     "input": "${parameters.question}",
                     "embedding_field": "chunk_embedding",
                     "source_field": "chunk",
@@ -185,17 +185,31 @@ def create_conversational_agent(
         ],
     }
 
-    logging.info(f"Creating conversational agent: {json.dumps(agent_config, indent=2)}")
+    logging.info(f"Creating conversational agent with config: {agent_config}")
 
     try:
-        response = client.os_client.transport.perform_request(
-            "POST", "/_plugins/_ml/agents/_register", body=agent_config
+        import requests
+        import json
+        
+        # Use requests directly to avoid transport layer encoding issues
+        url = f"https://localhost:9200/_plugins/_ml/agents/_register"
+        headers = {"Content-Type": "application/json"}
+        auth = ("admin", "Jon%%Kibana12")
+        
+        response = requests.post(
+            url, 
+            json=agent_config, 
+            headers=headers, 
+            auth=auth, 
+            verify=False
         )
+        response.raise_for_status()
+        response_data = response.json()
     except Exception as e:
         logging.error(f"Failed to create conversational agent: {e}")
         raise
 
-    agent_id = response["agent_id"]
+    agent_id = response_data["agent_id"]
     logging.info(f"Created conversational agent with ID: {agent_id}")
     return agent_id
 

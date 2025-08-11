@@ -299,6 +299,7 @@ def main():
         ml_model=ml_model,
         memory_id=memory_id,
         search_params={"search_pipeline": search_pipeline_name},
+        question=args.question,
     )
 
 

@@ -97,6 +97,13 @@ def get_command_line_args():
         default=False,
         help="Skip loading data into the index",
     )
+    parser.add_argument(
+        "-q",
+        "--question",
+        type=str,
+        default=None,
+        help="Execute search with this question and exit (instead of interactive loop)",
+    )
 
     args = parser.parse_args()
 
@@ -336,6 +343,7 @@ def interactive_search_loop(
     model_info,
     query_builder_func,
     result_processor_func=None,
+    question=None,
     **kwargs,
 ):
     """
@@ -347,6 +355,7 @@ def interactive_search_loop(
         model_info (str): Model information to display in header
         query_builder_func (callable): Function that takes (query_text, **kwargs) and returns search query dict
         result_processor_func (callable, optional): Function to process results before printing
+        question (str, optional): If provided, execute once with this question instead of interactive loop
         **kwargs: Additional parameters passed to query_builder_func and result_processor_func
     """
     import logging
@@ -376,6 +385,32 @@ def interactive_search_loop(
         processed_kwargs["sparse_model_id"] = sparse_ml_model.model_id()
 
     print_search_interface_header(index_name, model_info)
+
+    # If question is provided, execute once and return
+    if question:
+        try:
+            # Build search query using the provided function
+            search_query = query_builder_func(question, **processed_kwargs)
+
+            print_executing_search()
+            print_query(search_query)
+
+            # Execute search with any additional search parameters
+            search_params = processed_kwargs.get("search_params", {})
+            search_results = client.os_client.search(
+                index=index_name, body=search_query, **search_params
+            )
+
+            # Process results if custom processor provided
+            if result_processor_func:
+                result_processor_func(search_results, **processed_kwargs)
+            else:
+                print_search_results(search_results)
+                
+        except Exception as e:
+            logging.error(f"Search error: {e}")
+            print_search_error(e)
+        return
 
     while True:
         try:

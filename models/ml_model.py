@@ -35,6 +35,8 @@ class MlModel(ABC):
 
     def _get_model_id(self):
         model_ids = self.find_models(self._model_name)
+        logging.info(f"Found {len(model_ids)} models for name '{self._model_name}': {model_ids}")
+        
         if len(model_ids) == 0:
             logging.info(f"Registering model {self._model_name}")
             self._register_model()
@@ -43,7 +45,23 @@ class MlModel(ABC):
         model_ids = self.find_models(self._model_name)
         if len(model_ids) == 0:
             raise Exception("Failed to find the registered model")
-        return model_ids[0]
+        
+        # Find the first model that actually exists
+        for model_id in model_ids:
+            try:
+                self._ml_commons_client.get_model_info(model_id)
+                logging.info(f"Using model ID: {model_id}")
+                
+                # Check if model is properly deployed (for LocalMlModel)
+                if hasattr(self, '_check_and_redeploy_if_needed'):
+                    self._check_and_redeploy_if_needed(model_id)
+                    
+                return model_id
+            except Exception:
+                logging.debug(f"Model {model_id} not found, trying next one")
+                continue
+                
+        raise Exception(f"None of the found models exist: {model_ids}")
 
     def __str__(self) -> str:
         return f"<MlModel {self._model_name} {self._model_id}>"
@@ -81,11 +99,13 @@ class MlModel(ABC):
             ret = []
             for hit in search_result["hits"]["hits"]:
                 if not names or hit["_source"]["name"] in names:
-                    # for local model, hit["_id"] is not the actual model id
-                    if "model_id" in hit["_source"]:
+                    # For chunked models: use model_id from _source if available and not null
+                    if "model_id" in hit["_source"] and hit["_source"]["model_id"]:
                         ret.append(hit["_source"]["model_id"])
-                    else:
+                    # For non-chunked models: use _id if model_id is null or missing
+                    elif "model_id" not in hit["_source"] or not hit["_source"]["model_id"]:
                         ret.append(hit["_id"])
+                        
             return list(set(ret))
         except Exception as e:
             logging.error(f"find_models failed due to exception: {e}")

@@ -1,6 +1,7 @@
 # Copyright opensearch-ml-quickstart contributors
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
 from overrides import overrides
 from opensearchpy import OpenSearch
 from opensearch_py_ml.ml_commons import MLCommonClient
@@ -55,3 +56,32 @@ class LocalMlModel(MlModel):
             deploy_model=True,
             wait_until_deployed=True,
         )
+        
+    def _check_and_redeploy_if_needed(self, model_id):
+        """Check if model is deployed and redeploy if necessary."""
+        try:
+            # First verify the model actually exists
+            try:
+                model_info = self._ml_commons_client.get_model_info(model_id)
+            except Exception as e:
+                if "404" in str(e) or "NotFoundError" in str(e):
+                    logging.error(f"Model {model_id} not found. This indicates a stale reference. Skipping deployment check.")
+                    return
+                raise
+                
+            model_state = model_info.get("model_state", "UNKNOWN")
+            logging.info(f"Model {model_id} current state: {model_state}")
+            
+            if model_state == "DEPLOY_FAILED":
+                logging.warning(f"Model {model_id} deployment failed. Attempting to redeploy...")
+                self._ml_commons_client.deploy_model(model_id, wait_until_deployed=True)
+                logging.info(f"Successfully redeployed model {model_id}")
+            elif model_state != "DEPLOYED":
+                logging.warning(f"Model {model_id} is in state {model_state}. Attempting to deploy...")
+                self._ml_commons_client.deploy_model(model_id, wait_until_deployed=True)
+                logging.info(f"Successfully deployed model {model_id}")
+            else:
+                logging.info(f"Model {model_id} is already deployed")
+        except Exception as e:
+            logging.error(f"Failed to check/redeploy model {model_id}: {e}")
+            raise

@@ -270,6 +270,7 @@ def main():
         sparse_ml_model=sparse_ml_model,
         pipeline_config=pipeline_config,
         search_params={"search_pipeline": search_pipeline_name},
+        question=args.question,
     )
 
 
