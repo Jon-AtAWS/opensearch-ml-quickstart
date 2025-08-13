@@ -128,12 +128,13 @@ class LlmConnector(MlConnector):
     
     def _get_connector_create_payload_filename(self) -> str:
         """
-        Get the connector payload filename for Claude.
+        Get the connector payload filename for LLM.
         
         Returns:
-            Filename for the Claude connector payload
+            Filename for the LLM connector payload
         """
-        return "claude_3.5_sonnet_v2.json"
+        from .helper import get_connector_payload_filename
+        return get_connector_payload_filename(self._provider, self._os_type, "llm")
     
     def _fill_in_connector_create_payload(self, connector_create_payload):
         """

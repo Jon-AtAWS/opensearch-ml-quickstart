@@ -30,7 +30,7 @@ class TestLocalMlModel:
             "model_group_id": self.model_group_id
         }
 
-    @patch('models.local_ml_model.get_local_embedding_model_name')
+    @patch('models.local_ml_model.get_local_dense_embedding_model_name')
     @patch('models.ml_model.logging')
     def test_local_ml_model_init_with_default_name(self, mock_logging, mock_get_model_name):
         """Test LocalMlModel initialization with default model name"""
@@ -69,7 +69,7 @@ class TestLocalMlModel:
             assert model._model_description == custom_description
             assert model._model_configs == self.model_configs
 
-    @patch('models.local_ml_model.get_local_embedding_model_name')
+    @patch('models.local_ml_model.get_local_dense_embedding_model_name')
     @patch('models.ml_model.logging')
     def test_local_ml_model_init_inheritance(self, mock_logging, mock_get_model_name):
         """Test that LocalMlModel properly inherits from MlModel"""
@@ -92,8 +92,8 @@ class TestLocalMlModel:
             assert hasattr(model, 'clean_up')
             assert hasattr(model, 'find_models')
 
-    @patch('models.local_ml_model.get_local_embedding_model_version')
-    @patch('models.local_ml_model.get_local_embedding_model_format')
+    @patch('models.local_ml_model.get_local_dense_embedding_model_version')
+    @patch('models.local_ml_model.get_local_dense_embedding_model_format')
     @patch('models.ml_model.logging')
     def test_register_model_with_defaults(self, mock_logging, mock_get_format, mock_get_version):
         """Test _register_model method with default configuration values"""
@@ -156,8 +156,8 @@ class TestLocalMlModel:
                 wait_until_deployed=True,
             )
 
-    @patch('models.local_ml_model.get_local_embedding_model_version')
-    @patch('models.local_ml_model.get_local_embedding_model_format')
+    @patch('models.local_ml_model.get_local_dense_embedding_model_version')
+    @patch('models.local_ml_model.get_local_dense_embedding_model_format')
     @patch('models.ml_model.logging')
     def test_register_model_partial_config(self, mock_logging, mock_get_format, mock_get_version):
         """Test _register_model with partial configuration (only version in config)"""
@@ -212,7 +212,7 @@ class TestLocalMlModel:
             with pytest.raises(Exception, match="Registration failed"):
                 model._register_model()
 
-    @patch('models.local_ml_model.get_local_embedding_model_name')
+    @patch('models.local_ml_model.get_local_dense_embedding_model_name')
     @patch('models.ml_model.logging')
     def test_local_ml_model_str_representation(self, mock_logging, mock_get_model_name):
         """Test string representation of LocalMlModel"""
@@ -229,7 +229,7 @@ class TestLocalMlModel:
             assert str(model) == expected_str
             assert repr(model) == expected_str
 
-    @patch('models.local_ml_model.get_local_embedding_model_name')
+    @patch('models.local_ml_model.get_local_dense_embedding_model_name')
     @patch('models.ml_model.logging')
     def test_local_ml_model_model_id_method(self, mock_logging, mock_get_model_name):
         """Test model_id method"""
@@ -244,7 +244,7 @@ class TestLocalMlModel:
             
             assert model.model_id() == 'specific_model_id'
 
-    @patch('models.local_ml_model.get_local_embedding_model_name')
+    @patch('models.local_ml_model.get_local_dense_embedding_model_name')
     @patch('models.ml_model.logging')
     def test_local_ml_model_clean_up(self, mock_logging, mock_get_model_name):
         """Test clean_up method inheritance"""
@@ -261,7 +261,7 @@ class TestLocalMlModel:
                 model.clean_up()
                 mock_undeploy.assert_called_once_with('cleanup_model_id')
 
-    @patch('models.local_ml_model.get_local_embedding_model_name')
+    @patch('models.local_ml_model.get_local_dense_embedding_model_name')
     @patch('models.ml_model.logging')
     def test_local_ml_model_integration_with_parent(self, mock_logging, mock_get_model_name):
         """Test integration with parent MlModel class"""
@@ -286,9 +286,9 @@ class TestLocalMlModel:
         assert isinstance(LocalMlModel.DEFAULT_LOCAL_MODEL_DESCRIPTION, str)
         assert len(LocalMlModel.DEFAULT_LOCAL_MODEL_DESCRIPTION) > 0
 
-    @patch('models.local_ml_model.get_local_embedding_model_name')
-    @patch('models.local_ml_model.get_local_embedding_model_version')
-    @patch('models.local_ml_model.get_local_embedding_model_format')
+    @patch('models.local_ml_model.get_local_dense_embedding_model_name')
+    @patch('models.local_ml_model.get_local_dense_embedding_model_version')
+    @patch('models.local_ml_model.get_local_dense_embedding_model_format')
     @patch('models.ml_model.logging')
     def test_configuration_manager_integration(self, mock_logging, mock_get_format, mock_get_version, mock_get_model_name):
         """Test integration with configuration manager"""
@@ -334,7 +334,7 @@ class TestLocalMlModel:
             assert model._model_configs == {}
             assert model._model_name == "test/model"
 
-    @patch('models.local_ml_model.get_local_embedding_model_name')
+    @patch('models.local_ml_model.get_local_dense_embedding_model_name')
     @patch('models.ml_model.logging')
     def test_none_model_configs(self, mock_logging, mock_get_model_name):
         """Test LocalMlModel with None model_configs (should use default dict)"""
@@ -351,7 +351,7 @@ class TestLocalMlModel:
             # Should use default empty dict from parent class
             assert model._model_configs == {}
 
-    @patch('models.local_ml_model.get_local_embedding_model_name')
+    @patch('models.local_ml_model.get_local_dense_embedding_model_name')
     @patch('models.ml_model.logging')
     def test_overrides_decorator(self, mock_logging, mock_get_model_name):
         """Test that _register_model has @overrides decorator"""

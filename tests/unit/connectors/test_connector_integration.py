@@ -30,7 +30,7 @@ class TestConnectorIntegration:
             "region": "us-west-2"
         }
 
-    @patch('connectors.helper.get_raw_config_value')
+    @patch('connectors.config_strategies.get_raw_config_value')
     def test_sagemaker_dense_sparse_configuration_consistency(self, mock_get_config):
         """Test that SageMaker dense and sparse configurations are consistent and correctly mapped."""
         # Mock configuration values with clear distinction between dense and sparse
@@ -64,7 +64,7 @@ class TestConnectorIntegration:
         assert "DENSE" in dense_config["dense_url"]
         assert "SPARSE" in dense_config["sparse_url"]
 
-    @patch('connectors.helper.get_raw_config_value')
+    @patch('connectors.config_strategies.get_raw_config_value')
     def test_bedrock_dense_configuration(self, mock_get_config):
         """Test that Bedrock dense configuration is correctly loaded."""
         # Mock configuration values for Bedrock

@@ -16,74 +16,56 @@ from requests.auth import HTTPBasicAuth
 from configs.configuration_manager import get_raw_config_value, get_ml_base_uri
 
 
+def get_connector_payload_filename(connector_type: str, host_type: str, model_type: str = None) -> str:
+    """Get the connector payload filename for the specified connector configuration.
+    
+    Args:
+        connector_type: Type of connector (e.g., 'bedrock', 'sagemaker')
+        host_type: Host type ('os' or 'aos')
+        model_type: Type of model ('dense', 'sparse', 'llm')
+    """
+    from .config_strategies import CONNECTOR_STRATEGIES
+    
+    strategy_key = (connector_type, host_type)
+    
+    if strategy_key not in CONNECTOR_STRATEGIES:
+        available_combinations = list(CONNECTOR_STRATEGIES.keys())
+        raise ValueError(
+            f"Unsupported combination: connector_type='{connector_type}', host_type='{host_type}'. "
+            f"Available combinations: {available_combinations}"
+        )
+    
+    strategy_class = CONNECTOR_STRATEGIES[strategy_key]
+    strategy = strategy_class()
+    
+    return strategy.get_payload_filename(model_type)
+
+
 def get_remote_connector_configs(connector_type: str, host_type: str) -> Dict[str, str]:
     """Get remote connector configurations for the specified connector and host type."""
-    if connector_type not in {"sagemaker", "bedrock"}:
-        raise ValueError(f"connector_type must be either sagemaker or bedrock")
-    if host_type not in {"os", "aos"}:
-        raise ValueError(f"host_type must either be os or aos")
-
-    if connector_type == "sagemaker" and host_type == "os":
-        configs = {
-            "access_key": get_raw_config_value("AWS_ACCESS_KEY_ID"),
-            "secret_key": get_raw_config_value("AWS_SECRET_ACCESS_KEY"),
-            "region": get_raw_config_value("AWS_REGION"),
-            "connector_version": get_raw_config_value("SAGEMAKER_CONNECTOR_VERSION"),
-            "sparse_url": get_raw_config_value("SAGEMAKER_SPARSE_URL"),
-            "dense_url": get_raw_config_value("SAGEMAKER_DENSE_URL"),
-            "model_dimensions": get_raw_config_value("SAGEMAKER_DENSE_MODEL_DIMENSION"),
-        }
-        # Validate that all required configs are present
-        missing = [k for k, v in configs.items() if v is None or v == ""]
-        if missing:
-            raise ValueError(f"Missing required OS Sagemaker configurations: {missing}")
-        return configs
-    elif connector_type == "sagemaker" and host_type == "aos":
-        configs = {
-            "dense_arn": get_raw_config_value("SAGEMAKER_DENSE_ARN"),
-            "sparse_arn": get_raw_config_value("SAGEMAKER_SPARSE_ARN"),
-            "connector_role_name": get_raw_config_value("SAGEMAKER_CONNECTOR_ROLE_NAME"),
-            "create_connector_role_name": get_raw_config_value("SAGEMAKER_CREATE_CONNECTOR_ROLE_NAME"),
-            "region": get_raw_config_value("AWS_REGION"),
-            "connector_version": get_raw_config_value("SAGEMAKER_CONNECTOR_VERSION"),
-            "sparse_url": get_raw_config_value("SAGEMAKER_SPARSE_URL"),
-            "dense_url": get_raw_config_value("SAGEMAKER_DENSE_URL"),
-            "model_dimensions": get_raw_config_value("SAGEMAKER_DENSE_MODEL_DIMENSION"),
-        }
-        # Validate that all required configs are present
-        missing = [k for k, v in configs.items() if v is None or v == ""]
-        if missing:
-            raise ValueError(f"Missing required AOS Sagemaker configurations: {missing}")
-        return configs
-    elif connector_type == "bedrock" and host_type == "os":
-        configs = {
-            "access_key": get_raw_config_value("AWS_ACCESS_KEY_ID"),
-            "secret_key": get_raw_config_value("AWS_SECRET_ACCESS_KEY"),
-            "region": get_raw_config_value("AWS_REGION"),
-            "connector_version": get_raw_config_value("BEDROCK_CONNECTOR_VERSION"),
-            "dense_url": get_raw_config_value("BEDROCK_EMBEDDING_URL"),
-            "model_dimensions": get_raw_config_value("BEDROCK_MODEL_DIMENSION"),
-        }
-        # Validate that all required configs are present
-        missing = [k for k, v in configs.items() if v is None or v == ""]
-        if missing:
-            raise ValueError(f"Missing required OS Bedrock configurations: {missing}")
-        return configs
-    else:  # bedrock and aos
-        configs = {
-            "dense_arn": get_raw_config_value("BEDROCK_ARN"),
-            "connector_role_name": get_raw_config_value("BEDROCK_CONNECTOR_ROLE_NAME"),
-            "create_connector_role_name": get_raw_config_value("BEDROCK_CREATE_CONNECTOR_ROLE_NAME"),
-            "region": get_raw_config_value("AWS_REGION"),
-            "connector_version": get_raw_config_value("BEDROCK_CONNECTOR_VERSION"),
-            "model_dimensions": get_raw_config_value("BEDROCK_MODEL_DIMENSION"),
-            "dense_url": get_raw_config_value("BEDROCK_EMBEDDING_URL"),
-        }
-        # Validate that all required configs are present
-        missing = [k for k, v in configs.items() if v is None or v == ""]
-        if missing:
-            raise ValueError(f"Missing required AOS Bedrock configurations: {missing}")
-        return configs
+    from .config_strategies import CONNECTOR_STRATEGIES
+    
+    strategy_key = (connector_type, host_type)
+    
+    if strategy_key not in CONNECTOR_STRATEGIES:
+        available_combinations = list(CONNECTOR_STRATEGIES.keys())
+        raise ValueError(
+            f"Unsupported combination: connector_type='{connector_type}', host_type='{host_type}'. "
+            f"Available combinations: {available_combinations}"
+        )
+    
+    strategy_class = CONNECTOR_STRATEGIES[strategy_key]
+    strategy = strategy_class()
+    
+    configs = strategy.get_config()
+    required_fields = strategy.get_required_fields()
+    
+    # Validate that all required configs are present
+    missing = [k for k in required_fields if configs.get(k) is None or configs.get(k) == ""]
+    if missing:
+        raise ValueError(f"Missing required {connector_type.title()} {host_type.upper()} configurations: {missing}")
+    
+    return configs
 
 
 # =============================================================================

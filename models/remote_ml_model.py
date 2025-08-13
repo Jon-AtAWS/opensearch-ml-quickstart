@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import time
+import logging
 from overrides import overrides
 from opensearchpy import OpenSearch
 from opensearch_py_ml.ml_commons import MLCommonClient
@@ -71,6 +72,7 @@ class RemoteMlModel(MlModel):
             "model_group_id": self._model_group_id,
             "deploy": True,
         }
+        logging.info(f"Model deploy payload with connector_id {self._ml_connector.connector_id()}: {model_deploy_payload}")
         response = self._os_client.http.post(
             url=f"{get_ml_base_uri()}/models/_register",
             body=model_deploy_payload,

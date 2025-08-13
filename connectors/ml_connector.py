@@ -42,6 +42,14 @@ class MlConnector(ABC):
         if len(connector_ids) == 0:
             logging.info(f"Creating connector {self._connector_name}")
             self.set_up()
+        else:
+            # Log existing connector definition
+            existing_connector_id = connector_ids[0]
+            try:
+                response = self._os_client.http.get(url=f"{get_ml_base_uri()}/connectors/{existing_connector_id}")
+                logging.info(f"Using existing connector {existing_connector_id}: {json.dumps(response, indent=2)}")
+            except Exception as e:
+                logging.error(f"Failed to retrieve existing connector {existing_connector_id}: {e}")
 
         # in case of duplicate connector names, find the first connector id
         connector_ids = self._find_connectors(self._connector_name)
@@ -89,6 +97,7 @@ class MlConnector(ABC):
         connector_create_payload = self._fill_in_connector_create_payload(
             connector_create_payload
         )
+        logging.info(f"Connector create payload: {json.dumps(connector_create_payload, indent=2)}")
         return connector_create_payload
 
     @abstractmethod

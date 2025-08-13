@@ -316,13 +316,8 @@ class EmbeddingConnector(MlConnector):
         Returns:
             Filename for the connector payload
         """
-        if self._provider == "bedrock":
-            if self._embedding_type == "sparse":
-                raise ValueError("Bedrock doesn't support sparse embeddings")
-            return "bedrock_dense.json"
-            
-        elif self._provider == "sagemaker":
-            return f"sagemaker_{self._embedding_type}.json"
+        from .helper import get_connector_payload_filename
+        return get_connector_payload_filename(self._provider, self._os_type, self._embedding_type)
     
     def _fill_in_connector_create_payload(self, connector_create_payload):
         """
