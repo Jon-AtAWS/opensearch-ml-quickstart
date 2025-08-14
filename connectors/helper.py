@@ -16,13 +16,14 @@ from requests.auth import HTTPBasicAuth
 from configs.configuration_manager import get_raw_config_value, get_ml_base_uri
 
 
-def get_connector_payload_filename(connector_type: str, host_type: str, model_type: str = None) -> str:
+def get_connector_payload_filename(connector_type: str, host_type: str, model_type: str = None, llm_type: str = None) -> str:
     """Get the connector payload filename for the specified connector configuration.
     
     Args:
         connector_type: Type of connector (e.g., 'bedrock', 'sagemaker')
         host_type: Host type ('os' or 'aos')
-        model_type: Type of model ('dense', 'sparse', 'llm')
+        model_type: Type of model ('dense', 'sparse', 'llm_predict', 'llm_converse')
+        llm_type: LLM subtype ('predict' or 'converse') - only used when model_type starts with 'llm'
     """
     from .config_strategies import CONNECTOR_STRATEGIES
     
@@ -37,6 +38,10 @@ def get_connector_payload_filename(connector_type: str, host_type: str, model_ty
     
     strategy_class = CONNECTOR_STRATEGIES[strategy_key]
     strategy = strategy_class()
+    
+    # If model_type is 'llm' and llm_type is specified, convert to specific llm type
+    if model_type == "llm" and llm_type:
+        model_type = f"llm_{llm_type}"
     
     return strategy.get_payload_filename(model_type)
 

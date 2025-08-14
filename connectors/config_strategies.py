@@ -94,8 +94,10 @@ class BedrockOSStrategy(ConnectorConfigStrategy):
         return list(self.get_config().keys())
     
     def get_payload_filename(self, model_type: str = None) -> str:
-        if model_type == "llm":
-            return get_raw_config_value("BEDROCK_LLM_PAYLOAD_FILE") or "claude_3.5_sonnet_v2.json"
+        if model_type == "llm_predict":
+            return get_raw_config_value("BEDROCK_LLM_PREDICT_PAYLOAD_FILE") or "bedrock_llm_predict.json"
+        elif model_type == "llm_converse":
+            return get_raw_config_value("BEDROCK_LLM_CONVERSE_PAYLOAD_FILE") or "bedrock_llm_converse.json"
         elif model_type == "sparse":
             raise ValueError("Bedrock doesn't support sparse embeddings")
         return get_raw_config_value("BEDROCK_PAYLOAD_FILE") or "bedrock_dense.json"
@@ -119,8 +121,10 @@ class BedrockAOSStrategy(ConnectorConfigStrategy):
         return list(self.get_config().keys())
     
     def get_payload_filename(self, model_type: str = None) -> str:
-        if model_type == "llm":
-            return get_raw_config_value("BEDROCK_LLM_PAYLOAD_FILE") or "claude_3.5_sonnet_v2.json"
+        if model_type == "llm_predict":
+            return get_raw_config_value("BEDROCK_LLM_PREDICT_PAYLOAD_FILE") or "bedrock_llm_predict.json"
+        elif model_type == "llm_converse":
+            return get_raw_config_value("BEDROCK_LLM_CONVERSE_PAYLOAD_FILE") or "bedrock_llm_converse.json"
         elif model_type == "sparse":
             raise ValueError("Bedrock doesn't support sparse embeddings")
         return get_raw_config_value("BEDROCK_PAYLOAD_FILE") or "bedrock_dense.json"

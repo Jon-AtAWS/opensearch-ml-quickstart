@@ -284,12 +284,43 @@ class TestGetConnectorPayloadFilename:
     """Test cases for get_connector_payload_filename function."""
 
     @patch('connectors.config_strategies.get_raw_config_value')
-    def test_bedrock_llm_payload(self, mock_get_config):
-        """Test Bedrock LLM payload filename."""
+    def test_bedrock_llm_predict_payload(self, mock_get_config):
+        """Test Bedrock LLM predict payload filename."""
         mock_get_config.return_value = None
         
-        filename = get_connector_payload_filename("bedrock", "os", "llm")
-        assert filename == "claude_3.5_sonnet_v2.json"
+        filename = get_connector_payload_filename("bedrock", "os", "llm_predict")
+        assert filename == "bedrock_llm_predict.json"
+
+    @patch('connectors.config_strategies.get_raw_config_value')
+    def test_bedrock_llm_converse_payload(self, mock_get_config):
+        """Test Bedrock LLM converse payload filename."""
+        mock_get_config.return_value = None
+        
+        filename = get_connector_payload_filename("bedrock", "os", "llm_converse")
+        assert filename == "bedrock_llm_converse.json"
+
+    @patch('connectors.config_strategies.get_raw_config_value')
+    def test_bedrock_llm_with_llm_type_param(self, mock_get_config):
+        """Test Bedrock LLM with llm_type parameter."""
+        mock_get_config.return_value = None
+        
+        filename = get_connector_payload_filename("bedrock", "os", "llm", "predict")
+        assert filename == "bedrock_llm_predict.json"
+        
+        filename = get_connector_payload_filename("bedrock", "os", "llm", "converse")
+        assert filename == "bedrock_llm_converse.json"
+
+    @patch('connectors.config_strategies.get_raw_config_value')
+    def test_claude_model_variations(self, mock_get_config):
+        """Test that different Claude models use same payload files."""
+        mock_get_config.return_value = None
+        
+        # Both Claude 3.5 and 3.7 should use the same payload files
+        filename_predict = get_connector_payload_filename("bedrock", "os", "llm_predict")
+        filename_converse = get_connector_payload_filename("bedrock", "os", "llm_converse")
+        
+        assert filename_predict == "bedrock_llm_predict.json"
+        assert filename_converse == "bedrock_llm_converse.json"
 
     @patch('connectors.config_strategies.get_raw_config_value')
     def test_sagemaker_dense_payload(self, mock_get_config):
@@ -304,10 +335,10 @@ class TestGetConnectorPayloadFilename:
         """Test custom payload filename override."""
         mock_get_config.return_value = "custom_bedrock.json"
         
-        filename = get_connector_payload_filename("bedrock", "os", "llm")
+        filename = get_connector_payload_filename("bedrock", "os", "llm_predict")
         assert filename == "custom_bedrock.json"
 
     def test_invalid_combination(self):
         """Test invalid connector combination raises error."""
         with pytest.raises(ValueError, match="Unsupported combination"):
-            get_connector_payload_filename("invalid", "os", "llm")
+            get_connector_payload_filename("invalid", "os", "llm_predict")

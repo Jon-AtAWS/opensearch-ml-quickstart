@@ -44,6 +44,8 @@ class LlmConnector(MlConnector):
         connector_name: Optional[str] = None,
         connector_description: Optional[str] = None,
         connector_configs: Optional[Dict[str, Any]] = None,
+        llm_type: str = "predict",
+        model_name: str = "anthropic.claude-3-5-sonnet-20241022-v2:0",
     ) -> None:
         """
         Initialize the LLM connector for Bedrock.
@@ -59,10 +61,9 @@ class LlmConnector(MlConnector):
             region: AWS region (required for AOS)
             connector_name: Custom connector name (optional)
             connector_description: Custom connector description (optional)
-            connector_configs: Override configurations (optional, will auto-load if not provided)
-        
-        Raises:
-            ValueError: If os_type or required parameters are invalid
+            connector_configs: Custom connector configurations (optional)
+            llm_type: LLM API type ('predict' or 'converse', defaults to 'predict')
+            model_name: Claude model name (defaults to Claude 3.5 Sonnet v2)
         """
         # Validate os_type
         if os_type not in {"aos", "os"}:
@@ -86,8 +87,19 @@ class LlmConnector(MlConnector):
         
         # Auto-load configuration if not provided
         if connector_configs is None:
+            # Get connector payload filename based on llm_type
+            from connectors.helper import get_connector_payload_filename
+            payload_filename = get_connector_payload_filename("bedrock", os_type, "llm", llm_type)
             connector_configs = get_remote_connector_configs("bedrock", os_type)
-            logging.info(f"Auto-loaded Bedrock configuration for {os_type.upper()}")
+            connector_configs["payload_filename"] = payload_filename
+            logging.info(f"Auto-loaded Bedrock LLM {llm_type} configuration for {os_type.upper()}")
+        
+        # Add model name to connector configs
+        connector_configs["model_name"] = model_name
+        
+        self._llm_type = llm_type
+        self._model_name = model_name
+        self._provider = "bedrock"  # LlmConnector is specifically for Bedrock
         
         # Set default names if not provided
         if connector_name is None:
@@ -134,7 +146,7 @@ class LlmConnector(MlConnector):
             Filename for the LLM connector payload
         """
         from .helper import get_connector_payload_filename
-        return get_connector_payload_filename(self._provider, self._os_type, "llm")
+        return get_connector_payload_filename(self._provider, self._os_type, "llm", self._llm_type)
     
     def _fill_in_connector_create_payload(self, connector_create_payload):
         """
@@ -150,6 +162,7 @@ class LlmConnector(MlConnector):
         connector_create_payload["name"] = self._connector_name
         connector_create_payload["description"] = self._connector_description
         connector_create_payload["parameters"]["region"] = self._connector_configs["region"]
+        connector_create_payload["parameters"]["model"] = self._model_name
         connector_create_payload["version"] = self._connector_configs.get("connector_version", "1")
         
         # Add OS-specific configurations

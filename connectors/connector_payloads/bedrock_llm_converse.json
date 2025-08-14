@@ -1,0 +1,25 @@
+{
+    "name": "Amazon Bedrock LLM Converse",
+    "description": "Bedrock LLM connector using converse API",
+    "version": 1,
+    "protocol": "aws_sigv4",
+    "parameters": {
+        "region": "%s",
+        "service_name": "bedrock",
+        "auth": "Sig_V4",
+        "response_filter": "$.output.message.content[0].text",
+        "max_tokens": "8000",
+        "model": "%s"
+    },
+    "actions": [
+        {
+            "action_type": "predict",
+            "method": "POST",
+            "headers": {
+                "content-type": "application/json"
+            },
+            "url": "https://bedrock-runtime.${parameters.region}.amazonaws.com/model/${parameters.model}/converse",
+            "request_body": "{ \"system\": [{\"text\": \"${parameters.system_prompt}\"}], \"messages\": [${parameters._chat_history:-}{\"role\":\"user\",\"content\":[{\"text\":\"${parameters.prompt}\"}]}${parameters._interactions:-}]${parameters.tool_configs:-} }"
+        }
+    ]
+}

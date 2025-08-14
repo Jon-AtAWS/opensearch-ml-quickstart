@@ -64,10 +64,8 @@ def create_text_gen_model():
     
     # Get base connector configs and add LLM-specific overrides
     connector_configs = get_remote_connector_configs("bedrock", "aos")
-    connector_configs["llm_arn"] = get_raw_config_value("BEDROCK_LLM_ARN")
     connector_configs["connector_role_name"] = "bedrock_llm_connector_role"
     connector_configs["create_connector_role_name"] = "bedrock_llm_create_connector_role"
-    connector_configs["dense_url"] = get_raw_config_value("BEDROCK_LLM_URL")
     
     logging.info(f"connector_configs:\n{connector_configs}")
     
@@ -84,7 +82,9 @@ def create_text_gen_model():
         opensearch_password=aos_configs["password"],
         aws_user_name=aos_configs["aws_user_name"],
         region=aos_configs["region"],
-        connector_configs=connector_configs
+        connector_configs=connector_configs,
+        llm_type="predict",  # Use predict API for conversational search
+        model_name="anthropic.claude-3-5-sonnet-20241022-v2:0",  # Claude 3.5 Sonnet v2
     )
     
     logging.info(f"connector id of the llm connector: {llm_connector.connector_id()}")
@@ -96,7 +96,7 @@ def create_text_gen_model():
         ml_commons_client=client.ml_commons_client,
         ml_connector=llm_connector,
         model_group_id=model_group_id,
-        model_name=f"Amazon Bedrock {get_raw_config_value('BEDROCK_LLM_MODEL_NAME')}",
+        model_name="Amazon Bedrock Claude",
     )
     
     llm_model_id = llm_model.model_id()

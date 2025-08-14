@@ -35,7 +35,6 @@ from connectors.helper import get_remote_connector_configs, get_raw_config_value
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
 from models import (
-    MlModel,
     RemoteMlModel,
     get_ml_model,
 )
@@ -90,8 +89,7 @@ def create_llm_model(client: OsMlClientWrapper):
     """
     # Get base connector configs for local OpenSearch + Bedrock
     connector_configs = get_remote_connector_configs("bedrock", "os")
-    connector_configs["dense_url"] = get_raw_config_value("BEDROCK_LLM_URL")
-    
+
     logging.info(f"LLM connector configs:\n{connector_configs}")
 
     # Create the LLM connector (uses basic auth for local OpenSearch, credentials for Bedrock)
@@ -99,6 +97,8 @@ def create_llm_model(client: OsMlClientWrapper):
         os_client=client.os_client,
         os_type="os",
         connector_configs=connector_configs,
+        llm_type="converse",  # Use converse API for agent workflows
+        model_name="us.anthropic.claude-3-7-sonnet-20250219-v1:0",  # Claude 3.5 Sonnet v2
     )
 
     logging.info(f"LLM connector ID: {llm_connector.connector_id()}")
@@ -110,7 +110,7 @@ def create_llm_model(client: OsMlClientWrapper):
         ml_commons_client=client.ml_commons_client,
         ml_connector=llm_connector,
         model_group_id=model_group_id,
-        model_name=f"Amazon Bedrock {get_raw_config_value('BEDROCK_LLM_MODEL_NAME')} for Agent",
+        model_name="Amazon Bedrock Claude for Agent",
     )
 
     llm_model_id = llm_model.model_id()
@@ -136,75 +136,79 @@ def create_conversational_agent(
         str: Agent ID
     """
     agent_config = {
-        "name": "Amazon PQA Conversational Agent",
+        "name": "RAG Agent",
         "type": "conversational",
-        "description": "An intelligent agent that can search and answer questions about Amazon products",
+        "description": "this is a test agent",
+        "app_type": "rag",
         "llm": {
             "model_id": llm_model_id,
             "parameters": {
-                "max_iterations": 5,
-                "stop_when_no_tool_found": True,
-                "response_filter": "$.completion",
-            },
+                "max_iteration": 10,
+                "system_prompt":
+                    "You are a helpful assistant. You are able to assist with a wide range of tasks, "
+                    "from answering simple questions to providing in-depth explanations and discussions "
+                    "on a wide range of topics.\nIf the question is complex, you will split it into "
+                    "several smaller questions, and solve them one by one. For example, the original "
+                    "question is:\nhow many orders in last three month? Which month has highest?\nYou "
+                    "will spit into several smaller questions:\n1.Calculate total orders of last three "
+                    "month.\n2.Calculate monthly total order of last three month and calculate which "
+                    "month's order is highest.",
+                "prompt": "${parameters.question}"
+            }
         },
         "memory": {
-            "type": "conversation_index",
+            "type": "conversation_index"
         },
-        "tools": [
-            {
-                "type": "VectorDBTool",
-                "name": "knowledge_base_search",
-                "description": "Search the Amazon PQA knowledge base for product information, questions, and answers",
-                "parameters": {
-                    "model_id": embedding_model_id,
-                    "index": "conversational_agent_knowledge_base",
-                    "input": "${parameters.question}",
-                    "embedding_field": "chunk_embedding",
-                    "source_field": "chunk",
-                    "doc_size": 5,
-                },
+        "parameters": {
+            "_llm_interface": "bedrock/converse/claude"
+        },
+        "tools": 
+        [{
+            "type": "SearchIndexTool",
+            "name": "RetrieveShoppingData",
+            "description": "This tool provides item catalog information.",
+            "parameters": {
+                "input": "{\"index\": \"${parameters.index}\", \"query\": ${parameters.query} }",
+                "index": index_name,
+                "query": {
+                    "query": {
+                        "neural": {
+                            "embedding": {
+                                "query_text": "${parameters.question}",
+                                "model_id": embedding_model_id
+                            }
+                        }
+                    },
+                    "size": 2,
+                    "_source": "combined_text"
+                }
             },
-            {
-                "type": "MLModelTool",
-                "description": "Use the LLM model to generate answers based on search results",
-                "parameters": {
-                    "model_id": llm_model_id,
-                    "prompt": " ".join(
-                        [
-                            "\n\nHuman:You are a professional data analyst.",
-                            "You will always answer a question based on the given context first.",
-                            "If the answer is not directly shown in the context, you will analyze",
-                            "the data and find the answer. If you don't know the answer, just say",
-                            "you don't know.\n\n",
-                            "Context:\n${parameters.VectorDBTool.output}\n\n",
-                            "Human:${parameters.question}\n\nAssistant:",
-                        ]
-                    ),
+            "attributes": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "question": {
+                            "type": "string",
+                            "description": "Natural language question"
+                        }
+                    },
+                    "required": [ "question" ],
+                    "additionalProperties": False
                 },
-            },
-        ],
+                "strict": False
+            }
+        }]
     }
 
     logging.info(f"Creating conversational agent with config: {agent_config}")
 
-    try:
-        import requests
-        import json
-        
-        # Use requests directly to avoid transport layer encoding issues
-        url = f"https://localhost:9200/_plugins/_ml/agents/_register"
-        headers = {"Content-Type": "application/json"}
-        auth = ("admin", "Jon%%Kibana12")
-        
-        response = requests.post(
-            url, 
-            json=agent_config, 
-            headers=headers, 
-            auth=auth, 
-            verify=False
+    try:        
+        # Use OpenSearch client transport layer
+        response = client.os_client.transport.perform_request(
+            "POST", "/_plugins/_ml/agents/_register", body=agent_config
         )
-        response.raise_for_status()
-        response_data = response.json()
+        # response is already a dict, no need for .json() or .raise_for_status()
+        response_data = response
     except Exception as e:
         logging.error(f"Failed to create conversational agent: {e}")
         raise
@@ -237,6 +241,27 @@ def execute_agent_query(client, agent_id, query_body):
         logging.error(f"Failed to execute agent query: {e}")
         raise
     return response
+
+
+def process_agent_results(search_results, **kwargs):
+    """Process and display conversational agent results."""
+    if "inference_results" in search_results:
+        for result in search_results["inference_results"]:
+            if "output" in result:
+                for output in result["output"]:
+                    # Check for conversational agent response format
+                    if output.get("name") == "response" and "dataAsMap" in output:
+                        response_text = output["dataAsMap"].get("response", "")
+                        if response_text:
+                            print(f"\n🤖 Agent Response: {response_text}")
+                    # Check for tool results
+                    elif "name" in output and "result" in output and output["name"] not in ["memory_id", "parent_interaction_id"]:
+                        print(f"\n🔧 Tool {output['name']}: {output['result']}")
+                    # Fallback for other result formats
+                    elif "result" in output and output.get("name") not in ["memory_id", "parent_interaction_id", "response"]:
+                        print(f"\n📄 Result: {output['result']}")
+    else:
+        print(f"\n📄 Raw Response: {json.dumps(search_results, indent=2)}")
 
 
 def build_agent_query(query_text, agent_id=None, **kwargs):
@@ -365,8 +390,19 @@ def main():
     )
 
     logging.info(
-        "Setup complete! Starting interactive conversational agent interface..."
+        "Setup complete! Starting conversational agent interface..."
     )
+
+    # Check if a specific query was provided via command line
+    if hasattr(args, 'question') and args.question:
+        logging.info(f"Executing single query: {args.question}")
+        try:
+            agent_query = build_agent_query(args.question, agent_id)
+            results = execute_agent_query(client, agent_id, agent_query)
+            process_agent_results(results)
+        except Exception as e:
+            logging.error(f"Error executing query: {e}")
+        return
 
     # Start interactive agent loop using the generic function from cmd_line_interface
     cmd_line_interface.interactive_agent_loop(

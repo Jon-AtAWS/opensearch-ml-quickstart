@@ -55,7 +55,8 @@ class TestConnectorStrategies:
         strategy = BedrockOSStrategy()
         
         assert strategy.get_payload_filename("dense") == "bedrock_dense.json"
-        assert strategy.get_payload_filename("llm") == "claude_3.5_sonnet_v2.json"
+        assert strategy.get_payload_filename("llm_predict") == "bedrock_llm_predict.json"
+        assert strategy.get_payload_filename("llm_converse") == "bedrock_llm_converse.json"
         
         with pytest.raises(ValueError, match="Bedrock doesn't support sparse embeddings"):
             strategy.get_payload_filename("sparse")
