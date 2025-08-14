@@ -1,0 +1,164 @@
+# Copyright opensearch-ml-quickstart contributors
+# SPDX-License-Identifier: Apache-2.0
+
+import os
+import json
+import logging
+from abc import ABC, abstractmethod
+from opensearchpy import OpenSearch
+from tenacity import retry, stop_after_attempt, wait_fixed
+
+from configs.configuration_manager import get_ml_base_uri, get_delete_resource_wait_time, get_delete_resource_retry_time
+
+
+# parent abstract class for all connectors
+class MlConnector(ABC):
+    DEFAULT_CONNECTOR_NAME = "Machine Learning connector"
+    DEFAULT_CONNECTOR_DESCRIPTION = "This is a Machine Learning connector"
+
+    def __init__(
+        self,
+        os_client: OpenSearch,
+        connector_name=None,
+        connector_description=None,
+        connector_configs=dict(),
+    ) -> None:
+        self._os_client = os_client
+        self._connector_name = (
+            connector_name if connector_name else self.DEFAULT_CONNECTOR_NAME
+        )
+        self._connector_description = (
+            connector_description
+            if connector_description
+            else self.DEFAULT_CONNECTOR_DESCRIPTION
+        )
+        self._connector_configs = connector_configs
+        self._embedding_type = connector_configs.get("embedding_type", "dense")
+        self._connector_id = self._get_connector_id()
+        logging.info(f"Connector id {self._connector_id}")
+
+    def _get_connector_id(self):
+        connector_ids = self._find_connectors(self._connector_name)
+        if len(connector_ids) == 0:
+            logging.info(f"Creating connector {self._connector_name}")
+            self.set_up()
+        else:
+            # Log existing connector definition
+            existing_connector_id = connector_ids[0]
+            try:
+                response = self._os_client.http.get(url=f"{get_ml_base_uri()}/connectors/{existing_connector_id}")
+                logging.info(f"Using existing connector {existing_connector_id}: {json.dumps(response, indent=2)}")
+            except Exception as e:
+                logging.error(f"Failed to retrieve existing connector {existing_connector_id}: {e}")
+
+        # in case of duplicate connector names, find the first connector id
+        connector_ids = self._find_connectors(self._connector_name)
+        if len(connector_ids) == 0:
+            raise Exception("Failed to find the created connector")
+        return connector_ids[0]
+
+    def __str__(self) -> str:
+        return f"<Connector {self._connector_name} {self._connector_id}>"
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
+    def connector_id(self):
+        return self._connector_id
+
+    @abstractmethod
+    def _validate_configs(self):
+        pass
+
+    @abstractmethod
+    def _get_connector_create_payload_filename(self):
+        pass
+
+    def _read_json_file(self, file_path):
+        with open(file_path, "r") as file:
+            return json.load(file)
+
+    def _read_connector_create_payload(self):
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        create_connector_payload_path = os.path.join(
+            current_dir,
+            "connector_payloads",
+            self._get_connector_create_payload_filename(),
+        )
+        connector_create_payload = self._read_json_file(create_connector_payload_path)
+        return connector_create_payload
+
+    @abstractmethod
+    def _fill_in_connector_create_payload(self, connector_create_payload):
+        pass
+
+    def _get_connector_create_payload(self):
+        connector_create_payload = self._read_connector_create_payload()
+        connector_create_payload = self._fill_in_connector_create_payload(
+            connector_create_payload
+        )
+        logging.info(f"Connector create payload: {json.dumps(connector_create_payload, indent=2)}")
+        return connector_create_payload
+
+    @abstractmethod
+    def _create_connector_with_payload(self, connector_create_payload):
+        pass
+
+    def set_up(self):
+        connector_create_payload = self._get_connector_create_payload()
+        self._create_connector_with_payload(connector_create_payload)
+
+    def clean_up(self):
+        self._delete_connector(self._connector_id)
+
+    def _search_connectors(self, search_query):
+        if not isinstance(search_query, dict):
+            raise ValueError("search_query needs to be a dictionary")
+
+        return self._os_client.http.post(
+            url=f"{get_ml_base_uri()}/connectors/_search", body=search_query
+        )
+
+    # name == None to return all connector ids
+    def _find_connectors(self, connector_name=None):
+        try:
+            search_query = {"size": 10000, "_source": {"includes": ["name"]}}
+            search_result = self._search_connectors(search_query)
+            if not search_result:
+                return []
+            if "hits" not in search_result or "hits" not in search_result["hits"]:
+                return []
+            ret = []
+            for hit in search_result["hits"]["hits"]:
+                source = hit["_source"]
+                if not connector_name or hit["_source"]["name"] == connector_name:
+                    ret.append(hit["_id"])
+            return ret
+        except Exception as e:
+            logging.error(f"MlConnector _find_connectors failed due to exception: {e}")
+            # return an empty list with any exception
+            return []
+
+    @retry(
+        stop=stop_after_attempt(get_delete_resource_retry_time()),
+        wait=wait_fixed(get_delete_resource_wait_time()),
+    )
+    def _delete_connector(self, connector_id):
+        user_input = (
+            input(f"Do you want to delete the connector {connector_id}? (y/n): ")
+            .strip()
+            .lower()
+        )
+
+        if user_input != "y":
+            logging.info("Delete connector canceled.")
+            return
+
+        try:
+            logging.info(f"Deleting connector {connector_id}")
+            self._os_client.http.delete(url=f"{get_ml_base_uri()}/connectors/{connector_id}")
+            logging.info(f"Deleted connector {connector_id}")
+        except Exception as e:
+            logging.error(
+                f"Deleting connector {connector_id} failed due to exception {e}"
+            )

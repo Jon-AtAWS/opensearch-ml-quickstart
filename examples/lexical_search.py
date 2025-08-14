@@ -24,7 +24,10 @@ import cmd_line_interface
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from client import OsMlClientWrapper, get_client, index_utils
-from configs import BASE_MAPPING_PATH, QANDA_FILE_READER_PATH
+from configs.configuration_manager import (
+    get_base_mapping_path,
+    get_qanda_file_reader_path,
+)
 from data_process import QAndAFileReader
 from mapping import get_base_mapping
 
@@ -38,11 +41,11 @@ logging.basicConfig(
 def build_lexical_query(query_text, **kwargs):
     """
     Build lexical search query for keyword-based matching.
-    
+
     Parameters:
         query_text (str): The search query text
         **kwargs: Additional parameters (unused)
-    
+
     Returns:
         dict: OpenSearch query dictionary
     """
@@ -55,7 +58,7 @@ def build_lexical_query(query_text, **kwargs):
 def main():
     """
     Main function to run lexical search example.
-    
+
     This function:
     1. Parses command line arguments
     2. Initializes OpenSearch client and data reader
@@ -71,7 +74,7 @@ def main():
     # Initialize OpenSearch client and data reader
     client = OsMlClientWrapper(get_client(args.opensearch_type))
     pqa_reader = QAndAFileReader(
-        directory=QANDA_FILE_READER_PATH,
+        directory=get_qanda_file_reader_path(),
         max_number_of_docs=args.number_of_docs_per_category,
     )
 
@@ -79,7 +82,7 @@ def main():
     config = {
         "categories": args.categories,
         "index_name": index_name,
-        "index_settings": get_base_mapping(BASE_MAPPING_PATH),
+        "index_settings": get_base_mapping(get_base_mapping_path()),
         "delete_existing_index": args.delete_existing_index,
         "bulk_send_chunk_size": args.bulk_send_chunk_size,
     }
@@ -101,14 +104,16 @@ def main():
     )
 
     logging.info("Setup complete! Starting interactive search interface...")
-    
+
     # Start interactive search loop using the generic function
     cmd_line_interface.interactive_search_loop(
         client=client,
         index_name=index_name,
         model_info="Lexical Search",
-        query_builder_func=build_lexical_query
+        query_builder_func=build_lexical_query,
+        question=args.question,
     )
+
 
 if __name__ == "__main__":
     main()

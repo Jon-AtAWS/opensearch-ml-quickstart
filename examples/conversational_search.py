@@ -11,14 +11,22 @@ from typing import Dict
 import cmd_line_interface
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from client import (OsMlClientWrapper, get_client, get_client_configs,
-                    index_utils)
-from configs import (BASE_MAPPING_PATH, PIPELINE_FIELD_MAP,
-                     QANDA_FILE_READER_PATH, get_remote_connector_configs)
+from client import OsMlClientWrapper, get_client, index_utils
+from configs.configuration_manager import (
+    get_base_mapping_path,
+    get_client_configs,
+    get_pipeline_field_map,
+    get_qanda_file_reader_path,
+)
+from connectors import LlmConnector
+from connectors.helper import get_remote_connector_configs, get_raw_config_value
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
-from ml_models import (AosLlmConnector, MlModel, RemoteMlModel,
-                       get_aos_connector_helper, get_ml_model)
+from models import (
+    MlModel,
+    RemoteMlModel,
+    get_ml_model,
+)
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
@@ -46,33 +54,51 @@ def create_index_settings(base_mapping_path, index_config):
 
 
 def create_text_gen_model():
+    """
+    Create a text generation model using the LlmConnector.
+    
+    Returns:
+        str: The model ID of the created LLM model
+    """
     client = OsMlClientWrapper(get_client("aos"))
-    connector_configs = get_remote_connector_configs(
-        host_type="aos", connector_type="bedrock"
-    )
-    connector_configs[
-        "llm_arn"
-    ] = "arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0"
+    
+    # Get base connector configs and add LLM-specific overrides
+    connector_configs = get_remote_connector_configs("bedrock", "aos")
     connector_configs["connector_role_name"] = "bedrock_llm_connector_role"
-    connector_configs[
-        "create_connector_role_name"
-    ] = "bedrock_llm_create_connector_role"
+    connector_configs["create_connector_role_name"] = "bedrock_llm_create_connector_role"
+    
     logging.info(f"connector_configs:\n{connector_configs}")
-    aos_connector_helper = get_aos_connector_helper(get_client_configs("aos"))
-    aosLlmConnector = AosLlmConnector(
+    
+    # Get AOS client configs for domain info
+    aos_configs = get_client_configs("aos")
+    
+    # Create the LLM connector
+    llm_connector = LlmConnector(
         os_client=client.os_client,
+        os_type="aos",
+        opensearch_domain_url=aos_configs["host_url"],
+        opensearch_domain_arn=f"arn:aws:es:{aos_configs['region']}:*:domain/{aos_configs['domain_name']}",
+        opensearch_username=aos_configs["username"],
+        opensearch_password=aos_configs["password"],
+        aws_user_name=aos_configs["aws_user_name"],
+        region=aos_configs["region"],
         connector_configs=connector_configs,
-        aos_connector_helper=aos_connector_helper,
+        llm_type="predict",  # Use predict API for conversational search
+        model_name="anthropic.claude-3-5-sonnet-20241022-v2:0",  # Claude 3.5 Sonnet v2
     )
-    logging.info(f"connector id of the llm connector: {aosLlmConnector.connector_id()}")
+    
+    logging.info(f"connector id of the llm connector: {llm_connector.connector_id()}")
+    
+    # Create the remote ML model using the connector
     model_group_id = client.ml_model_group.model_group_id()
     llm_model = RemoteMlModel(
         os_client=client.os_client,
         ml_commons_client=client.ml_commons_client,
-        ml_connector=aosLlmConnector,
+        ml_connector=llm_connector,
         model_group_id=model_group_id,
-        model_name="Amazon Bedrock claude 3.5",
+        model_name="Amazon Bedrock Claude",
     )
+    
     llm_model_id = llm_model.model_id()
     logging.info(f"Model id of the llm model: {llm_model_id}")
     return llm_model_id
@@ -81,19 +107,24 @@ def create_text_gen_model():
 def process_conversational_results(search_results, **kwargs):
     """
     Custom result processor for conversational search that handles both search results and LLM answers.
-    
+
     Parameters:
         search_results (dict): OpenSearch search response
         **kwargs: Additional parameters (unused)
     """
     import logging
-    
+
     # Print standard search results
     cmd_line_interface.print_search_results(search_results)
-    
+
     # Extract and print LLM answer
-    if "ext" in search_results and "retrieval_augmented_generation" in search_results["ext"]:
-        cmd_line_interface.print_answer(search_results["ext"]["retrieval_augmented_generation"]["answer"])
+    if (
+        "ext" in search_results
+        and "retrieval_augmented_generation" in search_results["ext"]
+    ):
+        cmd_line_interface.print_answer(
+            search_results["ext"]["retrieval_augmented_generation"]["answer"]
+        )
     else:
         logging.warning("No LLM answer found in response")
 
@@ -101,13 +132,13 @@ def process_conversational_results(search_results, **kwargs):
 def build_conversational_query(query_text, model_id=None, memory_id=None, **kwargs):
     """
     Build conversational search query with RAG parameters.
-    
+
     Parameters:
         query_text (str): The search query text
         model_id (str): ML model ID for generating embeddings
         memory_id (str): ID of the conversation memory
         **kwargs: Additional parameters (unused)
-    
+
     Returns:
         dict: OpenSearch query dictionary with RAG extensions
     """
@@ -148,7 +179,7 @@ def main():
     index_name = "amazon_pqa_qa_emebedding"
     ingest_pipeline_name = "sparse-ingest-pipeline"
     search_pipeline_name = "conversational-search-pipeline"
-    
+
     if args.opensearch_type != "aos":
         logging.error(
             "This example is designed for Amazon OpenSearch Service (AOS) only."
@@ -157,13 +188,13 @@ def main():
 
     client = OsMlClientWrapper(get_client(host_type))
     pqa_reader = QAndAFileReader(
-        directory=QANDA_FILE_READER_PATH,
-        max_number_of_docs=args.number_of_docs_per_category
+        directory=get_qanda_file_reader_path(),
+        max_number_of_docs=args.number_of_docs_per_category,
     )
 
     config = {
         "with_knn": True,
-        "pipeline_field_map": PIPELINE_FIELD_MAP,
+        "pipeline_field_map": get_pipeline_field_map(),
         "categories": args.categories,
         "index_name": index_name,
         "pipeline_name": ingest_pipeline_name,
@@ -172,6 +203,9 @@ def main():
         "bulk_send_chunk_size": args.bulk_send_chunk_size,
     }
 
+    # Create embedding model for sparse search
+    from connectors.helper import get_remote_connector_configs
+    
     model_name = f"{host_type}_{model_type}"
     model_config = get_remote_connector_configs(
         host_type=host_type, connector_type=model_type
@@ -189,10 +223,10 @@ def main():
 
     config.update(model_config)
     config["index_settings"] = create_index_settings(
-        base_mapping_path=BASE_MAPPING_PATH,
+        base_mapping_path=get_base_mapping_path(),
         index_config=config,
     )
-    
+
     index_utils.handle_index_creation(
         os_client=client.os_client,
         config=config,
@@ -215,8 +249,10 @@ def main():
         no_load=args.no_load,
     )
 
+    # Create text generation model using the new universal LlmConnector
     text_gen_model_id = create_text_gen_model()
 
+    # Create search pipeline for conversational search
     response = client.os_client.transport.perform_request(
         "PUT",
         f"/_search/pipeline/{search_pipeline_name}",
@@ -240,6 +276,7 @@ def main():
         },
     )
 
+    # Create conversation memory
     uuid_str = str(uuid.uuid4())[:8]
     conversation_name = f"conversation-{uuid_str}"
     response = client.os_client.transport.perform_request(
@@ -248,8 +285,10 @@ def main():
     memory_id = response["memory_id"]
     logging.info(f"Conversation Memory ID: {memory_id}")
 
-    logging.info("Setup complete! Starting interactive conversational search interface...")
-    
+    logging.info(
+        "Setup complete! Starting interactive conversational search interface..."
+    )
+
     # Start interactive search loop using the generic function
     cmd_line_interface.interactive_search_loop(
         client=client,
@@ -259,7 +298,8 @@ def main():
         result_processor_func=process_conversational_results,
         ml_model=ml_model,
         memory_id=memory_id,
-        search_params={'search_pipeline': search_pipeline_name}
+        search_params={"search_pipeline": search_pipeline_name},
+        question=args.question,
     )
 
 

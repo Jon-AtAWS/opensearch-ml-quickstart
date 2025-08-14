@@ -12,12 +12,12 @@ import cmd_line_interface
 
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from configs import (
-    get_remote_connector_configs,
-    BASE_MAPPING_PATH,
-    PIPELINE_FIELD_MAP,
-    QANDA_FILE_READER_PATH,
+from configs.configuration_manager import (
+    get_base_mapping_path,
+    get_pipeline_field_map,
+    get_qanda_file_reader_path,
 )
+from connectors.helper import get_remote_connector_configs
 from client import (
     OsMlClientWrapper,
     get_client,
@@ -25,7 +25,7 @@ from client import (
 )
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
-from ml_models import get_ml_model, MlModel
+from models import get_ml_model, MlModel
 
 
 logging.basicConfig(
@@ -112,29 +112,35 @@ def load_dataset(
     )
 
 
-def build_hybrid_query(query_text, dense_model_id=None, sparse_model_id=None, pipeline_config=None, **kwargs):
+def build_hybrid_query(
+    query_text,
+    dense_model_id=None,
+    sparse_model_id=None,
+    pipeline_config=None,
+    **kwargs,
+):
     """
     Build hybrid search query combining dense and sparse embeddings.
-    
+
     Parameters:
         query_text (str): The search query text
         dense_model_id (str): Dense ML model ID for generating embeddings
         sparse_model_id (str): Sparse ML model ID for generating embeddings
         pipeline_config (dict): Search pipeline configuration to display
         **kwargs: Additional parameters (unused)
-    
+
     Returns:
         dict: OpenSearch query dictionary
     """
     if not dense_model_id:
-        raise ValueError("Dense model ID must be provided for hybrid search.")    
+        raise ValueError("Dense model ID must be provided for hybrid search.")
     if not sparse_model_id:
-        raise ValueError("Sparse model ID must be provided for hybrid search.")    
+        raise ValueError("Sparse model ID must be provided for hybrid search.")
     # Print pipeline config if provided
     if pipeline_config:
         print(f"{LIGHT_RED_HEADER}Search pipeline config:{RESET}")
         print(json.dumps(pipeline_config, indent=4))
-    
+
     return {
         "size": 3,
         "query": {
@@ -173,13 +179,13 @@ def main():
 
     client = OsMlClientWrapper(get_client(host_type))
     pqa_reader = QAndAFileReader(
-        directory=QANDA_FILE_READER_PATH,
-        max_number_of_docs=args.number_of_docs_per_category
+        directory=get_qanda_file_reader_path(),
+        max_number_of_docs=args.number_of_docs_per_category,
     )
 
     config = {
         "with_knn": True,
-        "pipeline_field_map": PIPELINE_FIELD_MAP,
+        "pipeline_field_map": get_pipeline_field_map(),
         "categories": args.categories,
         "index_name": index_name,
         "pipeline_name": ingest_pipeline_name,
@@ -219,7 +225,7 @@ def main():
 
     config["model_dimensions"] = dense_model_config["model_dimensions"]
     config["index_settings"] = create_index_settings(
-        base_mapping_path=BASE_MAPPING_PATH,
+        base_mapping_path=get_base_mapping_path(),
         index_config=config,
     )
 
@@ -253,7 +259,7 @@ def main():
     )
 
     logging.info("Setup complete! Starting interactive search interface...")
-    
+
     # Start interactive search loop using the generic function
     cmd_line_interface.interactive_search_loop(
         client=client,
@@ -263,7 +269,8 @@ def main():
         dense_ml_model=dense_ml_model,
         sparse_ml_model=sparse_ml_model,
         pipeline_config=pipeline_config,
-        search_params={'search_pipeline': search_pipeline_name}
+        search_params={"search_pipeline": search_pipeline_name},
+        question=args.question,
     )
 
 

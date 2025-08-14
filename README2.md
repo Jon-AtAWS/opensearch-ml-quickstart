@@ -25,7 +25,7 @@ opensearch-ml-quickstart/
 │   ├── conversational_search.py # RAG-powered conversational AI
 │   ├── workflow_example.py     # Custom workflow templates
 │   └── workflow_with_template.py # Built-in workflow templates
-├── ml_models/                  # ML model abstraction layer
+├── models/                     # ML model abstraction layer
 ├── client/                     # OpenSearch client wrappers
 ├── configs/                    # Configuration management
 ├── data_process/              # Data processing utilities
@@ -37,7 +37,7 @@ opensearch-ml-quickstart/
 
 ### ML Model Hierarchy
 
-The `ml_models/` directory provides a comprehensive abstraction layer for different ML model hosting scenarios:
+The `models/` directory provides a comprehensive abstraction layer for different ML model hosting scenarios:
 
 ```
 MlModel (Abstract Base Class)
@@ -360,7 +360,7 @@ All examples support these common options:
 
 ```python
 # Example: Custom Bedrock model
-from ml_models import AosBedrockMlModel
+from models import AosBedrockMlModel
 
 model = AosBedrockMlModel(
     os_client=client.os_client,

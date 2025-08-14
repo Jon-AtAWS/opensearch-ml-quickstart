@@ -9,17 +9,22 @@ import cmd_line_interface
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from client import OsMlClientWrapper, get_client, index_utils
-from configs import (BASE_MAPPING_PATH, PIPELINE_FIELD_MAP,
-                     QANDA_FILE_READER_PATH, get_remote_connector_configs)
+from configs.configuration_manager import (
+    get_base_mapping_path,
+    get_pipeline_field_map,
+    get_qanda_file_reader_path,
+)
+from connectors.helper import get_remote_connector_configs
 from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
-from ml_models import get_ml_model
+from models import get_ml_model
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
     datefmt="%Y-%m-%d:%H:%M:%S",
     level=logging.INFO,
 )
+
 
 def create_index_settings(base_mapping_path, index_config):
     settings = get_base_mapping(base_mapping_path)
@@ -42,12 +47,12 @@ def create_index_settings(base_mapping_path, index_config):
 def build_sparse_query(query_text, model_id=None, **kwargs):
     """
     Build neural sparse search query.
-    
+
     Parameters:
         query_text (str): The search query text
         model_id (str): ML model ID for generating embeddings
         **kwargs: Additional parameters (unused)
-    
+
     Returns:
         dict: OpenSearch query dictionary
     """
@@ -85,15 +90,15 @@ def main():
 
     client = OsMlClientWrapper(get_client(host_type))
     pqa_reader = QAndAFileReader(
-        directory=QANDA_FILE_READER_PATH,
-        max_number_of_docs=args.number_of_docs_per_category
+        directory=get_qanda_file_reader_path(),
+        max_number_of_docs=args.number_of_docs_per_category,
     )
 
     config = {
         "with_knn": True,
         "index_name": index_name,
         "pipeline_name": pipeline_name,
-        "pipeline_field_map": PIPELINE_FIELD_MAP,
+        "pipeline_field_map": get_pipeline_field_map(),
         "embedding_type": embedding_type,
         "categories": args.categories,
         "delete_existing_index": args.delete_existing_index,
@@ -116,7 +121,7 @@ def main():
     )
     config.update(model_config)
     config["index_settings"] = create_index_settings(
-        base_mapping_path=BASE_MAPPING_PATH,
+        base_mapping_path=get_base_mapping_path(),
         index_config=config,
     )
 
@@ -143,14 +148,15 @@ def main():
     )
 
     logging.info("Setup complete! Starting interactive search interface...")
-    
+
     # Start interactive search loop using the generic function
     cmd_line_interface.interactive_search_loop(
         client=client,
         index_name=index_name,
         model_info=ml_model.model_id(),
         query_builder_func=build_sparse_query,
-        ml_model=ml_model
+        ml_model=ml_model,
+        question=args.question,
     )
 
 

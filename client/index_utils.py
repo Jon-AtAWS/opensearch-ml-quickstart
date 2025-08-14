@@ -20,6 +20,7 @@ def handle_index_creation(
 
     index_settings = config["index_settings"]
     import json
+
     logging.info(f"Index settings: {json.dumps(index_settings, indent=2)}")
 
     index_exists = os_client.indices.exists(index=index_name)
@@ -44,19 +45,20 @@ def handle_index_creation(
         logging.error(f"Error creating index {index_name} due to exception: {e}")
 
 
-def handle_data_loading(os_client: OpenSearch,
-                        pqa_reader: QAndAFileReader,
-                        config: Dict[str, str],
-                        no_load: bool = False,
-                        ):
+def handle_data_loading(
+    os_client: OpenSearch,
+    pqa_reader: QAndAFileReader,
+    config: Dict[str, str],
+    no_load: bool = False,
+):
     """
     Handle data loading into OpenSearch index.
-    
+
     Parameters:
         client (OpenSearch): OpenSearch client instance
         pqa_reader (QAndAFileReader): Reader for Amazon PQA dataset
         config (Dict[str, str]): Configuration dictionary containing index settings and categories
-    
+
     Returns:
         None
     """
@@ -71,7 +73,7 @@ def handle_data_loading(os_client: OpenSearch,
             category=category,
             config=config,
         )
-        
+
 
 def load_category(os_client: OpenSearch, pqa_reader: QAndAFileReader, category, config):
     logging.info(f'Loading category "{category}"')
@@ -108,7 +110,7 @@ def send_bulk_ignore_exceptions(client: OpenSearch, config: Dict[str, str], docs
         status = helpers.bulk(
             client,
             docs,
-            chunk_size=config['bulk_send_chunk_size'],
+            chunk_size=config["bulk_send_chunk_size"],
             request_timeout=300,
             max_retries=10,
             raise_on_error=False,
@@ -125,9 +127,11 @@ def get_index_size(client: OpenSearch, index_name, unit="mb"):
 
     index_size = 0
     try:
-        index_size = int(client.cat.indices(
-            index=index_name, params={"bytes": f"{unit}", "h": "pri.store.size"}
-        ))
+        index_size = int(
+            client.cat.indices(
+                index=index_name, params={"bytes": f"{unit}", "h": "pri.store.size"}
+            )
+        )
     except Exception as e:
         logging.error(f"Error getting index size for {index_name}: {e}")
     return index_size

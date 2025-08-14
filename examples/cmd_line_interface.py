@@ -39,7 +39,7 @@ DEFAULT_CATEGORIES = [
 def get_command_line_args():
     """
     Parse command line arguments for OpenSearch ML quickstart examples.
-    
+
     Returns:
         argparse.Namespace: Parsed command line arguments with the following
         attributes:
@@ -57,40 +57,52 @@ def get_command_line_args():
         description="Run AI-powered search examples with OpenSearch ML Quickstart"
     )
     parser.add_argument(
-        "-d", "--delete-existing-index",
+        "-d",
+        "--delete-existing-index",
         default=False,
         action="store_true",
         help="Delete the index if it already exists",
     )
     parser.add_argument(
-        "-c", "--categories",
+        "-c",
+        "--categories",
         nargs="+",
         default=None,
         help="List of categories to load into the index",
     )
     parser.add_argument(
-        "-s", "--bulk-send-chunk-size",
+        "-s",
+        "--bulk-send-chunk-size",
         type=int,
         default=100,
         help="Chunk size for bulk sending documents to OpenSearch",
     )
     parser.add_argument(
-        "-n", "--number-of-docs-per-category",
+        "-n",
+        "--number-of-docs-per-category",
         type=int,
         default=5000,
         help="Number of documents to load per category",
     )
     parser.add_argument(
-        "-o", "--opensearch-type",
+        "-o",
+        "--opensearch-type",
         choices=["os", "aos"],
         default="aos",
         help="Type of OpenSearch instance to connect to: local=os or remote=aos",
     )
     parser.add_argument(
-        '--no-load',
-        action='store_true',
+        "--no-load",
+        action="store_true",
         default=False,
         help="Skip loading data into the index",
+    )
+    parser.add_argument(
+        "-q",
+        "--question",
+        type=str,
+        default=None,
+        help="Execute search with this question and exit (instead of interactive loop)",
     )
 
     args = parser.parse_args()
@@ -100,7 +112,7 @@ def get_command_line_args():
         args.categories = DEFAULT_CATEGORIES
     elif args.categories == "all":
         args.categories = QAndAFileReader.AMAZON_PQA_CATEGORY_MAP.keys()
-        
+
     return args
 
 
@@ -119,7 +131,9 @@ LIGHT_PURPLE_HEADER = "\033[1;35m"
 def print_hit(hit_id, hit):
     if not hit:
         return
-    print("--------------------------------------------------------------------------------")
+    print(
+        "--------------------------------------------------------------------------------"
+    )
     print()
     print(
         f'{LIGHT_PURPLE_HEADER}Item {hit_id + 1} category:{RESET} {hit["_source"]["category_name"]}'
@@ -133,11 +147,9 @@ def print_hit(hit_id, hit):
         print(hit["_source"]["product_description"])
         print()
     if "question_text" in hit["_source"]:
-        print(
-            f'{LIGHT_RED_HEADER}Question:{RESET} {hit["_source"]["question_text"]}'
-        )
-    else:       
-        print(f'{LIGHT_RED_HEADER}Question: {RESET} No question text available')
+        print(f'{LIGHT_RED_HEADER}Question:{RESET} {hit["_source"]["question_text"]}')
+    else:
+        print(f"{LIGHT_RED_HEADER}Question: {RESET} No question text available")
     if "answers" in hit["_source"]:
         for answer_id, answer in enumerate(hit["_source"]["answers"]):
             print(
@@ -151,9 +163,11 @@ def print_hit(hit_id, hit):
 def print_query(query):
     print(f"{LIGHT_GREEN_HEADER}Search query:{RESET}")
     print(json.dumps(query, indent=4))
-    print("--------------------------------------------------------------------------------")
+    print(
+        "--------------------------------------------------------------------------------"
+    )
     print()
-    
+
 
 def print_answer(answer):
     print(
@@ -171,7 +185,7 @@ def print_answer(answer):
 def print_search_interface_header(index_name, model_id):
     """
     Print the header for the interactive search interface.
-    
+
     Parameters:
         index_name (str): Name of the search index
         model_id (str): ID of the ML model being used
@@ -185,7 +199,7 @@ def print_search_interface_header(index_name, model_id):
 def print_search_prompt():
     """
     Print the search query prompt.
-    
+
     Returns:
         str: User input for the search query
     """
@@ -200,23 +214,23 @@ def print_executing_search():
 def print_search_results(search_results):
     """
     Print the complete search results, including summary and individual hits.
-    
+
     Parameters:
         search_results (dict): OpenSearch search response containing hits
     """
     hits = search_results["hits"]["hits"]
     total_hits = search_results["hits"]["total"]["value"]
-    
+
     print(f"\n{LIGHT_GREEN_HEADER}Search Results:{RESET}")
     print(f"Found {total_hits} total matches, showing top {len(hits)} results:\n")
-    
+
     if not hits:
         print("No results found for your query.")
     else:
         for hit_id, hit in enumerate(hits):
             print_hit(hit_id, hit)
-    
-    print("\n" + "="*80 + "\n")
+
+    print("\n" + "=" * 80 + "\n")
 
 
 def print_goodbye():
@@ -232,7 +246,7 @@ def print_search_interrupted():
 def print_search_error(error):
     """
     Print search error message.
-    
+
     Parameters:
         error (Exception): The error that occurred during search
     """
@@ -244,81 +258,176 @@ def print_empty_query_warning():
     print("Please enter a valid search query.")
 
 
-def interactive_search_loop(client, index_name, model_info, query_builder_func, result_processor_func=None, **kwargs):
+def print_agent_response(agent_response):
+    """
+    Print the agent's response in a formatted way.
+
+    Parameters:
+        agent_response (dict): Agent response containing inference results
+    """
+    if "inference_results" in agent_response:
+        for result in agent_response["inference_results"]:
+            if "output" in result:
+                for output in result["output"]:
+                    if "result" in output:
+                        print(f"\n{LIGHT_GREEN_HEADER}Agent Response:{RESET}")
+                        print(output["result"])
+                        print("\n" + "=" * 80 + "\n")
+    else:
+        print("No response from agent")
+
+
+def print_agent_query(query_body):
+    """
+    Print the agent query in a formatted way.
+
+    Parameters:
+        query_body (dict): Agent query parameters
+    """
+    print(f"{LIGHT_GREEN_HEADER}Agent Query:{RESET}")
+    print(json.dumps(query_body, indent=4))
+    print(
+        "--------------------------------------------------------------------------------"
+    )
+
+
+def interactive_agent_loop(client, agent_id, model_info, agent_executor_func):
+    """
+    Interactive loop for conversational agent queries.
+
+    Parameters:
+        client (OsMlClientWrapper): OpenSearch ML client wrapper
+        agent_id (str): ID of the conversational agent
+        model_info (str): Model information for display
+        agent_executor_func (callable): Function that executes agent queries
+    """
+    import logging
+
+    print_search_interface_header("Conversational Agent", model_info)
+
+    while True:
+        try:
+            query_text = print_search_prompt()
+
+            if query_text.lower().strip() in ["quit", "exit", "q"]:
+                print_goodbye()
+                break
+
+            if not query_text.strip():
+                print_empty_query_warning()
+                continue
+
+            # Build agent query
+            query_body = {"parameters": {"question": query_text}}
+
+            print_executing_search()
+            print_agent_query(query_body)
+
+            # Execute agent query using the provided function
+            agent_response = agent_executor_func(client, agent_id, query_body)
+
+            # Process and display results
+            print_agent_response(agent_response)
+
+        except KeyboardInterrupt:
+            print_search_interrupted()
+            break
+        except Exception as e:
+            logging.error(f"Agent query error: {e}")
+            print_search_error(e)
+
+
+def interactive_search_loop(
+    client,
+    index_name,
+    model_info,
+    query_builder_func,
+    result_processor_func=None,
+    question=None,
+    **kwargs,
+):
     """
     Generic interactive search interface for user queries.
-    
+
     Parameters:
         client (OsMlClientWrapper): OpenSearch ML client wrapper
         index_name (str): Name of the index to search
         model_info (str): Model information to display in header
         query_builder_func (callable): Function that takes (query_text, **kwargs) and returns search query dict
         result_processor_func (callable, optional): Function to process results before printing
+        question (str, optional): If provided, execute once with this question instead of interactive loop
         **kwargs: Additional parameters passed to query_builder_func and result_processor_func
     """
     import logging
-    
+
     # Extract model objects and convert to model IDs for query builders
     processed_kwargs = kwargs.copy()
-    
+
     # Handle single ml_model parameter
-    if 'ml_model' in processed_kwargs:
-        ml_model = processed_kwargs.pop('ml_model')
+    if "ml_model" in processed_kwargs:
+        ml_model = processed_kwargs.pop("ml_model")
         if ml_model is None:
             raise ValueError("ML model cannot be None when required for search.")
-        processed_kwargs['model_id'] = ml_model.model_id()
-    
+        processed_kwargs["model_id"] = ml_model.model_id()
+
     # Handle dense_ml_model parameter (for hybrid search)
-    if 'dense_ml_model' in processed_kwargs:
-        dense_ml_model = processed_kwargs.pop('dense_ml_model')
+    if "dense_ml_model" in processed_kwargs:
+        dense_ml_model = processed_kwargs.pop("dense_ml_model")
         if dense_ml_model is None:
             raise ValueError("Dense ML model cannot be None when required for search.")
-        processed_kwargs['dense_model_id'] = dense_ml_model.model_id()
-    
+        processed_kwargs["dense_model_id"] = dense_ml_model.model_id()
+
     # Handle sparse_ml_model parameter (for hybrid search)
-    if 'sparse_ml_model' in processed_kwargs:
-        sparse_ml_model = processed_kwargs.pop('sparse_ml_model')
+    if "sparse_ml_model" in processed_kwargs:
+        sparse_ml_model = processed_kwargs.pop("sparse_ml_model")
         if sparse_ml_model is None:
             raise ValueError("Sparse ML model cannot be None when required for search.")
-        processed_kwargs['sparse_model_id'] = sparse_ml_model.model_id()
-    
+        processed_kwargs["sparse_model_id"] = sparse_ml_model.model_id()
+
     print_search_interface_header(index_name, model_info)
-    
+
     while True:
         try:
-            query_text = print_search_prompt()
-            
-            if query_text.lower().strip() in ['quit', 'exit', 'q']:
-                print_goodbye()
-                break
-                
-            if not query_text.strip():
-                print_empty_query_warning()
-                continue
-            
+            if question:
+                query_text = question
+            else:
+                query_text = print_search_prompt()
+
+                if query_text.lower().strip() in ["quit", "exit", "q"]:
+                    print_goodbye()
+                    break
+
+                if not query_text.strip():
+                    print_empty_query_warning()
+                    continue
+
             # Build search query using the provided function
             search_query = query_builder_func(query_text, **processed_kwargs)
-            
+
             print_executing_search()
             print_query(search_query)
-            
+
             # Execute search with any additional search parameters
-            search_params = processed_kwargs.get('search_params', {})
+            search_params = processed_kwargs.get("search_params", {})
             search_results = client.os_client.search(
-                index=index_name, 
-                body=search_query,
-                **search_params
+                index=index_name, body=search_query, **search_params
             )
-            
+
             # Process results if custom processor provided
             if result_processor_func:
                 result_processor_func(search_results, **processed_kwargs)
             else:
                 print_search_results(search_results)
-                    
+                
+            # Break out if question was provided (single execution)
+            if question:
+                break
+                
         except KeyboardInterrupt:
             print_search_interrupted()
             break
         except Exception as e:
             logging.error(f"Search error: {e}")
             print_search_error(e)
+            if question:
+                break
