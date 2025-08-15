@@ -258,23 +258,43 @@ def print_empty_query_warning():
     print("Please enter a valid search query.")
 
 
-def print_agent_response(agent_response):
+def extract_agent_response_text(agent_response):
     """
-    Print the agent's response in a formatted way.
-
+    Extract the actual text response from agent results.
+    
     Parameters:
-        agent_response (dict): Agent response containing inference results
+        agent_response (dict): Agent execution response
+        
+    Returns:
+        str: Extracted response text or None if not found
     """
+    import logging
+    logging.info(f"Processing agent results\n{json.dumps(agent_response, indent=2)}")
     if "inference_results" in agent_response:
         for result in agent_response["inference_results"]:
             if "output" in result:
                 for output in result["output"]:
-                    if "result" in output:
-                        print(f"\n{LIGHT_GREEN_HEADER}Agent Response:{RESET}")
-                        print(output["result"])
-                        print("\n" + "=" * 80 + "\n")
+                    # Check for conversational agent response format
+                    if output.get("name") == "response" and "result" in output:
+                        response_text = output["result"]
+                        if response_text:
+                            return response_text
+    return None
+
+
+def process_and_print_agent_results(search_results, **kwargs):
+    """
+    Process and display conversational agent results with emoji formatting.
+    
+    Parameters:
+        search_results (dict): Agent execution response
+        **kwargs: Additional parameters (unused)
+    """
+    response_text = extract_agent_response_text(search_results)
+    if response_text:
+        print(f"\n🤖 Agent Response: {response_text}")
     else:
-        print("No response from agent")
+        print(f"\n📄 No valid response found in agent results")
 
 
 def print_agent_query(query_body):
@@ -291,7 +311,7 @@ def print_agent_query(query_body):
     )
 
 
-def interactive_agent_loop(client, agent_id, model_info, agent_executor_func):
+def interactive_agent_loop(client, agent_id, model_info, build_agent_query_func, agent_executor_func):
     """
     Interactive loop for conversational agent queries.
 
@@ -299,6 +319,8 @@ def interactive_agent_loop(client, agent_id, model_info, agent_executor_func):
         client (OsMlClientWrapper): OpenSearch ML client wrapper
         agent_id (str): ID of the conversational agent
         model_info (str): Model information for display
+        build_agent_query_func (callable): Function that builds agent query
+            from user input, takes (query_text, agent_id) and returns query dict
         agent_executor_func (callable): Function that executes agent queries
     """
     import logging
@@ -318,7 +340,7 @@ def interactive_agent_loop(client, agent_id, model_info, agent_executor_func):
                 continue
 
             # Build agent query
-            query_body = {"parameters": {"question": query_text}}
+            query_body = build_agent_query_func(query_text, agent_id=agent_id)
 
             print_executing_search()
             print_agent_query(query_body)
@@ -327,7 +349,7 @@ def interactive_agent_loop(client, agent_id, model_info, agent_executor_func):
             agent_response = agent_executor_func(client, agent_id, query_body)
 
             # Process and display results
-            print_agent_response(agent_response)
+            process_and_print_agent_results(agent_response)
 
         except KeyboardInterrupt:
             print_search_interrupted()

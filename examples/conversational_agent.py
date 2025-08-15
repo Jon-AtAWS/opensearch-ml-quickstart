@@ -143,16 +143,15 @@ def create_conversational_agent(
         "llm": {
             "model_id": llm_model_id,
             "parameters": {
-                "max_iteration": 10,
+                "max_iteration": 20,
                 "system_prompt":
                     "You are a helpful assistant. You are able to assist with a wide range of tasks, "
                     "from answering simple questions to providing in-depth explanations and discussions "
                     "on a wide range of topics.\nIf the question is complex, you will split it into "
                     "several smaller questions, and solve them one by one. For example, the original "
-                    "question is:\nhow many orders in last three month? Which month has highest?\nYou "
-                    "will spit into several smaller questions:\n1.Calculate total orders of last three "
-                    "month.\n2.Calculate monthly total order of last three month and calculate which "
-                    "month's order is highest.",
+                    "question is:\nFind me non-violent games?\nYou will spit into several smaller "
+                    "tasks:\n1.Search for games.\n2. Examine the description and conclude which games "
+                    "are non violent.3.Report on the non-violent games",
                 "prompt": "${parameters.question}"
             }
         },
@@ -173,14 +172,14 @@ def create_conversational_agent(
                 "query": {
                     "query": {
                         "neural": {
-                            "embedding": {
+                            "chunk_embedding": {
                                 "query_text": "${parameters.question}",
                                 "model_id": embedding_model_id
                             }
                         }
                     },
-                    "size": 2,
-                    "_source": "combined_text"
+                    "size": 5,
+                    "_source": "chunk"
                 }
             },
             "attributes": {
@@ -197,10 +196,11 @@ def create_conversational_agent(
                 },
                 "strict": False
             }
-        }]
+        },
+        {"type": "ListIndexTool"}]
     }
 
-    logging.info(f"Creating conversational agent with config: {agent_config}")
+    logging.info(f"Creating conversational agent with config: {json.dumps(agent_config, indent=2)}")
 
     try:        
         # Use OpenSearch client transport layer
@@ -235,33 +235,12 @@ def execute_agent_query(client, agent_id, query_body):
     )
     try:
         response = client.os_client.transport.perform_request(
-            "POST", f"/_plugins/_ml/agents/{agent_id}/_execute", body=query_body
+            "POST", f"/_plugins/_ml/agents/{agent_id}/_execute", body=query_body, timeout="60s"
         )
     except Exception as e:
         logging.error(f"Failed to execute agent query: {e}")
         raise
     return response
-
-
-def process_agent_results(search_results, **kwargs):
-    """Process and display conversational agent results."""
-    if "inference_results" in search_results:
-        for result in search_results["inference_results"]:
-            if "output" in result:
-                for output in result["output"]:
-                    # Check for conversational agent response format
-                    if output.get("name") == "response" and "dataAsMap" in output:
-                        response_text = output["dataAsMap"].get("response", "")
-                        if response_text:
-                            print(f"\n🤖 Agent Response: {response_text}")
-                    # Check for tool results
-                    elif "name" in output and "result" in output and output["name"] not in ["memory_id", "parent_interaction_id"]:
-                        print(f"\n🔧 Tool {output['name']}: {output['result']}")
-                    # Fallback for other result formats
-                    elif "result" in output and output.get("name") not in ["memory_id", "parent_interaction_id", "response"]:
-                        print(f"\n📄 Result: {output['result']}")
-    else:
-        print(f"\n📄 Raw Response: {json.dumps(search_results, indent=2)}")
 
 
 def build_agent_query(query_text, agent_id=None, **kwargs):
@@ -279,7 +258,12 @@ def build_agent_query(query_text, agent_id=None, **kwargs):
     if not agent_id:
         raise ValueError("Agent ID must be provided for conversational agent.")
 
-    return {"parameters": {"question": query_text}}
+    return {
+        "parameters": {
+            "question": query_text,
+            "verbose": True
+        }
+    }
 
 
 def main():
@@ -313,7 +297,7 @@ def main():
     pqa_reader = QAndAFileReader(
         directory=get_qanda_file_reader_path(),
         max_number_of_docs=args.number_of_docs_per_category,
-        )
+    )
 
     config = {
         "with_knn": True,
@@ -389,9 +373,8 @@ def main():
         llm_model_id=llm_model_id,
     )
 
-    logging.info(
-        "Setup complete! Starting conversational agent interface..."
-    )
+    logging.info(f"Conversational agent created with ID: {agent_id}")
+    logging.info("Setup complete")
 
     # Check if a specific query was provided via command line
     if hasattr(args, 'question') and args.question:
@@ -399,16 +382,21 @@ def main():
         try:
             agent_query = build_agent_query(args.question, agent_id)
             results = execute_agent_query(client, agent_id, agent_query)
-            process_agent_results(results)
+            cmd_line_interface.process_and_print_agent_results(results)
         except Exception as e:
             logging.error(f"Error executing query: {e}")
         return
+
+    logging.info(
+        "Starting interactive agent interface..."
+    )
 
     # Start interactive agent loop using the generic function from cmd_line_interface
     cmd_line_interface.interactive_agent_loop(
         client=client,
         agent_id=agent_id,
         model_info=f"Agent: {agent_id}, LLM: {llm_model_id}, Embedding: {embedding_ml_model.model_id()}",
+        build_agent_query_func=build_agent_query,
         agent_executor_func=execute_agent_query,
     )
 
