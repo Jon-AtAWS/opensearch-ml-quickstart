@@ -149,10 +149,9 @@ def create_conversational_agent(
                     "from answering simple questions to providing in-depth explanations and discussions "
                     "on a wide range of topics.\nIf the question is complex, you will split it into "
                     "several smaller questions, and solve them one by one. For example, the original "
-                    "question is:\nhow many orders in last three month? Which month has highest?\nYou "
-                    "will spit into several smaller questions:\n1.Calculate total orders of last three "
-                    "month.\n2.Calculate monthly total order of last three month and calculate which "
-                    "month's order is highest.",
+                    "question is:\nFind me non-violent games?\nYou will spit into several smaller "
+                    "tasks:\n1.Search for games.\n2. Examine the description and conclude which games "
+                    "are non violent.3.Report on the non-violent games",
                 "prompt": "${parameters.question}"
             }
         },
@@ -179,7 +178,7 @@ def create_conversational_agent(
                             }
                         }
                     },
-                    "size": 2,
+                    "size": 5,
                     "_source": "chunk"
                 }
             },
@@ -197,7 +196,8 @@ def create_conversational_agent(
                 },
                 "strict": False
             }
-        }]
+        },
+        {"type": "ListIndexTool"}]
     }
 
     logging.info(f"Creating conversational agent with config: {json.dumps(agent_config, indent=2)}")
@@ -235,7 +235,7 @@ def execute_agent_query(client, agent_id, query_body):
     )
     try:
         response = client.os_client.transport.perform_request(
-            "POST", f"/_plugins/_ml/agents/{agent_id}/_execute", body=query_body
+            "POST", f"/_plugins/_ml/agents/{agent_id}/_execute", body=query_body, timeout="60s"
         )
     except Exception as e:
         logging.error(f"Failed to execute agent query: {e}")
