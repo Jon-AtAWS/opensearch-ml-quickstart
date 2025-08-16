@@ -260,41 +260,86 @@ def print_empty_query_warning():
 
 def extract_agent_response_text(agent_response):
     """
-    Extract the actual text response from agent results.
+    Extract all response entries from agent results.
     
     Parameters:
         agent_response (dict): Agent execution response
         
     Returns:
-        str: Extracted response text or None if not found
+        list: List of response entries with their types
     """
-    import logging
-    logging.info(f"Processing agent results\n{json.dumps(agent_response, indent=2)}")
+    responses = []
     if "inference_results" in agent_response:
         for result in agent_response["inference_results"]:
             if "output" in result:
                 for output in result["output"]:
-                    # Check for conversational agent response format
                     if output.get("name") == "response" and "result" in output:
                         response_text = output["result"]
                         if response_text:
-                            return response_text
-    return None
+                            # Try to parse as JSON first
+                            try:
+                                parsed_json = json.loads(response_text)
+                                responses.append({"type": "json", "content": parsed_json})
+                            except json.JSONDecodeError:
+                                # Check if it looks like search results
+                                if response_text.strip().startswith('{"_index"'):
+                                    responses.append({"type": "search_results", "content": response_text})
+                                else:
+                                    responses.append({"type": "text", "content": response_text})
+    return responses
 
 
 def process_and_print_agent_results(search_results, **kwargs):
     """
-    Process and display conversational agent results with emoji formatting.
+    Process and display conversational agent results with proper formatting for different response types.
     
     Parameters:
         search_results (dict): Agent execution response
         **kwargs: Additional parameters (unused)
     """
-    response_text = extract_agent_response_text(search_results)
-    if response_text:
-        print(f"\n🤖 Agent Response: {response_text}")
-    else:
+    responses = extract_agent_response_text(search_results)
+    
+    if not responses:
         print(f"\n📄 No valid response found in agent results")
+        return
+    
+    for i, response in enumerate(responses):
+        if response["type"] == "json":
+            # Handle JSON responses (LLM messages with tool use)
+            content = response["content"]
+            if "output" in content and "message" in content["output"]:
+                message = content["output"]["message"]
+                if "content" in message:
+                    for msg_content in message["content"]:
+                        if "text" in msg_content:
+                            print(f"\n🤖 Agent: {msg_content['text']}")
+                        elif "toolUse" in msg_content:
+                            tool_use = msg_content["toolUse"]
+                            tool_name = tool_use.get('name', 'Unknown')
+                            tool_input = tool_use.get('input', {})
+                            print(f"\n🔧 Tool: {tool_name}")
+                            for key, value in tool_input.items():
+                                print(f"   {key}: {value}")
+        
+        elif response["type"] == "search_results":
+            # Handle search results
+            print(f"\n📊 Search Results:")
+            lines = response["content"].strip().split('\n')
+            for line in lines:
+                if line.strip():
+                    try:
+                        result = json.loads(line)
+                        if "_source" in result and "chunk" in result["_source"]:
+                            score = result.get("_score", "N/A")
+                            print(f"  • {result['_source']['chunk']} (Score: {score})")
+                    except json.JSONDecodeError:
+                        print(f"  • {line}")
+        
+        elif response["type"] == "text":
+            # Handle final text responses
+            print(f"\n💬 Final Response: {response['content']}")
+    
+    print()
 
 
 def print_agent_query(query_body):

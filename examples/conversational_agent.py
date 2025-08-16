@@ -23,6 +23,7 @@ import sys
 import cmd_line_interface
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import agent_tools
 from client import OsMlClientWrapper, get_client, index_utils
 from configs.configuration_manager import (
     get_base_mapping_path,
@@ -161,43 +162,12 @@ def create_conversational_agent(
         "parameters": {
             "_llm_interface": "bedrock/converse/claude"
         },
-        "tools": 
-        [{
-            "type": "SearchIndexTool",
-            "name": "RetrieveShoppingData",
-            "description": "This tool provides item catalog information.",
-            "parameters": {
-                "input": "{\"index\": \"${parameters.index}\", \"query\": ${parameters.query} }",
-                "index": index_name,
-                "query": {
-                    "query": {
-                        "neural": {
-                            "chunk_embedding": {
-                                "query_text": "${parameters.question}",
-                                "model_id": embedding_model_id
-                            }
-                        }
-                    },
-                    "size": 5,
-                    "_source": "chunk"
-                }
-            },
-            "attributes": {
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        "question": {
-                            "type": "string",
-                            "description": "Natural language question"
-                        }
-                    },
-                    "required": [ "question" ],
-                    "additionalProperties": False
-                },
-                "strict": False
-            }
-        },
-        {"type": "ListIndexTool"}]
+        "tools": [
+            agent_tools.get_products_tool_semantic(index_name, embedding_model_id),  # Include the semantic search tool
+            agent_tools.get_products_tool_lexical(index_name),  # Include the lexical search tool
+            agent_tools.list_index_tool(),  # Include the list index tool
+            agent_tools.index_mapping_tool(),  # Include the index mapping tool
+        ]
     }
 
     logging.info(f"Creating conversational agent with config: {json.dumps(agent_config, indent=2)}")
@@ -230,12 +200,11 @@ def execute_agent_query(client, agent_id, query_body):
     Returns:
         dict: Agent response
     """
-    logging.info(
-        f"Executing query for agent {agent_id}: {json.dumps(query_body, indent=2)}"
-    )
+    logging.info(f"Executing query for agent {agent_id}: {query_body}")
     try:
         response = client.os_client.transport.perform_request(
-            "POST", f"/_plugins/_ml/agents/{agent_id}/_execute", body=query_body, timeout="60s"
+            "POST", f"/_plugins/_ml/agents/{agent_id}/_execute", 
+            body=query_body
         )
     except Exception as e:
         logging.error(f"Failed to execute agent query: {e}")
