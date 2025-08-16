@@ -107,6 +107,7 @@ def get_products_qna_lexical(index_name):
     return {
         "type": "SearchIndexTool",
         "name": "QuestionSearchTool",
+        "include_output_in_agent_response": True,
         "description": 
             "The catalog contains user questions and answers about the products "
             "in the catalog. This tool uses lexical search to find questions users "
