@@ -169,7 +169,11 @@ def create_conversational_agent(
                     "have asked about products. "
                     "  "
                     "In summarizing the search results include whether you approached the "
-                    "question as a broad product search or a specific product question. ",
+                    "question as a broad product search or a specific product question. "
+                    "  "
+                    "When summarizing search results from any of the tools, if there are search "
+                    "results, but none of them are relevant to the user question, summarize the "
+                    "results, and include why none of them was relevant. ",
                 "prompt": "${parameters.question}"
             }
         },

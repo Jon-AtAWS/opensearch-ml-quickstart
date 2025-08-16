@@ -22,6 +22,7 @@ def get_products_tool_semantic(index_name, embedding_model_id):
     return {
         "type": "SearchIndexTool",
         "name": "SemanticSearchTool",
+        "include_output_in_agent_response": True,
         "description":
             "This tool provides item catalog information by executing a dense "
             "vector search on the product catalog. The dense embedding is computed "
@@ -64,6 +65,7 @@ def get_products_tool_lexical(index_name):
     return {
         "type": "SearchIndexTool",
         "name": "LexicalSearchTool",
+        "include_output_in_agent_response": True,
         "description": 
             "This tool provides item catalog information by executing a "
             "lexical search on the product catalog. It uses a simple_query_string "
@@ -105,9 +107,18 @@ def get_products_qna_lexical(index_name):
     return {
         "type": "SearchIndexTool",
         "name": "QuestionSearchTool",
-        "include_output_in_agent_response": True,
         "description": 
-            "The catalog contains user questions and answers about the products in the catalog. This tool uses lexical search to find questions users have asked about products. The search results contain the item name, product description, brand name, question, and one or many answers to the question. The search results are selected based on matching the user query to the question in the search result, but might also match the item name, product description, or brand name. The answers in the search results are not generated, but are the actual answers provided by users. Each answer contains demographic information about the user who answered the question. ",
+            "The catalog contains user questions and answers about the products "
+            "in the catalog. This tool uses lexical search to find questions users "
+            "have asked about products. The search results contain the item name, "
+            "product description, brand name, question, and one or many answers "
+            "to the question. The search results are selected based on matching "
+            "the user query to the question in the search result, but might also "
+            "match the item name, product description, or brand name. The answers "
+            "in the search results are not generated, but are the actual answers "
+            "provided by users. Each answer contains demographic information about "
+            "the user who answered the question. ",
+        "include_output_in_agent_response": True,
         "parameters": {
             "input": "{\"index\": \"${parameters.index}\", \"query\": ${parameters.query} }",
             "index": index_name,
