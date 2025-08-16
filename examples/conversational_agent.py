@@ -276,7 +276,7 @@ def main():
         sys.exit(1)
 
     host_type = "os"
-    model_type = "local"
+    model_host = "local"
     index_name = "conversational_agent_knowledge_base"
     embedding_type = "dense"
     ingest_pipeline_name = "agent-dense-ingest-pipeline"
@@ -314,7 +314,7 @@ def main():
     }
     embedding_ml_model = get_ml_model(
         host_type=host_type,
-        model_type=model_type,
+        model_host=model_host,
         model_config=model_config,
         os_client=client.os_client,
         ml_commons_client=client.ml_commons_client,

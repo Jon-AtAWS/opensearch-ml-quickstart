@@ -155,7 +155,7 @@ def main():
 
     # This example uses a local Hugging Face model deployed in OpenSearch
     host_type = "os"
-    model_type = "local"
+    model_host = "local"
     index_name = "hybrid_local_search"
     embedding_type = "dense"
     ingest_pipeline_name = "hybrid-local-ingest-pipeline"
@@ -195,7 +195,7 @@ def main():
 
     ml_model = get_ml_model(
         host_type=host_type,
-        model_type=model_type,
+        model_host=model_host,
         model_group_id=client.ml_model_group.model_group_id(),
         model_config=model_config,
         os_client=client.os_client,

@@ -271,7 +271,7 @@ The client wrapper handles many of the complex details involved in setting up ML
 | Example | OpenSearch Type | Model Hosting | Model Host | Model Type |
 |---------|----------------|---------------|------------|------------|
 | `dense_exact_search.py` | aos | remote | sagemaker | embedding |
-| `dense_hnsw_search.py` | aos | remote | sagemaker | embedding |
+| `dense_hnsw_search.py` | aos | remote | bedrock | embedding |
 | `sparse_search.py` | aos | remote | sagemaker | embedding |
 | `hybrid_search.py` | aos | remote | sagemaker | embedding |
 | `hybrid_local_search.py` | os | local | n/a | embedding |
