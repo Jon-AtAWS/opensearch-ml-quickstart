@@ -50,6 +50,7 @@ def handle_data_loading(
     pqa_reader: QAndAFileReader,
     config: Dict[str, str],
     no_load: bool = False,
+    enriched: bool = True,
 ):
     """
     Handle data loading into OpenSearch index.
@@ -72,15 +73,17 @@ def handle_data_loading(
             pqa_reader=pqa_reader,
             category=category,
             config=config,
+            enriched=enriched,
         )
 
 
-def load_category(os_client: OpenSearch, pqa_reader: QAndAFileReader, category, config):
+def load_category(os_client: OpenSearch, pqa_reader: QAndAFileReader, category, config, enriched=True):
     logging.info(f'Loading category "{category}"')
     docs = []
     number_of_docs = 0
     for doc in pqa_reader.questions_for_category(
-        pqa_reader.amazon_pqa_category_name_to_constant(category), enriched=True
+        pqa_reader.amazon_pqa_category_name_to_constant(category),
+        enriched=enriched
     ):
         doc["_index"] = config["index_name"]
         doc["_id"] = doc["question_id"]

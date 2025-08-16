@@ -266,6 +266,21 @@ The client wrapper handles many of the complex details involved in setting up ML
 
 ## Details of the Examples
 
+### Example Summary
+
+| Example | OpenSearch Type | Model Hosting | Model Host | Model Type |
+|---------|----------------|---------------|------------|------------|
+| `dense_exact_search.py` | aos | remote | sagemaker | embedding |
+| `dense_hnsw_search.py` | aos | remote | sagemaker | embedding |
+| `sparse_search.py` | aos | remote | sagemaker | embedding |
+| `hybrid_search.py` | aos | remote | sagemaker | embedding |
+| `hybrid_local_search.py` | os | local | n/a | embedding |
+| `lexical_search.py` | os/aos | n/a | n/a | n/a |
+| `conversational_search.py` | aos | remote | sagemaker | embedding + llm |
+| `conversational_agent.py` | os | local | n/a | embedding + llm |
+| `workflow_example.py` | aos | remote | sagemaker | embedding |
+| `workflow_with_template.py` | aos | remote | sagemaker | embedding |
+
 The OpenSearch ML Quickstart provides a comprehensive set of examples that demonstrate different search approaches and their practical applications. Each example is designed to showcase how the toolkit's classes work together to solve real-world search challenges, from basic semantic search to advanced agentic workflows.
 
 The dense vector search examples (`dense_exact_search.py` and `dense_hnsw_search.py`) demonstrate the fundamental building blocks of semantic search. These examples utilize the MLModel classes to deploy embedding models that transform text into vector representations, while the Configuration classes handle the complexity of different model hosting scenarios. The examples show how the OsMlClientWrapper simplifies the process of setting up k-NN search indices and ingest pipelines, automatically configuring the appropriate vector field mappings and dimensions based on the selected embedding model. The exact k-NN variant prioritizes accuracy by computing precise distances between vectors, while the HNSW implementation trades some precision for significantly improved performance on large datasets.

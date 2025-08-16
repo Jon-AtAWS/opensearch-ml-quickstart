@@ -328,7 +328,7 @@ class QAndAFileReader:
 
         return question
 
-    def questions_for_category(self, pqa_constant, enriched=False):
+    def questions_for_category(self, pqa_constant, enriched=True):
         number_of_docs = 0
         filename = self.AMAZON_PQA_FILENAME_MAP[pqa_constant]
         with open(self.directory + "/" + filename) as f:
@@ -344,7 +344,7 @@ class QAndAFileReader:
                 ):
                     break
 
-    def questions_for_all_categories(self, enriched=False):
+    def questions_for_all_categories(self, enriched=True):
         for pqa_constant in self.amazon_pqa_constants:
             yield from self.questions_for_category(pqa_constant, enriched)
         return None
