@@ -298,7 +298,7 @@ def main():
 
     # Configuration
     host_type = "aos"  # Amazon OpenSearch Service
-    model_host = "sagemaker"  # Use SageMaker for embeddings
+    model_host = "bedrock"   # Using Bedrock for ML model hosting
     index_name = "workflow_dense"  # Required index name
     embedding_type = "dense"
     pipeline_name = "workflow-dense-pipeline"
