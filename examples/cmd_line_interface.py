@@ -271,14 +271,18 @@ def extract_agent_response_text(agent_response):
     responses = []
     if "inference_results" in agent_response:
         for result in agent_response["inference_results"]:
+            print(f'➡️ Processing result: {json.dumps(result, indent=2)}')
             if "output" in result:
                 for output in result["output"]:
+                    print(f'\t📕 Processing output: {str(output)[:255]}')
                     if output.get("name") == "response" and "result" in output:
                         response_text = output["result"]
+                        print(f'\t\t👄 Response text: {response_text[:255]}')
                         if response_text:
                             # Try to parse as JSON first
                             try:
                                 parsed_json = json.loads(response_text)
+                                # print(f'    📊 Parsed JSON: {parsed_json}')
                                 responses.append({"type": "json", "content": parsed_json})
                             except json.JSONDecodeError:
                                 # Check if it looks like search results
@@ -286,6 +290,12 @@ def extract_agent_response_text(agent_response):
                                     responses.append({"type": "search_results", "content": response_text})
                                 else:
                                     responses.append({"type": "text", "content": response_text})
+                        else:
+                            print(f'\t\t❌ No response_text found in response {output}')
+                    else:
+                        print(f'\t❌ This output is not an LLM response: {output}')
+            else:
+                print(f'❌ No output found in result')
     return responses
 
 
@@ -297,6 +307,7 @@ def process_and_print_agent_results(search_results, **kwargs):
         search_results (dict): Agent execution response
         **kwargs: Additional parameters (unused)
     """
+    # print(f"Full agent results\n{json.dumps(search_results, indent=2)}")
     responses = extract_agent_response_text(search_results)
     
     if not responses:

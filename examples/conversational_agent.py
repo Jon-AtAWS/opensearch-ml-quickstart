@@ -163,10 +163,10 @@ def create_conversational_agent(
                     "  "
                     "First evaluate whether the user is asking a broad question about products, "
                     "or a specific question about a product. If the question is broad, you will "
-                    "use the lexical and semantic search tool to find products that are similar "
-                    "to the user's query. If it seems that the user question is about product "
-                    "features or use, you will use the Q&A search tool to find questions users "
-                    "have asked about products. "
+                    "use the category, lexical, and semantic search tools to find products that "
+                    "are similar to the user's query. If it seems that the user question is about "
+                    "product features or use, you will use the Q&A search tool to find questions "
+                    "users have asked about products. "
                     "  "
                     "In summarizing the search results include whether you approached the "
                     "question as a broad product search or a specific product question. "
@@ -186,9 +186,10 @@ def create_conversational_agent(
         "tools": [
             agent_tools.get_products_tool_semantic(index_name, embedding_model_id),  # Include the semantic search tool
             agent_tools.get_products_tool_lexical(index_name),  # Include the lexical search tool
-            agent_tools.get_products_qna_lexical(index_name),  # Include the Q&A lexical search tool
-            agent_tools.list_index_tool(),  # Include the list index tool
-            agent_tools.index_mapping_tool(),  # Include the index mapping tool
+            agent_tools.get_products_qna_lexical(index_name),   # Include the Q&A lexical search tool
+            agent_tools.get_categories_tool(index_name),        # Include the categories tool 
+            agent_tools.list_index_tool(),                      # Include the list index tool
+            agent_tools.index_mapping_tool(),                   # Include the index mapping tool
         ]
     }
 

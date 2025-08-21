@@ -72,7 +72,7 @@ opensearch-ml-quickstart/
 │   ├── hybrid_search.py              # Hybrid dense + sparse search
 │   ├── lexical_search.py             # Traditional keyword search
 │   ├── conversational_search.py      # RAG-powered conversational AI
-│   ├── agentic_search.py             # AI agents for complex search tasks
+│   ├── conversational_agent.py       # AI agents for complex search tasks
 │   ├── workflow_example.py           # Custom workflow templates
 │   └── workflow_with_template.py     # Built-in workflow templates
 ├── models/                           # ML model abstraction layer
@@ -278,7 +278,7 @@ The client wrapper handles many of the complex details involved in setting up ML
 | `lexical_search.py` | os/aos | n/a | n/a | n/a |
 | `conversational_search.py` | aos | remote | sagemaker | embedding + llm |
 | `conversational_agent.py` | os | local | n/a | embedding + llm |
-| `workflow_example.py` | aos | remote | bedrock | embedding |
+| `workflow_example.py` | aos | remote | bedrockCar G | embedding |
 | `workflow_with_template.py` | aos | remote | sagemaker | embedding |
 
 The OpenSearch ML Quickstart provides a comprehensive set of examples that demonstrate different search approaches and their practical applications. Each example is designed to showcase how the toolkit's classes work together to solve real-world search challenges, from basic semantic search to advanced agentic workflows.

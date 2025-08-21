@@ -149,3 +149,54 @@ def get_products_qna_lexical(index_name):
             "strict": False
         }
     }
+
+
+def get_categories_tool(index_name):
+    return {
+        "type": "SearchIndexTool",
+        "name": "CategorySearchTool",
+        "include_output_in_agent_response": True,
+        "description": 
+            "This tool provides category information about items in the catalog "
+            "It compares the user question to products and then returns an aggregation "
+            "of the matching categories with counts of how many products are in those "
+            "categories. Use this information to add a category filter to the "
+            "query to narrow down the search results.",
+        "parameters": {
+            "input": "{\"index\": \"${parameters.index}\", \"query\": ${parameters.query} }",
+            "index": index_name,
+            "query": {
+                "query": {
+                    "simple_query_string": {
+                        "query": "${parameters.question}",
+                        "fields": ["item_name^2", "question", "product_description", "brand_name"],
+                    }
+                },
+                "aggs": {
+                    "categories": {
+                        "terms": {
+                            "field": "category_name",
+                            "size": 10
+                        }
+                    }
+                },
+                "size": 0,
+            }
+        },
+        "attributes": {
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "question": {
+                        "type": "string",
+                        "description": "Natural language question"
+                    }
+                },
+                "required": [ "question" ],
+                "additionalProperties": False
+            },
+            "strict": False
+        }
+    }
+
+
