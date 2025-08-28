@@ -79,7 +79,7 @@ def get_products_tool_lexical(index_name):
                 "query": {
                     "simple_query_string": {
                         "query": "${parameters.question}",
-                        "fields": ["item_name^2", "product_description", "brand_name"],
+                        "fields": ["item_name^2", "product_description", "brand_name"]
                     }
                 },
                 "size": 5,
@@ -129,9 +129,9 @@ def get_products_qna_lexical(index_name):
                 "query": {
                     "simple_query_string": {
                         "query": "${parameters.question}",
-                        "fields": ["question_text^4", "item_name", "product_description", "brand_name"],
+                        "fields": ["question_text^4", "item_name", "product_description", "brand_name"]
                     }
-                },
+                }
             }
         },
         "attributes": {
@@ -163,13 +163,14 @@ def get_categories_tool(index_name):
             "categories. Use this information to add a category filter to the "
             "query to narrow down the search results.",
         "parameters": {
+            "return_raw_response": True,
             "input": "{\"index\": \"${parameters.index}\", \"query\": ${parameters.query} }",
             "index": index_name,
             "query": {
                 "query": {
                     "simple_query_string": {
                         "query": "${parameters.question}",
-                        "fields": ["item_name^2", "question", "product_description", "brand_name"],
+                        "fields": ["item_name^2", "question", "product_description", "brand_name"]
                     }
                 },
                 "aggs": {
@@ -180,7 +181,7 @@ def get_categories_tool(index_name):
                         }
                     }
                 },
-                "size": 0,
+                "size": 0
             }
         },
         "attributes": {
