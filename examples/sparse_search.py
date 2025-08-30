@@ -83,7 +83,7 @@ def main():
     # This example uses a sparse model, hosted on Amazon SageMaker and an Amazon
     # OpenSearch Service domain.
     host_type = "aos"
-    model_type = "sagemaker"
+    model_host = "sagemaker"
     index_name = "sparse_search"
     embedding_type = "sparse"
     pipeline_name = "sparse-ingest-pipeline"
@@ -105,15 +105,15 @@ def main():
         "bulk_send_chunk_size": args.bulk_send_chunk_size,
     }
 
-    model_name = f"{host_type}_{model_type}"
+    model_name = f"{host_type}_{model_host}"
     model_config = get_remote_connector_configs(
-        host_type=host_type, connector_type=model_type
+        host_type=host_type, connector_type=model_host
     )
     model_config["model_name"] = model_name
     model_config["embedding_type"] = embedding_type
     ml_model = get_ml_model(
         host_type=host_type,
-        model_type=model_type,
+        model_host=model_host,
         model_config=model_config,
         os_client=client.os_client,
         ml_commons_client=client.ml_commons_client,

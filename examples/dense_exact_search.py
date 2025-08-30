@@ -224,7 +224,7 @@ def main():
     
     ml_model = get_ml_model(
         host_type=os_type,
-        model_type=provider,
+        model_host=provider,
         model_config=model_config,
         os_client=client.os_client,
         ml_commons_client=client.ml_commons_client,

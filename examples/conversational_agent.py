@@ -23,6 +23,7 @@ import sys
 import cmd_line_interface
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import agent_tools
 from client import OsMlClientWrapper, get_client, index_utils
 from configs.configuration_manager import (
     get_base_mapping_path,
@@ -145,13 +146,34 @@ def create_conversational_agent(
             "parameters": {
                 "max_iteration": 20,
                 "system_prompt":
-                    "You are a helpful assistant. You are able to assist with a wide range of tasks, "
-                    "from answering simple questions to providing in-depth explanations and discussions "
-                    "on a wide range of topics.\nIf the question is complex, you will split it into "
-                    "several smaller questions, and solve them one by one. For example, the original "
-                    "question is:\nFind me non-violent games?\nYou will spit into several smaller "
-                    "tasks:\n1.Search for games.\n2. Examine the description and conclude which games "
-                    "are non violent.3.Report on the non-violent games",
+                    "You are a helpful assistant that can answer questions about products "
+                    "in your knowledge base. "
+                    "  "
+                    "The knowledge base contains user questions and answers, with one "
+                    "search document per user question. Each search document also contains "
+                    "product information such as item name, product description, and brand name. "
+                    "  "
+                    "You have tools that search based on matching the user question "
+                    "to the question in the search result, as well as lexical and semantic "
+                    "search against the product information. "
+                    "  "
+                    "Because the knowledge base is organized by user questions, you may not "
+                    "get a broadly diverse range of product information in the search results, "
+                    "so try variants of the user question to get a wider range of products. "
+                    "  "
+                    "First evaluate whether the user is asking a broad question about products, "
+                    "or a specific question about a product. If the question is broad, you will "
+                    "use the category, lexical, and semantic search tools to find products that "
+                    "are similar to the user's query. If it seems that the user question is about "
+                    "product features or use, you will use the Q&A search tool to find questions "
+                    "users have asked about products. "
+                    "  "
+                    "In summarizing the search results include whether you approached the "
+                    "question as a broad product search or a specific product question. "
+                    "  "
+                    "When summarizing search results from any of the tools, if there are search "
+                    "results, but none of them are relevant to the user question, summarize the "
+                    "results, and include why none of them was relevant. ",
                 "prompt": "${parameters.question}"
             }
         },
@@ -161,43 +183,14 @@ def create_conversational_agent(
         "parameters": {
             "_llm_interface": "bedrock/converse/claude"
         },
-        "tools": 
-        [{
-            "type": "SearchIndexTool",
-            "name": "RetrieveShoppingData",
-            "description": "This tool provides item catalog information.",
-            "parameters": {
-                "input": "{\"index\": \"${parameters.index}\", \"query\": ${parameters.query} }",
-                "index": index_name,
-                "query": {
-                    "query": {
-                        "neural": {
-                            "chunk_embedding": {
-                                "query_text": "${parameters.question}",
-                                "model_id": embedding_model_id
-                            }
-                        }
-                    },
-                    "size": 5,
-                    "_source": "chunk"
-                }
-            },
-            "attributes": {
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        "question": {
-                            "type": "string",
-                            "description": "Natural language question"
-                        }
-                    },
-                    "required": [ "question" ],
-                    "additionalProperties": False
-                },
-                "strict": False
-            }
-        },
-        {"type": "ListIndexTool"}]
+        "tools": [
+            agent_tools.get_products_tool_semantic(index_name, embedding_model_id),  # Include the semantic search tool
+            agent_tools.get_products_tool_lexical(index_name),  # Include the lexical search tool
+            agent_tools.get_products_qna_lexical(index_name),   # Include the Q&A lexical search tool
+            agent_tools.get_categories_tool(index_name),        # Include the categories tool 
+            agent_tools.list_index_tool(),                      # Include the list index tool
+            agent_tools.index_mapping_tool(),                   # Include the index mapping tool
+        ]
     }
 
     logging.info(f"Creating conversational agent with config: {json.dumps(agent_config, indent=2)}")
@@ -230,12 +223,11 @@ def execute_agent_query(client, agent_id, query_body):
     Returns:
         dict: Agent response
     """
-    logging.info(
-        f"Executing query for agent {agent_id}: {json.dumps(query_body, indent=2)}"
-    )
+    logging.info(f"Executing query for agent {agent_id}: {query_body}")
     try:
         response = client.os_client.transport.perform_request(
-            "POST", f"/_plugins/_ml/agents/{agent_id}/_execute", body=query_body, timeout="60s"
+            "POST", f"/_plugins/_ml/agents/{agent_id}/_execute", 
+            body=query_body
         )
     except Exception as e:
         logging.error(f"Failed to execute agent query: {e}")
@@ -285,7 +277,7 @@ def main():
         sys.exit(1)
 
     host_type = "os"
-    model_type = "local"
+    model_host = "local"
     index_name = "conversational_agent_knowledge_base"
     embedding_type = "dense"
     ingest_pipeline_name = "agent-dense-ingest-pipeline"
@@ -323,7 +315,7 @@ def main():
     }
     embedding_ml_model = get_ml_model(
         host_type=host_type,
-        model_type=model_type,
+        model_host=model_host,
         model_config=model_config,
         os_client=client.os_client,
         ml_commons_client=client.ml_commons_client,

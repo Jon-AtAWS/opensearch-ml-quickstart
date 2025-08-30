@@ -174,7 +174,7 @@ def main():
     args = cmd_line_interface.get_command_line_args()
 
     host_type = "aos"
-    model_type = "sagemaker"
+    model_host = "sagemaker"
     embedding_type = "sparse"
     index_name = "amazon_pqa_qa_emebedding"
     ingest_pipeline_name = "sparse-ingest-pipeline"
@@ -206,15 +206,15 @@ def main():
     # Create embedding model for sparse search
     from connectors.helper import get_remote_connector_configs
     
-    model_name = f"{host_type}_{model_type}"
+    model_name = f"{host_type}_{model_host}"
     model_config = get_remote_connector_configs(
-        host_type=host_type, connector_type=model_type
+        host_type=host_type, connector_type=model_host
     )
     model_config["model_name"] = model_name
     model_config["embedding_type"] = embedding_type
     ml_model = get_ml_model(
         host_type=host_type,
-        model_type=model_type,
+        model_host=model_host,
         model_config=model_config,
         os_client=client.os_client,
         ml_commons_client=client.ml_commons_client,

@@ -157,8 +157,8 @@ class TestHandleDataLoading:
         
         # Assertions
         expected_calls = [
-            call(os_client=mock_client, pqa_reader=mock_reader, category="category1", config=config),
-            call(os_client=mock_client, pqa_reader=mock_reader, category="category2", config=config)
+            call(os_client=mock_client, pqa_reader=mock_reader, category="category1", config=config, enriched=True),
+            call(os_client=mock_client, pqa_reader=mock_reader, category="category2", config=config, enriched=True)
         ]
         mock_load_category.assert_has_calls(expected_calls)
 

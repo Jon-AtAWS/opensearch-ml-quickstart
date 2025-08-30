@@ -44,6 +44,7 @@ class TestGetClient:
             verify_certs=False,
             ssl_assert_hostname=False,
             ssl_show_warn=False,
+            timeout=300,
         )
         mock_check_version.assert_called_once_with(mock_client)
         
@@ -96,6 +97,7 @@ class TestGetClient:
             verify_certs=False,
             ssl_assert_hostname=False,
             ssl_show_warn=False,
+            timeout=300,
         )
         
         # Verify AOS-specific settings (no local model settings)

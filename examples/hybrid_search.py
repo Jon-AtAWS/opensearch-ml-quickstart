@@ -172,8 +172,8 @@ def main():
     args = cmd_line_interface.get_command_line_args()
     host_type = "aos"
     index_name = "hybrid_search"
-    dense_model_type = "sagemaker"
-    sparse_model_type = "sagemaker"
+    dense_model_host = "sagemaker"
+    sparse_model_host = "sagemaker"
     ingest_pipeline_name = "hybrid-ingest-pipeline"
     search_pipeline_name = "hybrid-search-pipeline"
 
@@ -193,30 +193,30 @@ def main():
         "bulk_send_chunk_size": args.bulk_send_chunk_size,
     }
 
-    dense_model_name = f"{host_type}_{dense_model_type}"
+    dense_model_name = f"{host_type}_{dense_model_host}"
     dense_model_config = get_remote_connector_configs(
-        host_type=host_type, connector_type=dense_model_type
+        host_type=host_type, connector_type=dense_model_host
     )
     dense_model_config["model_name"] = dense_model_name
     dense_model_config["embedding_type"] = "dense"
     dense_ml_model = get_ml_model(
         host_type=host_type,
-        model_type=dense_model_type,
+        model_host=dense_model_host,
         model_config=dense_model_config,
         os_client=client.os_client,
         ml_commons_client=client.ml_commons_client,
         model_group_id=client.ml_model_group.model_group_id(),
     )
 
-    sparse_model_name = f"{host_type}_{sparse_model_type}"
+    sparse_model_name = f"{host_type}_{sparse_model_host}"
     sparse_model_config = get_remote_connector_configs(
-        host_type=host_type, connector_type=dense_model_type
+        host_type=host_type, connector_type=sparse_model_host
     )
     sparse_model_config["model_name"] = sparse_model_name
     sparse_model_config["embedding_type"] = "sparse"
     sparse_ml_model = get_ml_model(
         host_type=host_type,
-        model_type=sparse_model_type,
+        model_host=sparse_model_host,
         model_config=sparse_model_config,
         os_client=client.os_client,
         ml_commons_client=client.ml_commons_client,

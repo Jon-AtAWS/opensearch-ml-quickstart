@@ -66,7 +66,7 @@ class TestGetMlModel:
         
         result = get_ml_model(
             host_type="os",
-            model_type="local",
+            model_host="local",
             model_group_id=self.model_group_id,
             model_config=model_config,
             os_client=self.mock_os_client,
@@ -95,7 +95,7 @@ class TestGetMlModel:
         
         result = get_ml_model(
             host_type="os",
-            model_type="local",
+            model_host="local",
             model_group_id=self.model_group_id,
             model_config=model_config,
             os_client=self.mock_os_client,
@@ -125,7 +125,7 @@ class TestGetMlModel:
         
         result = get_ml_model(
             host_type="os",
-            model_type="sagemaker",
+            model_host="sagemaker",
             model_group_id=self.model_group_id,
             model_config=model_config,
             os_client=self.mock_os_client,
@@ -167,7 +167,7 @@ class TestGetMlModel:
         
         result = get_ml_model(
             host_type="os",
-            model_type="bedrock",
+            model_host="bedrock",
             model_group_id=self.model_group_id,
             model_config=model_config,
             os_client=self.mock_os_client,
@@ -217,7 +217,7 @@ class TestGetMlModel:
         
         result = get_ml_model(
             host_type="aos",
-            model_type="sagemaker",
+            model_host="sagemaker",
             model_group_id=self.model_group_id,
             model_config=model_config,
             os_client=self.mock_os_client,
@@ -267,7 +267,7 @@ class TestGetMlModel:
         
         result = get_ml_model(
             host_type="aos",
-            model_type="bedrock",
+            model_host="bedrock",
             model_group_id=self.model_group_id,
             model_config=model_config,
             os_client=self.mock_os_client,
@@ -293,10 +293,10 @@ class TestGetMlModel:
         """Test get_ml_model with unsupported combination"""
         model_config = self.base_model_config.copy()
         
-        with pytest.raises(ValueError, match="Unsupported combination: host_type='invalid', model_type='bedrock'"):
+        with pytest.raises(ValueError, match="Unsupported combination: host_type='invalid', model_host='bedrock'"):
             get_ml_model(
                 host_type="invalid",
-                model_type="bedrock",
+                model_host="bedrock",
                 model_group_id=self.model_group_id,
                 model_config=model_config,
                 os_client=self.mock_os_client,
@@ -317,7 +317,7 @@ class TestGetMlModel:
                 
                 get_ml_model(
                     host_type="os",
-                    model_type="bedrock",
+                    model_host="bedrock",
                     model_group_id=self.model_group_id,
                     model_config=model_config,
                     os_client=self.mock_os_client,
@@ -341,7 +341,7 @@ class TestGetMlModel:
             ("aos", "sagemaker", "sparse", "aos_sagemaker_sparse"),
         ]
         
-        for host_type, model_type, embedding_type, expected_name in test_cases:
+        for host_type, model_host, embedding_type, expected_name in test_cases:
             mock_embedding_connector_class.reset_mock()
             mock_remote_ml_model_class.reset_mock()
             
@@ -362,7 +362,7 @@ class TestGetMlModel:
                     
                     get_ml_model(
                         host_type=host_type,
-                        model_type=model_type,
+                        model_host=model_host,
                         model_group_id=self.model_group_id,
                         model_config=model_config,
                         os_client=self.mock_os_client,
@@ -371,7 +371,7 @@ class TestGetMlModel:
             else:
                 get_ml_model(
                     host_type=host_type,
-                    model_type=model_type,
+                    model_host=model_host,
                     model_group_id=self.model_group_id,
                     model_config=model_config,
                     os_client=self.mock_os_client,
@@ -400,7 +400,7 @@ class TestGetMlModel:
             
             get_ml_model(
                 host_type="os",
-                model_type="local",
+                model_host="local",
                 model_group_id=self.model_group_id,
                 model_config=custom_config,
                 os_client=self.mock_os_client,
@@ -427,7 +427,7 @@ class TestGetMlModel:
             with patch('models.helper.RemoteMlModel'):
                 get_ml_model(
                     host_type="aos",
-                    model_type="bedrock",
+                    model_host="bedrock",
                     model_group_id=self.model_group_id,
                     model_config=self.base_model_config,
                     os_client=self.mock_os_client,
@@ -448,7 +448,7 @@ class TestGetMlModel:
             
             result = get_ml_model(
                 host_type="os",
-                model_type="local",
+                model_host="local",
                 model_group_id=self.model_group_id,
                 model_config={},  # Empty config should work
                 os_client=self.mock_os_client,
@@ -492,7 +492,7 @@ class TestGetMlModel:
                                 # Should not raise exception
                                 get_ml_model(
                                     host_type=host_type,
-                                    model_type=model_type,
+                                    model_host=model_type,
                                     model_group_id=self.model_group_id,
                                     model_config=self.base_model_config,
                                     os_client=self.mock_os_client,
@@ -502,7 +502,7 @@ class TestGetMlModel:
                             # Should not raise exception
                             get_ml_model(
                                 host_type=host_type,
-                                model_type=model_type,
+                                model_host=model_type,
                                 model_group_id=self.model_group_id,
                                 model_config=self.base_model_config,
                                 os_client=self.mock_os_client,
@@ -512,7 +512,7 @@ class TestGetMlModel:
                     # Local model case
                     get_ml_model(
                         host_type=host_type,
-                        model_type=model_type,
+                        model_host=model_type,
                         model_group_id=self.model_group_id,
                         model_config=self.base_model_config,
                         os_client=self.mock_os_client,

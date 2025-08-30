@@ -26,7 +26,7 @@ def get_ml_model_group(os_client, ml_commons_client) -> MlModelGroup:
 
 def get_ml_model(
     host_type,
-    model_type,
+    model_host,
     model_group_id,
     model_config: Dict[str, str],
     os_client: OpenSearch,
@@ -35,11 +35,11 @@ def get_ml_model(
     model_name = model_config.get("model_name", None)
     embedding_type = model_config.get("embedding_type", "dense")
 
-    if model_type != "local":
-        model_name = f"{host_type}_{model_type}_{embedding_type}"
-        connector_name = f"{host_type}_{model_type}_{embedding_type}"
+    if model_host != "local":
+        model_name = f"{host_type}_{model_host}_{embedding_type}"
+        connector_name = f"{host_type}_{model_host}_{embedding_type}"
 
-    if model_type == "local":
+    if model_host == "local":
         return LocalMlModel(
             os_client=os_client,
             ml_commons_client=ml_commons_client,
@@ -47,7 +47,7 @@ def get_ml_model(
             model_name=model_name,
             model_configs=model_config,
         )
-    elif model_type == "sagemaker" and host_type == "os":
+    elif model_host == "sagemaker" and host_type == "os":
         # Use the new universal EmbeddingConnector for OS SageMaker
         ml_connector = EmbeddingConnector(
             os_client=os_client,
@@ -56,7 +56,7 @@ def get_ml_model(
             connector_name=connector_name,
             connector_configs=model_config,
         )
-    elif model_type == "bedrock" and host_type == "os":
+    elif model_host == "bedrock" and host_type == "os":
         # Use the new universal EmbeddingConnector for OS Bedrock
         ml_connector = EmbeddingConnector(
             os_client=os_client,
@@ -65,7 +65,7 @@ def get_ml_model(
             connector_name=connector_name,
             connector_configs=model_config,
         )
-    elif model_type == "sagemaker" and host_type == "aos":
+    elif model_host == "sagemaker" and host_type == "aos":
         # Use the new universal EmbeddingConnector for AOS SageMaker
         aos_config = get_opensearch_config("aos")
         ml_connector = EmbeddingConnector(
@@ -81,7 +81,7 @@ def get_ml_model(
             connector_name=connector_name,
             connector_configs=model_config,
         )
-    elif model_type == "bedrock" and host_type == "aos":
+    elif model_host == "bedrock" and host_type == "aos":
         # Use the new universal EmbeddingConnector for AOS Bedrock
         aos_config = get_opensearch_config("aos")
         ml_connector = EmbeddingConnector(
@@ -98,7 +98,7 @@ def get_ml_model(
             connector_configs=model_config,
         )
     else:
-        raise ValueError(f"Unsupported combination: host_type='{host_type}', model_type='{model_type}'")
+        raise ValueError(f"Unsupported combination: host_type='{host_type}', model_host='{model_host}'")
     
     return RemoteMlModel(
         os_client=os_client,

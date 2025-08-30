@@ -298,7 +298,7 @@ def main():
 
     # Configuration
     host_type = "aos"  # Amazon OpenSearch Service
-    model_type = "sagemaker"  # Use SageMaker for embeddings
+    model_host = "bedrock"   # Using Bedrock for ML model hosting
     index_name = "workflow_dense"  # Required index name
     embedding_type = "dense"
     pipeline_name = "workflow-dense-pipeline"
@@ -325,9 +325,9 @@ def main():
     }
 
     # Set up ML model using existing MLModel classes
-    model_name = f"{host_type}_{model_type}"
+    model_name = f"{host_type}_{model_host}"
     model_config = get_remote_connector_configs(
-        host_type=host_type, connector_type=model_type
+        host_type=host_type, connector_type=model_host
     )
     model_config["model_name"] = model_name
     model_config["embedding_type"] = embedding_type
@@ -336,7 +336,7 @@ def main():
     logging.info("Initializing ML model...")
     ml_model = get_ml_model(
         host_type=host_type,
-        model_type=model_type,
+        model_host=model_host,
         model_config=model_config,
         os_client=client.os_client,
         ml_commons_client=client.ml_commons_client,

@@ -1,6 +1,6 @@
 {
     "name": "Bedrock Claude3.7 connector",
-    "description": "test connector",
+    "description": "Bedrock Claude3.7 connector",
     "version": 1,
     "protocol": "aws_sigv4",
     "parameters": {
