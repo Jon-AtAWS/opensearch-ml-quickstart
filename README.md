@@ -10,6 +10,257 @@ At its core, the toolkit provides three main abstraction layers that simplify co
 
 The examples demonstrate practical implementations of these abstractions, ranging from basic semantic search to advanced agentic workflows. Each example is designed to be both educational and production-ready, showing how to combine the toolkit's components to solve real-world search challenges. The workflow examples demonstrate automated setup processes, while the agent examples showcase cutting-edge AI capabilities that can reason about complex queries and execute multi-step search strategies.
 
+## 📋 Prerequisites
+
+Before getting started with the OpenSearch ML Quickstart, you'll need to ensure your environment meets certain requirements and that you have access to the necessary data and services. The toolkit is designed to work in various deployment scenarios, from local development to production environments.
+
+### System Requirements
+
+**Python 3.10 or later**. The system has been tested through 3.13. See the [Python downloads page](https://www.python.org/downloads/) for instructions.  
+
+
+### The Amazon PQA Dataset
+
+The toolkit uses the Amazon Product Question and Answers (PQA) dataset as its primary demonstration corpus, providing a rich collection of real-world product questions and answers that showcase the various search capabilities effectively. This dataset contains over 3 million questions and answers across multiple product categories, making it ideal for testing semantic search, conversational AI, and other advanced search features.
+
+Each document in the dataset represents a product with associated questions and answers from real customers. A typical source document contains structured information including the product's ASIN (Amazon Standard Identification Number), category, brand name, item description, and multiple question-answer pairs with metadata about the respondents. For example, a gaming product might include questions about compatibility, performance specifications, and user experiences, along with detailed answers from verified purchasers.
+
+The QandAFileReader class provides sophisticated data processing capabilities that go beyond simple file parsing. It enriches the raw dataset by creating searchable text chunks that combine product information with question-answer pairs, generating embeddings-ready content that preserves the semantic relationships between products and their associated discussions. The reader handles multiple product categories simultaneously, supports filtering by document count for testing purposes, and creates structured documents that work seamlessly with the toolkit's indexing and search capabilities. This enrichment process transforms the raw product data into a format optimized for vector search, ensuring that semantic queries can effectively match user intent with relevant product information and community knowledge.
+
+You can find the data set in the [AWS Open Data Registry](https://registry.opendata.aws/amazon-pqa/) 
+
+`cd <path/to/your/opensearch-ml-quickstart>/datasets`  
+`aws s3 cp --no-sign-request s3://amazon-pqa/amazon-pqa.tar.gz .`  
+`tar -xf amazon-pqa.tar.gz`  
+
+### Set up Model Access
+
+If you plan to use Amazon Bedrock either for embedding models or for LLM models, you'll need to enable model access for your account. The Bedrock documentation has instructions for [getting started with Bedrock and enabling model access](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html)
+
+## Setup
+
+Getting started with OpenSearch ML Quickstart requires setting up your development environment, configuring your deployment preferences, and understanding the authentication mechanisms. 
+
+### Create your environment
+
+Begin by cloning the repository and setting up a Python virtual environment to isolate dependencies. 
+
+`python -m venv .venv`  
+`source .venv/bin/activate` (or `.venv\Scripts\activate` on Windows)  
+`pip install -r requirements.txt`  
+
+### Set up OpenSearch
+
+You'll also need **OpenSearch 2.19.0 or later** (tested through 3.2) to ensure compatibility with the ML Commons plugin features used throughout the examples. The agentic examples require **OpenSearch 3.2**. For local development, Docker Desktop is provides the easiest way to run a complete OpenSearch cluster with all necessary plugins pre-configured.
+
+Download and install [Docker Desktop](https://docs.docker.com/desktop/) if that's your preferred method. You can find a Docker Compose file in the opensearch-ml-quickstart folder. OpenSearch requires an `OPENSEARCH_INITIAL_ADMIN_PASSWORD` set as an environment variable before you start the system. You use this password with the `admin` user to bootstrap and use the system. Best practice is to create a new user and password once you've logged in for the first time. Execute these commands
+
+`cd <path/to/your/opensearch-ml-quickstart>`  
+`export OPENSEARCH_INITIAL_ADMIN_PASSWORD=ExamplePassword`  
+`docker compose up`  
+
+For Amazon OpenSearch Service, create a new domain in the AWS Management Console. See the [Getting Started Guide](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/gsg.html) for instructions. The quickstart will work with a single-node deployment (m7g.large), though we recommend two nodes to avoid a yellow cluster. Ensure that you enable fine-grained access control and set up an admin user with a secure password. Note the domain endpoint URL, as you'll need it for configuration.
+
+## Configure the system
+
+Use your favorite text editor to open `opensearch-ml-quickstart/configs/osmlqs.yaml`. 
+
+* If plan to run with Amazon OpenSearch Service, set your `AOS_DOMAIN_NAME`, `AOS_HOST_URL`, and `AOS_PORT`.
+* Set your `OPENSEARCH_ADMIN_USER`, and `OPENSEARCH_ADMIN_PASSWORD`.
+* Set your `AWS_REGION`, `AWS_USER_NAME`, `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY` if you are using AWS (for OpenSearch Service, Bedrock, or SageMaker, e.g.)
+* Set the 2 role names for Bedrock, and 2 for SageMaker. The quickstart creates AWS Identity and Access Management (IAM) roles as part of the model deployment when you are using Bedrock or SageMaker. The `_CONNECTOR_ROLE` roles enable the code to connect to Bedrock or SageMaker. The `_CREATE_CONNECTOR_ROLE` roles enable the code to create connectors in OpenSearch Service.
+
+The rest of the config file lets you set up your model parameters. Set values in the sections that you plan to use.
+
+* For local embedding models, see the documentation for `the supported model names, versions, and parameters`.
+* For using SageMaker sparse models with OpenSearch Service, OpenSearch Service provides [CloudFormation integrations](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/cfn-template.html) that make deploying sparse models one-click. If you use one of these integrations, change the values of `SPARSE/DENSE ARN` and `SPARSE/DENSE URL` to the SageMaker endpoints.
+
+**Environment variable support** provides enhanced security by allowing sensitive configuration values to be stored outside of configuration files. The configuration system automatically detects environment variables and `.env` files, enabling you to override specific settings for different environments while keeping credentials secure. 
+
+## 🚀 Usage Examples
+
+The OpenSearch ML Quickstart provides flexible deployment options to accommodate different development and production scenarios. Whether you're experimenting locally or deploying to production, the examples demonstrate how to leverage the toolkit's capabilities effectively.
+
+The scripts in the `opensearch-ml-quickstart/examples` folder follow a similar command-line pattern.  
+
+* You control the OpenSearch deployment type with the `-o, --opensearch-type` parameter, `os` for self-managed and local deployments, `aos` for Amazon OpenSearch Service.  
+* You can specify one or many `-c, --categories` of PQA data you want to load, as well as the `-n, --number-of-documents` to load from each of those categories.  
+* The data set is large! We recommend getting started with just one category, like `jeans`, and a small document set of 100. Once you confirm that data is loading properly and the examples are working, you can load the full data set by removing these command-line options.
+* Each example creates its own index, and the quickstart reuses these indices on subsequent runs (default). You can force the examples to delete and reload the data with the  `-d, --delete-existing-index` flags, or specify `--no-load`.
+* By default, the examples use an interactive loop for you to send queries, and see results. If you want to run non-interactive, you can specify a `-q, --question` on the command line and the script will execute once.
+
+Summary of command-line parameters.
+
+```
+options:
+  -h, --help            show this help message and exit
+  -d, --delete-existing-index
+                        Delete the index if it already exists
+  -c CATEGORIES [CATEGORIES ...], --categories CATEGORIES [CATEGORIES ...]
+                        List of categories to load into the index
+  -s BULK_SEND_CHUNK_SIZE, --bulk-send-chunk-size BULK_SEND_CHUNK_SIZE
+                        Chunk size for bulk sending documents to OpenSearch
+  -n NUMBER_OF_DOCS_PER_CATEGORY, --number-of-docs-per-category NUMBER_OF_DOCS_PER_CATEGORY
+                        Number of documents to load per category
+  -o {os,aos}, --opensearch-type {os,aos}
+                        Type of OpenSearch instance to connect to: local=os or remote=aos
+  --no-load             Skip loading data into the index
+  -q QUESTION, --question QUESTION
+                        Execute search with this question and exit (instead of interactive
+                        loop)
+```
+
+### Command-line Examples
+
+Run dense vector search with specific data categories and document limits  
+
+```
+python examples/dense_exact_search.py \
+  --host-type os \
+  --categories "electronics,books" \
+  -n 500
+```
+
+Run hybrid search with index recreation for clean testing environment  
+
+```
+python examples/hybrid_search.py \
+  --host-type os \
+  --categories "technology" \
+  --delete-existing-index
+```
+
+### Automated Workflow Setup
+
+The toolkit includes workflow automation examples that demonstrate how to streamline the setup process for search applications. These workflows handle the complex orchestration of index creation, model deployment, pipeline configuration, and data loading:
+
+```bash
+# Use built-in workflow templates for standardized deployments
+python examples/workflow_with_template.py \
+  --host-type aos \
+  --categories "electronics"
+
+# Use custom workflow for specialized deployment requirements
+python examples/workflow_example.py \
+  --host-type os \
+  --categories "books,technology"
+```
+
+## ML Models and Connectors
+
+The OpenSearch ML Quickstart distinguishes between two primary types of machine learning models, each serving different purposes in the search pipeline. Embedding models transform text into vector representations that capture semantic meaning, enabling similarity-based search operations. These models can produce either dense vectors, which are compact numerical representations suitable for semantic similarity, or sparse vectors, which maintain interpretability while capturing semantic relationships. Large Language Models (LLMs) generate human-like text responses and can engage in conversational interactions, making them essential for conversational search and agentic workflows.
+
+For LLM models, the toolkit supports two distinct connector strategies that correspond to different Amazon Bedrock API approaches. The predict strategy uses Bedrock's traditional invoke API with the legacy message format, providing compatibility with older implementations and specific use cases that require the original API structure. The converse strategy leverages Bedrock's newer converse API, which offers a more standardized interface for conversational interactions and improved support for multi-turn conversations and tool usage. The converse API is recommended for new implementations, particularly for agentic workflows and complex conversational scenarios, while the predict API remains available for backward compatibility and specific integration requirements.
+
+Connector setup varies significantly based on your deployment architecture and model hosting preferences. For self-managed OpenSearch deployments, connectors can integrate with local models deployed within the cluster or remote models hosted on external services. The connector configuration includes authentication credentials, endpoint URLs, and request/response formatting specifications. Amazon OpenSearch Service deployments require additional IAM role configuration, where the toolkit automatically creates connector roles with appropriate permissions to invoke external services like Bedrock or SageMaker.
+
+Model deployment follows a structured process that begins with connector creation and registration. For remote models, the system first establishes the connector with the external service, validates connectivity and authentication, then registers the model within OpenSearch's ML Commons framework. Local model deployment involves uploading model artifacts to the cluster, allocating computational resources, and configuring the model for inference. The toolkit abstracts these complexities through the MLModel classes, which handle the orchestration of connector setup, model registration, and deployment verification.
+
+The deployment process includes automatic validation of model compatibility, resource allocation, and performance optimization. For embedding models, the system configures appropriate vector dimensions and indexing parameters. For LLMs, it establishes conversation memory management and response formatting. The toolkit monitors deployment status and provides detailed feedback on any configuration issues, ensuring that models are properly integrated and ready for use in search applications.
+
+## 🔧 Advanced Configuration
+
+The OpenSearch ML Quickstart provides extensive customization options for developers who need to adapt the toolkit to specific requirements or integrate with existing systems.
+
+### Custom Model Integration
+
+The model factory system makes it straightforward to integrate custom models or modify existing model configurations. This example shows how to programmatically create and deploy a model instance:
+
+```python
+from models.helper import get_ml_model
+from configs import get_model_config
+
+# Get configuration for your model
+model_config = get_model_config("aos", "bedrock", "embedding")
+
+# Create model instance
+model = get_ml_model(
+    host_type="aos",
+    model_type="bedrock", 
+    model_config=model_config,
+    os_client=os_client,
+    ml_commons_client=ml_commons_client,
+    model_group_id=model_group_id
+)
+
+# Deploy and use
+model.deploy()
+model_id = model.model_id()
+```
+
+This approach allows you to create models dynamically based on runtime conditions, user preferences, or configuration changes without modifying the core toolkit code.
+
+### Custom Search Implementation
+
+For applications that need specialized search behavior, you can implement custom query builders while still leveraging the toolkit's infrastructure and user interface components:
+
+```python
+from client.helper import get_client
+from client.os_ml_client_wrapper import OsMlClientWrapper
+
+def custom_search_query(query_text, model_id):
+    return {
+        "query": {
+            "neural": {
+                "chunk_vector": {
+                    "query_text": query_text,
+                    "model_id": model_id,
+                    "k": 10
+                }
+            }
+        }
+    }
+
+# Use with the CLI framework
+from examples.cmd_line_interface import interactive_search_loop
+
+interactive_search_loop(
+    client=os_client,
+    index_name="my_index",
+    model_info="Custom Model",
+    query_builder_func=lambda q: custom_search_query(q, model_id)
+)
+```
+
+This pattern allows you to implement domain-specific search logic while maintaining compatibility with the toolkit's command-line interface and user interaction patterns.
+
+### Workflow Templates
+
+For organizations that need to standardize deployment processes, the toolkit supports custom workflow templates that define repeatable setup procedures:
+
+```python
+from configs import get_opensearch_config, get_model_config
+
+# Define custom workflow template
+workflow_template = {
+    "name": "custom-search-workflow",
+    "description": "Custom search setup workflow",
+    "use_case": "SEMANTIC_SEARCH",
+    "version": {
+        "template": "1.0.0",
+        "compatibility": ["2.12.0", "3.0.0"]
+    },
+    "workflows": {
+        "provision": {
+            "nodes": [
+                {
+                    "id": "create_index",
+                    "type": "create_index_step",
+                    "user_inputs": {
+                        "index_name": "custom_index",
+                        "settings": {"number_of_shards": 2}
+                    }
+                }
+            ]
+        }
+    }
+}
+```
+
+Custom workflow templates enable teams to codify best practices and ensure consistent deployments across different environments and team members.
+
+**Client Tests** validate the OpenSearch client wrappers and utilities, ensuring that the high-level abstractions correctly translate to appropriate OpenSearch API calls and handle error conditions gracefully.
+
 ## 🚀 Features
 
 OpenSearch ML Quickstart offers a rich set of capabilities designed to address different search scenarios and requirements. The toolkit is built around the principle of providing multiple search approaches that can be used independently or combined for optimal results.
@@ -317,235 +568,6 @@ python examples/agentic_search.py --host-type os --categories "research" --max-d
 
 The command-line interface supports several common options that work across all examples. The `--host-type` parameter specifies whether you're using self-managed OpenSearch (`os`) or Amazon OpenSearch Service (`aos`). The `--categories` option allows you to specify which data categories to load from the Amazon PQA dataset. The `--max-docs` parameter limits the number of documents loaded per category, useful for testing or resource-constrained environments. The `--delete-existing-index` flag forces deletion of existing indices, ensuring a clean setup for testing. The `--no-load` option skips data loading entirely, useful when working with pre-existing indices.
 
-## 📋 Prerequisites
-
-Before getting started with the OpenSearch ML Quickstart, you'll need to ensure your environment meets certain requirements and that you have access to the necessary data and services. The toolkit is designed to work in various deployment scenarios, from local development to production environments.
-
-### System Requirements
-
-The toolkit requires **Python 3.10 or later** due to its dependency on pandas 2.0.3, which introduced important performance improvements and API changes that the data processing components rely on. You'll also need **OpenSearch 2.13.0 or later** (tested through 2.16.0) to ensure compatibility with the ML Commons plugin features used throughout the examples. For local development, **Docker Desktop** is essential as it provides the easiest way to run a complete OpenSearch cluster with all necessary plugins pre-configured.
-
-### Data Requirements
-
-The examples in this toolkit use the **Amazon Product Question Answering (PQA) Dataset**, which provides a rich corpus of product-related questions and answers across multiple categories. This dataset is particularly well-suited for demonstrating search capabilities because it contains natural language queries with corresponding answers and contextual information. You'll need to download this dataset from the [AWS Open Data Registry](https://registry.opendata.aws/amazon-pqa/) and extract it to the `datasets/amazon_pqa/` directory in your project root.
-
-### Deployment Options
-
-The toolkit supports two primary deployment approaches, each with its own advantages and considerations:
-
-**Self-managed OpenSearch Cluster** deployments give you complete control over your search infrastructure. This approach works well for local development using Docker Compose, custom cluster deployments in your own infrastructure, or when you need specific cluster configurations. The key advantage is that self-managed clusters support both local models (deployed within the cluster) and remote models (hosted on external services), providing maximum flexibility in your model hosting strategy.
-
-**Amazon OpenSearch Service** offers a fully managed experience where AWS handles cluster provisioning, scaling, security, and maintenance. This approach requires configuring public access to your domain and setting up fine-grained access control with a master user. While this deployment option is limited to remote models (Amazon Bedrock or SageMaker endpoints), it significantly reduces operational overhead and provides enterprise-grade reliability.
-
-### Model Hosting Requirements
-
-The choice of model hosting approach depends on your deployment strategy and performance requirements:
-
-**Local Models** can only be used with self-managed OpenSearch clusters and require sufficient cluster resources to host the models. The toolkit supports both Hugging Face transformers and ONNX models, allowing you to choose between ease of use and optimized performance. Local models provide the lowest latency and eliminate external dependencies, but require careful resource planning.
-
-**Remote Models** work with both deployment options and leverage external services for model hosting. **Amazon Bedrock** provides access to foundation models like Titan and Claude without requiring you to manage model infrastructure, offering automatic scaling and enterprise-grade reliability. **Amazon SageMaker** enables the use of custom model endpoints, allowing you to deploy specialized models while benefiting from SageMaker's managed infrastructure. Both remote model options require proper **AWS IAM permissions** to access the respective services.
-
-## Setup
-
-Getting started with OpenSearch ML Quickstart requires setting up your development environment, configuring your deployment preferences, and understanding the authentication mechanisms. The toolkit is designed to work seamlessly across different deployment scenarios while providing clear guidance for each approach.
-
-Begin by cloning the repository and setting up a Python virtual environment to isolate dependencies. Create a virtual environment using `python -m venv .venv`, activate it with `source .venv/bin/activate` (or `.venv\Scripts\activate` on Windows), and install the required packages with `pip install -r requirements.txt`. This ensures that the project's dependencies don't conflict with other Python projects on your system.
-
-The configuration manager serves as the central nervous system of the toolkit, handling the complexity of different deployment scenarios through a sophisticated parameter system. The primary configuration file `configs/osmlqs.yaml` uses a flat structure with descriptive variable names that are processed into type-safe, structured configuration objects. Key parameters include OpenSearch connection settings such as `OS_HOST_URL` and `OS_PORT` for self-managed deployments, or `AOS_DOMAIN_NAME` and `AOS_HOST_URL` for Amazon OpenSearch Service. Authentication parameters vary by deployment type, with `OPENSEARCH_ADMIN_USER` and `OPENSEARCH_ADMIN_PASSWORD` for basic HTTP authentication in self-managed environments, while Amazon OpenSearch Service relies on AWS IAM roles and policies.
-
-Model hosting configuration parameters adapt to your chosen infrastructure. For Amazon Bedrock integration, parameters like `BEDROCK_EMBEDDING_URL` and `BEDROCK_LLM_MODEL_NAME` specify the model endpoints and identifiers. SageMaker deployments use parameters such as `SAGEMAKER_DENSE_ARN` and `SAGEMAKER_SPARSE_ARN` to reference specific model endpoints. The configuration system automatically validates parameter combinations and provides clear error messages when incompatible settings are detected.
-
-Authentication mechanisms differ significantly between deployment types and directly impact the roles and permissions required. Self-managed OpenSearch deployments typically use HTTP basic authentication with an admin user, allowing the toolkit to create the necessary ML model groups and deploy models directly. Amazon OpenSearch Service deployments require more sophisticated IAM-based authentication, where the toolkit creates specific IAM roles during model deployment. These roles include a connector role that allows OpenSearch to invoke external services like Bedrock or SageMaker, and a backend role that manages the actual model execution. The toolkit automatically handles role creation and policy attachment, but requires that your AWS credentials have sufficient permissions to create and manage IAM resources.
-
-Environment variable support provides enhanced security by allowing sensitive configuration values to be stored outside of configuration files. The configuration system automatically detects environment variables and `.env` files, enabling you to override specific settings for different environments while keeping credentials secure. This approach is particularly valuable in production deployments where configuration management and secret handling follow strict security protocols.
-
-## Amazon PQA Dataset
-
-The toolkit uses the Amazon Product Question Answering (PQA) dataset as its primary demonstration corpus, providing a rich collection of real-world product questions and answers that showcase the various search capabilities effectively. This dataset contains over 3 million questions and answers across multiple product categories, making it ideal for testing semantic search, conversational AI, and other advanced search features.
-
-Each document in the dataset represents a product with associated questions and answers from real customers. A typical source document contains structured information including the product's ASIN (Amazon Standard Identification Number), category, brand name, item description, and multiple question-answer pairs with metadata about the respondents. For example, a gaming product might include questions about compatibility, performance specifications, and user experiences, along with detailed answers from verified purchasers.
-
-The QandAFileReader class provides sophisticated data processing capabilities that go beyond simple file parsing. It enriches the raw dataset by creating searchable text chunks that combine product information with question-answer pairs, generating embeddings-ready content that preserves the semantic relationships between products and their associated discussions. The reader handles multiple product categories simultaneously, supports filtering by document count for testing purposes, and creates structured documents that work seamlessly with the toolkit's indexing and search capabilities. This enrichment process transforms the raw product data into a format optimized for vector search, ensuring that semantic queries can effectively match user intent with relevant product information and community knowledge.
-
-## 🚀 Usage Examples
-
-The OpenSearch ML Quickstart provides flexible deployment options to accommodate different development and production scenarios. Whether you're experimenting locally or deploying to production, the examples demonstrate how to leverage the toolkit's capabilities effectively.
-
-### Local Development with Self-managed OpenSearch
-
-For local development and testing, you can quickly spin up a complete OpenSearch environment using Docker. This approach provides full control over your cluster configuration and supports all model hosting options:
-
-```bash
-# Start local OpenSearch cluster with all necessary plugins
-docker-compose up -d
-
-# Run dense vector search with specific data categories and document limits
-python examples/dense_exact_search.py \
-  --host-type os \
-  --categories "electronics,books" \
-  --max-docs 500
-
-# Run hybrid search with index recreation for clean testing environment
-python examples/hybrid_search.py \
-  --host-type os \
-  --categories "technology" \
-  --delete-existing-index
-```
-
-The local development setup is ideal for prototyping, testing different search approaches, and understanding how the various components work together before moving to production deployments.
-
-### Production with Amazon OpenSearch Service
-
-For production deployments, Amazon OpenSearch Service provides a managed solution that handles scaling, security, and maintenance automatically. This approach is particularly well-suited for applications that need enterprise-grade reliability:
-
-```bash
-# Run conversational search with extended document corpus for comprehensive testing
-python examples/conversational_search.py \
-  --host-type aos \
-  --categories "research,technology" \
-  --max-docs 1000
-
-# Run agentic search with large dataset for complex reasoning scenarios
-python examples/agentic_search.py \
-  --host-type aos \
-  --categories "science,technology" \
-  --max-docs 2000
-```
-
-The production examples demonstrate how to work with larger datasets and more sophisticated search patterns that are typical in real-world applications.
-
-### Automated Workflow Setup
-
-The toolkit includes workflow automation examples that demonstrate how to streamline the setup process for search applications. These workflows handle the complex orchestration of index creation, model deployment, pipeline configuration, and data loading:
-
-```bash
-# Use built-in workflow templates for standardized deployments
-python examples/workflow_with_template.py \
-  --host-type aos \
-  --categories "electronics"
-
-# Use custom workflow for specialized deployment requirements
-python examples/workflow_example.py \
-  --host-type os \
-  --categories "books,technology"
-```
-
-The workflow examples are particularly valuable for production deployments where you need consistent, repeatable setup processes that can be automated and version-controlled.
-
-## ML Models and Connectors
-
-The OpenSearch ML Quickstart distinguishes between two primary types of machine learning models, each serving different purposes in the search pipeline. Embedding models transform text into vector representations that capture semantic meaning, enabling similarity-based search operations. These models can produce either dense vectors, which are compact numerical representations suitable for semantic similarity, or sparse vectors, which maintain interpretability while capturing semantic relationships. Large Language Models (LLMs) generate human-like text responses and can engage in conversational interactions, making them essential for conversational search and agentic workflows.
-
-For LLM models, the toolkit supports two distinct connector strategies that correspond to different Amazon Bedrock API approaches. The predict strategy uses Bedrock's traditional invoke API with the legacy message format, providing compatibility with older implementations and specific use cases that require the original API structure. The converse strategy leverages Bedrock's newer converse API, which offers a more standardized interface for conversational interactions and improved support for multi-turn conversations and tool usage. The converse API is recommended for new implementations, particularly for agentic workflows and complex conversational scenarios, while the predict API remains available for backward compatibility and specific integration requirements.
-
-Connector setup varies significantly based on your deployment architecture and model hosting preferences. For self-managed OpenSearch deployments, connectors can integrate with local models deployed within the cluster or remote models hosted on external services. The connector configuration includes authentication credentials, endpoint URLs, and request/response formatting specifications. Amazon OpenSearch Service deployments require additional IAM role configuration, where the toolkit automatically creates connector roles with appropriate permissions to invoke external services like Bedrock or SageMaker.
-
-Model deployment follows a structured process that begins with connector creation and registration. For remote models, the system first establishes the connector with the external service, validates connectivity and authentication, then registers the model within OpenSearch's ML Commons framework. Local model deployment involves uploading model artifacts to the cluster, allocating computational resources, and configuring the model for inference. The toolkit abstracts these complexities through the MLModel classes, which handle the orchestration of connector setup, model registration, and deployment verification.
-
-The deployment process includes automatic validation of model compatibility, resource allocation, and performance optimization. For embedding models, the system configures appropriate vector dimensions and indexing parameters. For LLMs, it establishes conversation memory management and response formatting. The toolkit monitors deployment status and provides detailed feedback on any configuration issues, ensuring that models are properly integrated and ready for use in search applications.
-
-## 🔧 Advanced Configuration
-
-The OpenSearch ML Quickstart provides extensive customization options for developers who need to adapt the toolkit to specific requirements or integrate with existing systems.
-
-### Custom Model Integration
-
-The model factory system makes it straightforward to integrate custom models or modify existing model configurations. This example shows how to programmatically create and deploy a model instance:
-
-```python
-from models.helper import get_ml_model
-from configs import get_model_config
-
-# Get configuration for your model
-model_config = get_model_config("aos", "bedrock", "embedding")
-
-# Create model instance
-model = get_ml_model(
-    host_type="aos",
-    model_type="bedrock", 
-    model_config=model_config,
-    os_client=os_client,
-    ml_commons_client=ml_commons_client,
-    model_group_id=model_group_id
-)
-
-# Deploy and use
-model.deploy()
-model_id = model.model_id()
-```
-
-This approach allows you to create models dynamically based on runtime conditions, user preferences, or configuration changes without modifying the core toolkit code.
-
-### Custom Search Implementation
-
-For applications that need specialized search behavior, you can implement custom query builders while still leveraging the toolkit's infrastructure and user interface components:
-
-```python
-from client.helper import get_client
-from client.os_ml_client_wrapper import OsMlClientWrapper
-
-def custom_search_query(query_text, model_id):
-    return {
-        "query": {
-            "neural": {
-                "chunk_vector": {
-                    "query_text": query_text,
-                    "model_id": model_id,
-                    "k": 10
-                }
-            }
-        }
-    }
-
-# Use with the CLI framework
-from examples.cmd_line_interface import interactive_search_loop
-
-interactive_search_loop(
-    client=os_client,
-    index_name="my_index",
-    model_info="Custom Model",
-    query_builder_func=lambda q: custom_search_query(q, model_id)
-)
-```
-
-This pattern allows you to implement domain-specific search logic while maintaining compatibility with the toolkit's command-line interface and user interaction patterns.
-
-### Workflow Templates
-
-For organizations that need to standardize deployment processes, the toolkit supports custom workflow templates that define repeatable setup procedures:
-
-```python
-from configs import get_opensearch_config, get_model_config
-
-# Define custom workflow template
-workflow_template = {
-    "name": "custom-search-workflow",
-    "description": "Custom search setup workflow",
-    "use_case": "SEMANTIC_SEARCH",
-    "version": {
-        "template": "1.0.0",
-        "compatibility": ["2.12.0", "3.0.0"]
-    },
-    "workflows": {
-        "provision": {
-            "nodes": [
-                {
-                    "id": "create_index",
-                    "type": "create_index_step",
-                    "user_inputs": {
-                        "index_name": "custom_index",
-                        "settings": {"number_of_shards": 2}
-                    }
-                }
-            ]
-        }
-    }
-}
-```
-
-Custom workflow templates enable teams to codify best practices and ensure consistent deployments across different environments and team members.
-
-**Client Tests** validate the OpenSearch client wrappers and utilities, ensuring that the high-level abstractions correctly translate to appropriate OpenSearch API calls and handle error conditions gracefully.
 
 ## 🔍 Troubleshooting
 
