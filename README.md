@@ -18,7 +18,6 @@ Before getting started with the OpenSearch ML Quickstart, you'll need to ensure 
 
 **Python 3.10 or later**. The system has been tested through 3.13. See the [Python downloads page](https://www.python.org/downloads/) for instructions.  
 
-
 ### The Amazon PQA Dataset
 
 The toolkit uses the Amazon Product Question and Answers (PQA) dataset as its primary demonstration corpus, providing a rich collection of real-world product questions and answers that showcase the various search capabilities effectively. This dataset contains over 3 million questions and answers across multiple product categories, making it ideal for testing semantic search, conversational AI, and other advanced search features.
@@ -31,7 +30,7 @@ You can find the data set in the [AWS Open Data Registry](https://registry.opend
 
 `cd <path/to/your/opensearch-ml-quickstart>/datasets`  
 `aws s3 cp --no-sign-request s3://amazon-pqa/amazon-pqa.tar.gz .`  
-`tar -xf amazon-pqa.tar.gz`  
+`tar -xzf amazon-pqa.tar.gz`  
 
 ### Set up Model Access
 
@@ -183,8 +182,6 @@ model = get_ml_model(
     model_group_id=model_group_id
 )
 
-# Deploy and use
-model.deploy()
 model_id = model.model_id()
 ```
 
@@ -218,48 +215,11 @@ interactive_search_loop(
     client=os_client,
     index_name="my_index",
     model_info="Custom Model",
-    query_builder_func=lambda q: custom_search_query(q, model_id)
+    query_builder_func=custom_search_query
 )
 ```
 
 This pattern allows you to implement domain-specific search logic while maintaining compatibility with the toolkit's command-line interface and user interaction patterns.
-
-### Workflow Templates
-
-For organizations that need to standardize deployment processes, the toolkit supports custom workflow templates that define repeatable setup procedures:
-
-```python
-from configs import get_opensearch_config, get_model_config
-
-# Define custom workflow template
-workflow_template = {
-    "name": "custom-search-workflow",
-    "description": "Custom search setup workflow",
-    "use_case": "SEMANTIC_SEARCH",
-    "version": {
-        "template": "1.0.0",
-        "compatibility": ["2.12.0", "3.0.0"]
-    },
-    "workflows": {
-        "provision": {
-            "nodes": [
-                {
-                    "id": "create_index",
-                    "type": "create_index_step",
-                    "user_inputs": {
-                        "index_name": "custom_index",
-                        "settings": {"number_of_shards": 2}
-                    }
-                }
-            ]
-        }
-    }
-}
-```
-
-Custom workflow templates enable teams to codify best practices and ensure consistent deployments across different environments and team members.
-
-**Client Tests** validate the OpenSearch client wrappers and utilities, ensuring that the high-level abstractions correctly translate to appropriate OpenSearch API calls and handle error conditions gracefully.
 
 ## 🚀 Features
 
@@ -291,7 +251,7 @@ The toolkit supports multiple model hosting strategies to accommodate different 
 
 **Amazon SageMaker** support enables the use of custom model endpoints, allowing you to deploy specialized models while benefiting from SageMaker's managed infrastructure.
 
-**Hugging Face** direct integration allows you to leverage the vast ecosystem of open-source models with minimal configuration overhead.
+**Hugging Face** direct integration allows you to leverage open-source models with minimal configuration overhead.
 
 ### Deployment Flexibility
 
@@ -307,7 +267,7 @@ The OpenSearch ML Quickstart is organized into several key directories, each ser
 
 The **examples** directory contains ready-to-run demonstrations of different search capabilities. Each example is a complete, working implementation that showcases a specific search approach, from basic dense vector search to advanced agentic workflows. The `cmd_line_interface.py` module provides a unified command-line experience across all examples, ensuring consistent user interaction patterns.
 
-The **models** directory implements a sophisticated abstraction layer for machine learning models. The design follows object-oriented principles with a clear inheritance hierarchy, allowing the same code to work seamlessly with local models deployed within OpenSearch or remote models hosted on external services like Amazon Bedrock or SageMaker.
+The **models** directory implements an abstraction layer for machine learning models. The design follows object-oriented principles with a clear inheritance hierarchy, allowing the same code to work seamlessly with local models deployed within OpenSearch or remote models hosted on external services like Amazon Bedrock or SageMaker.
 
 The **client** directory provides high-level wrappers around OpenSearch's native client libraries. These wrappers abstract away the complexity of ML Commons operations, index management, and data loading, presenting a simplified interface for common tasks.
 
@@ -361,19 +321,7 @@ The OpenSearch ML Quickstart follows a layered architecture that separates conce
 
 ### Configuration Management System
 
-At the foundation of the toolkit is a sophisticated configuration management system that handles the complexity of different deployment scenarios, model types, and hosting options. The system provides type-safe configuration with automatic validation and environment-aware loading, ensuring that your application is properly configured regardless of the deployment environment.
-
-```python
-from configs import get_opensearch_config, get_model_config
-
-# Get OpenSearch configuration for your deployment type
-os_config = get_opensearch_config("os")  # Self-managed OpenSearch
-# or
-os_config = get_opensearch_config("aos")  # Amazon OpenSearch Service
-
-# Get model configuration for your specific setup
-model_config = get_model_config("aos", "bedrock", "embedding")
-```
+At the foundation of the toolkit is a configuration management system that handles the complexity of different deployment scenarios, model types, and hosting options. The system provides type-safe configuration with automatic validation and environment-aware loading, ensuring that your application is properly configured regardless of the deployment environment.
 
 The configuration system offers several key advantages that make it easy to manage complex deployments. **Type-safe configuration** uses enum-based validation to ensure that only valid combinations of deployment types and model providers are used, preventing common configuration errors at startup time. **Environment-aware loading** automatically detects configuration sources from .env files, YAML configuration files, and environment variables, providing flexibility in how you manage secrets and settings across different environments. **Built-in validation** checks for required fields and validates configuration combinations, giving you immediate feedback when something is misconfigured. **Flexible deployment support** accommodates multiple OpenSearch and model hosting scenarios without requiring code changes.
 
@@ -413,9 +361,7 @@ This approach combines the simplicity of flat configuration files with the benef
 
 ### ML Model Hierarchy
 
-The model system represents one of the most sophisticated aspects of the toolkit, implementing a well-designed class hierarchy that abstracts different model types and hosting scenarios. This design allows the same application code to work seamlessly with local models deployed within your OpenSearch cluster or remote models hosted on external services like Amazon Bedrock or SageMaker.
-
-The hierarchy follows object-oriented design principles with a clear inheritance structure:
+The model system implements a class hierarchy that abstracts different model types and hosting scenarios. This design allows the same application code to work seamlessly with local models deployed within your OpenSearch cluster or remote models hosted on external services like Amazon Bedrock or SageMaker.
 
 ```
 MlModel (Abstract Base Class)
@@ -455,7 +401,7 @@ This architecture provides several key benefits that make it easy to work with d
 
 ### Connector Architecture
 
-The connector system provides a sophisticated abstraction layer for integrating with external ML services. Connectors handle the complex details of communicating with different model providers, managing authentication, and translating between OpenSearch's ML Commons API and external service protocols.
+The connector system provides an abstraction layer for integrating with external ML services. Connectors handle the complex details of communicating with different model providers, managing authentication, and translating between OpenSearch's ML Commons API and external service protocols.
 
 The connector hierarchy follows a similar pattern to the model system:
 
@@ -554,7 +500,7 @@ The interface provides several common features across all examples, including in
 
 ```bash
 # Dense vector search with specific categories and document limits
-python examples/dense_exact_search.py --host-type os --categories "electronics" --max-docs 500
+python examples/dense_exact_search.py --host-type os --categories "electronics" --n 500
 
 # Hybrid search with index recreation for clean testing
 python examples/hybrid_search.py --host-type aos --categories "books,electronics" --delete-existing-index
@@ -563,10 +509,10 @@ python examples/hybrid_search.py --host-type aos --categories "books,electronics
 python examples/conversational_search.py --host-type aos --categories "technology"
 
 # Agentic search with extended document corpus for complex reasoning
-python examples/agentic_search.py --host-type os --categories "research" --max-docs 1000
+python examples/agentic_search.py --host-type os --categories "research" --n 1000
 ```
 
-The command-line interface supports several common options that work across all examples. The `--host-type` parameter specifies whether you're using self-managed OpenSearch (`os`) or Amazon OpenSearch Service (`aos`). The `--categories` option allows you to specify which data categories to load from the Amazon PQA dataset. The `--max-docs` parameter limits the number of documents loaded per category, useful for testing or resource-constrained environments. The `--delete-existing-index` flag forces deletion of existing indices, ensuring a clean setup for testing. The `--no-load` option skips data loading entirely, useful when working with pre-existing indices.
+The command-line interface supports several common options that work across all examples. The `--host-type` parameter specifies whether you're using self-managed OpenSearch (`os`) or Amazon OpenSearch Service (`aos`). The `--categories` option allows you to specify which data categories to load from the Amazon PQA dataset. The `-n` parameter limits the number of documents loaded per category, useful for testing or resource-constrained environments. The `--delete-existing-index` flag forces deletion of existing indices, ensuring a clean setup for testing. The `--no-load` option skips data loading entirely, useful when working with pre-existing indices.
 
 
 ## 🔍 Troubleshooting
@@ -580,11 +526,11 @@ When working with the OpenSearch ML Quickstart, you may encounter various issues
 Configuration problems are often the first hurdle when setting up the toolkit. The configuration system provides built-in validation tools to help identify and resolve these issues:
 
 ```bash
-# Validate configuration
-python -c "from configs import validate_all_configs; print(validate_all_configs())"
-
 # Check available combinations
 python -c "from configs import get_available_combinations; print(get_available_combinations())"
+
+# Validate configuration
+python -c "from configs import validate_all_configs; print(validate_all_configs())"
 ```
 
 These commands will help you verify that your configuration file is properly structured and that you're using valid combinations of deployment types and model providers.
