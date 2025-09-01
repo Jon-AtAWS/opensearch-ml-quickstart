@@ -71,7 +71,7 @@ Use your favorite text editor to open `opensearch-ml-quickstart/configs/osmlqs.y
 
 The rest of the config file lets you set up your model parameters. Set values in the sections that you plan to use.
 
-* For local embedding models, see the documentation for `the supported model names, versions, and parameters`.
+* For local embedding models, see the documentation for [the supported model names, versions, and parameters](https://docs.opensearch.org/latest/ml-commons-plugin/pretrained-models/).
 * For using SageMaker sparse models with OpenSearch Service, OpenSearch Service provides [CloudFormation integrations](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/cfn-template.html) that make deploying sparse models one-click. If you use one of these integrations, change the values of `SPARSE/DENSE ARN` and `SPARSE/DENSE URL` to the SageMaker endpoints.
 
 **Environment variable support** provides enhanced security by allowing sensitive configuration values to be stored outside of configuration files. The configuration system automatically detects environment variables and `.env` files, enabling you to override specific settings for different environments while keeping credentials secure. 
