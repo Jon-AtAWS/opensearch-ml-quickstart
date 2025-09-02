@@ -226,9 +226,11 @@ class QAndAFileReader:
 
     def printable_category_names(self):
         return ', '.join(
-            map(
-                lambda x: f"'{x}'",
-                self.AMAZON_PQA_CATEGORY_MAP.keys()
+            sorted(
+                map(
+                    lambda x: f"'{x}'",
+                    self.AMAZON_PQA_CATEGORY_MAP.keys()
+                )
             )
         )
 
