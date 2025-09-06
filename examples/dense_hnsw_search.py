@@ -91,12 +91,14 @@ def main():
     # This example uses a dense model, hosted on Amazon SageMaker and an Amazon
     # OpenSearch Service domain.
     host_type = "aos"
-    model_host = "bedrock"
+    model_host = "sagemaker"
     index_name = "dense_hnsw_search"
     embedding_type = "dense"
-    pipeline_name = "dense-ingest-pipeline"
+    pipeline_name = "dense-hnsw-ingest-pipeline"
 
-    client = OsMlClientWrapper(get_client(host_type))
+    logging.info(f"Initializing dense exact search with {model_host.upper()} on {host_type.upper()}")
+
+    client = OsMlClientWrapper(get_client(host_type, use_request_signing=True))
     pqa_reader = QAndAFileReader(
         directory=get_qanda_file_reader_path(),
         max_number_of_docs=args.number_of_docs_per_category,

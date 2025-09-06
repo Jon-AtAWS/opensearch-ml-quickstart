@@ -62,10 +62,11 @@ def create_text_gen_model():
     """
     client = OsMlClientWrapper(get_client("aos"))
     
-    # Get base connector configs and add LLM-specific overrides
-    connector_configs = get_remote_connector_configs("bedrock", "aos")
-    connector_configs["connector_role_name"] = "bedrock_llm_connector_role"
-    connector_configs["create_connector_role_name"] = "bedrock_llm_create_connector_role"
+    # Get LLM connector configs
+    from configs import get_model_config
+    from dataclasses import asdict
+    llm_config = get_model_config("aos", "bedrock", "llm")
+    connector_configs = asdict(llm_config)
     
     logging.info(f"connector_configs:\n{connector_configs}")
     
@@ -84,7 +85,7 @@ def create_text_gen_model():
         region=aos_configs["region"],
         connector_configs=connector_configs,
         llm_type="predict",  # Use predict API for conversational search
-        model_name="anthropic.claude-3-5-sonnet-20241022-v2:0",  # Claude 3.5 Sonnet v2
+        model_name=connector_configs["model_name"],  # Use model name from config
     )
     
     logging.info(f"connector id of the llm connector: {llm_connector.connector_id()}")
