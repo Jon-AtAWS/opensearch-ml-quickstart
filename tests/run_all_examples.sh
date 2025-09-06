@@ -3,7 +3,11 @@
 # Script to run all OpenSearch ML Quickstart examples
 # Uses consistent parameters: -d -c jeans -n 100 -q "comfortable jeans"
 
-cd "$(dirname "$0")/.."
+if [ ! -d "examples" ]; then
+  echo "Current directory is not the project root."
+  echo "Change to the project root directory and re-run the script."
+  exit 1
+fi
 
 echo "Running all OpenSearch ML Quickstart examples..."
 echo "Parameters: -d -c jeans -n 100 -q \"comfortable jeans\""
