@@ -34,7 +34,7 @@ You can find the data set in the [AWS Open Data Registry](https://registry.opend
 
 ### Set up Model Access
 
-If you plan to use Amazon Bedrock either for embedding models or for LLM models, you'll need to enable model access for your account. The Bedrock documentation has instructions for [getting started with Bedrock and enabling model access](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html)
+If you plan to use Amazon Bedrock either for embedding models or for LLM models, you'll need to enable model access for your account. The Bedrock documentation has instructions for [getting started with Bedrock and enabling model access](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access-modify.html)
 
 ## Setup
 
