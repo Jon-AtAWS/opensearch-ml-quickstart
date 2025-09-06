@@ -135,7 +135,7 @@ class TestQAndAFileReader:
         
         # Mock empty category mapping
         with patch.object(reader, 'AMAZON_PQA_CATEGORY_MAP', {}):
-            with pytest.raises(KeyError, match="'unknown_category'"):
+            with pytest.raises(ValueError, match="Unknown category name unknown_category"):
                 reader.file_size('unknown_category')
 
     def test_filename_to_constant_name(self):
