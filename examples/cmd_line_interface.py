@@ -15,6 +15,7 @@ import argparse
 import json
 import os
 import sys
+import time
 
 
 # Add parent directory to path for imports
@@ -457,6 +458,8 @@ def interactive_search_loop(
     while True:
         try:
             if question:
+                logging.info(f'Non-interactive mode: sleeping 3s before executing question "{question}"')
+                time.sleep(3)
                 query_text = question
             else:
                 query_text = print_search_prompt()
