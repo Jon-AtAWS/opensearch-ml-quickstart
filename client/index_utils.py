@@ -16,7 +16,7 @@ def handle_index_creation(
     # parameter delete_existing is set. If it doesn't exist, log that and
     # skip deletion.
     index_name = config["index_name"]
-    logging.info(f"Handling index creation for {index_name}")
+    logging.info(10*"=" + f"Handling index creation for {index_name}")
 
     index_settings = config["index_settings"]
     import json
@@ -43,6 +43,7 @@ def handle_index_creation(
         logging.info(f"Create index response: {response}")
     except Exception as e:
         logging.error(f"Error creating index {index_name} due to exception: {e}")
+    logging.info(10*"=" + f"Index {index_name} created successfully.")
 
 
 def handle_data_loading(
@@ -78,7 +79,7 @@ def handle_data_loading(
 
 
 def load_category(os_client: OpenSearch, pqa_reader: QAndAFileReader, category, config, enriched=True):
-    logging.info(f'Loading category "{category}"')
+    logging.info(10*"=" + f'Loading category "{category}"')
     docs = []
     number_of_docs = 0
     for doc in pqa_reader.questions_for_category(
@@ -105,6 +106,7 @@ def load_category(os_client: OpenSearch, pqa_reader: QAndAFileReader, category, 
     if len(docs) > 0:
         logging.info(f'Finished reading "{category}" going to send remaining docs')
         send_bulk_ignore_exceptions(os_client, config, docs)
+    logging.info(10*"=" + f'Finished loading category "{category}", sent {number_of_docs} documents')
 
 
 def send_bulk_ignore_exceptions(client: OpenSearch, config: Dict[str, str], docs):
