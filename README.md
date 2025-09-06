@@ -44,13 +44,15 @@ Getting started with OpenSearch ML Quickstart requires setting up your developme
 
 Begin by cloning the repository and setting up a Python virtual environment to isolate dependencies. 
 
-`python -m venv .venv`  
+`gh repo clone Jon-AtAWS/opensearch-ml-quickstart`
+`cd opensearch-ml-quickstart`
+`python -m venv .venv`
 `source .venv/bin/activate` (or `.venv\Scripts\activate` on Windows)  
 `pip install -r requirements.txt`  
 
 ### Set up OpenSearch
 
-You'll also need **OpenSearch 2.19.0 or later** (tested through 3.2) to ensure compatibility with the ML Commons plugin features used throughout the examples. The agentic examples require **OpenSearch 3.2**. For local development, Docker Desktop is provides the easiest way to run a complete OpenSearch cluster with all necessary plugins pre-configured.
+You'll also need **OpenSearch 2.19.0 or later** (tested through 3.2) to ensure compatibility with the ML Commons plugin features used throughout the examples. The agentic examples require **OpenSearch 3.2**. For local development, Docker Desktop provides the easiest way to run a complete OpenSearch cluster with all necessary plugins pre-configured.
 
 Download and install [Docker Desktop](https://docs.docker.com/desktop/) if that's your preferred method. You can find a Docker Compose file in the opensearch-ml-quickstart folder. OpenSearch requires an `OPENSEARCH_INITIAL_ADMIN_PASSWORD` set as an environment variable before you start the system. You use this password with the `admin` user to bootstrap and use the system. Best practice is to create a new user and password once you've logged in for the first time. Execute these commands
 
@@ -59,6 +61,8 @@ Download and install [Docker Desktop](https://docs.docker.com/desktop/) if that'
 `docker compose up`  
 
 For Amazon OpenSearch Service, create a new domain in the AWS Management Console. See the [Getting Started Guide](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/gsg.html) for instructions. The quickstart will work with a single-node deployment (m7g.large), though we recommend two nodes to avoid a yellow cluster. Ensure that you enable fine-grained access control and set up an admin user with a secure password. Note the domain endpoint URL, as you'll need it for configuration.
+
+If you plan to use dense or neural sparse search with Amazon OpenSearch Service, we recommend using [OpenSearch Service's integrations](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/cfn-template.html) to simplify the creation of Amazon SageMaker endpoints. You can use the SageMaker endpoints from the AWS CloudFormation `Outputs` in the configuration.
 
 ## Configure the system
 
@@ -149,7 +153,7 @@ python examples/workflow_example.py \
 
 The OpenSearch ML Quickstart distinguishes between two primary types of machine learning models, each serving different purposes in the search pipeline. Embedding models transform text into vector representations that capture semantic meaning, enabling similarity-based search operations. These models can produce either dense vectors, which are compact numerical representations suitable for semantic similarity, or sparse vectors, which maintain interpretability while capturing semantic relationships. Large Language Models (LLMs) generate human-like text responses and can engage in conversational interactions, making them essential for conversational search and agentic workflows.
 
-For LLM models, the toolkit supports two distinct connector strategies that correspond to different Amazon Bedrock API approaches. The predict strategy uses Bedrock's traditional invoke API with the legacy message format, providing compatibility with older implementations and specific use cases that require the original API structure. The converse strategy leverages Bedrock's newer converse API, which offers a more standardized interface for conversational interactions and improved support for multi-turn conversations and tool usage. The converse API is recommended for new implementations, particularly for agentic workflows and complex conversational scenarios, while the predict API remains available for backward compatibility and specific integration requirements.
+For LLM models, the toolkit supports two distinct connector strategies that correspond to different Amazon Bedrock API approaches. The `predict` strategy uses Bedrock's traditional invoke API with the legacy message format, providing compatibility with older implementations and specific use cases that require the original API structure. The `converse` strategy leverages Bedrock's newer converse API, which offers a more standardized interface for conversational interactions and improved support for multi-turn conversations and tool usage. The converse API is recommended for new implementations, particularly for agentic workflows and complex conversational scenarios, while the predict API remains available for backward compatibility and specific integration requirements.
 
 Connector setup varies significantly based on your deployment architecture and model hosting preferences. For self-managed OpenSearch deployments, connectors can integrate with local models deployed within the cluster or remote models hosted on external services. The connector configuration includes authentication credentials, endpoint URLs, and request/response formatting specifications. Amazon OpenSearch Service deployments require additional IAM role configuration, where the toolkit automatically creates connector roles with appropriate permissions to invoke external services like Bedrock or SageMaker.
 
@@ -275,7 +279,7 @@ The **configs** directory houses a comprehensive configuration management system
 
 ```
 opensearch-ml-quickstart/
-├── examples/                          # Interactive search examples
+├── examples/                         # Interactive search examples
 │   ├── cmd_line_interface.py         # Unified CLI and interface utilities
 │   ├── dense_exact_search.py         # Dense vector search (exact k-NN)
 │   ├── dense_hnsw_search.py          # Dense vector search (HNSW)
