@@ -82,7 +82,7 @@ def get_command_line_args():
         "-n",
         "--number-of-docs-per-category",
         type=int,
-        default=5000,
+        default=-1,
         help="Number of documents to load per category",
     )
     parser.add_argument(
