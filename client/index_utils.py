@@ -39,7 +39,7 @@ def handle_index_creation(
         return
 
     try:
-        response = os_client.indices.create(index_name, body=index_settings)
+        response = os_client.indices.create(index=index_name, body=index_settings)
         logging.info(f"Create index response: {response}")
     except Exception as e:
         logging.error(f"Error creating index {index_name} due to exception: {e}")

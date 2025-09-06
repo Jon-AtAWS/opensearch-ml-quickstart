@@ -125,7 +125,7 @@ def main():
     provider = "sagemaker"  # Using SageMaker for this example (can be changed to "bedrock")
     index_name = "dense_exact_search"
     embedding_type = "dense"
-    pipeline_name = "dense-ingest-pipeline"
+    pipeline_name = "dense-exact-ingest-pipeline"
 
     logging.info(f"Initializing dense exact search with {provider.upper()} on {os_type.upper()}")
 
@@ -141,10 +141,6 @@ def main():
 
     # Initialize the universal EmbeddingConnector
     try:
-        logging.info(f"Attempting to initialize EmbeddingConnector...")
-        logging.info(f"  - Provider: {provider}")
-        logging.info(f"  - OS Type: {os_type}")
-        
         embedding_connector = EmbeddingConnector(
             os_client=client.os_client,
             provider=provider,
@@ -157,12 +153,6 @@ def main():
             region=aos_configs["region"],
         )
         
-        logging.info(f"✓ EmbeddingConnector initialized successfully")
-        logging.info(f"  - Provider: {embedding_connector.get_provider()}")
-        logging.info(f"  - OS Type: {embedding_connector.get_os_type()}")
-        logging.info(f"  - Embedding Type: {embedding_connector.get_embedding_type()}")
-        logging.info(f"  - Model Dimensions: {embedding_connector.get_model_dimensions()}")
-        
         # Try to get connector ID safely
         try:
             connector_id = embedding_connector.connector_id()
@@ -174,17 +164,10 @@ def main():
     except Exception as e:
         logging.error(f"Failed to initialize EmbeddingConnector: {e}")
         logging.error("Please ensure your configuration is properly set up.")
-        
-        # Add more detailed error information
-        import traceback
-        logging.error("Full error traceback:")
-        logging.error(traceback.format_exc())
-        sys.exit(1)
 
     # Get connector configuration for index setup
     try:
         connector_info = embedding_connector.get_provider_model_info()
-        logging.info(f"✓ Retrieved connector model info: {list(connector_info.keys())}")
     except Exception as e:
         logging.error(f"Failed to get connector model info: {e}")
         sys.exit(1)

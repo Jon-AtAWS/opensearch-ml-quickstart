@@ -408,6 +408,7 @@ def main():
         model_info=ml_model.model_id(),
         query_builder_func=build_workflow_query,
         ml_model=ml_model,
+        question=args.question,
     )
 
 

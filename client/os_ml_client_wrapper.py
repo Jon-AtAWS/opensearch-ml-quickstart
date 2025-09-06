@@ -80,7 +80,7 @@ class OsMlClientWrapper:
         )
         logging.info(f"{pipeline_name}: {pipeline_field_map}")
         logging.info("Adding dense pipeline...")
-        self.os_client.ingest.put_pipeline(pipeline_name, body=pipeline_config)
+        self.os_client.ingest.put_pipeline(id=pipeline_name, body=pipeline_config)
 
     def _add_sparse_pipeline(self, pipeline_name="", pipeline_field_map=None):
         if not pipeline_name:
@@ -90,7 +90,7 @@ class OsMlClientWrapper:
         )
         logging.info(f"sparse_pipeline_config: {pipeline_field_map}")
         logging.info("Adding sparse pipeline...")
-        self.os_client.ingest.put_pipeline(pipeline_name, body=pipeline_config)
+        self.os_client.ingest.put_pipeline(id=pipeline_name, body=pipeline_config)
 
     def setup_for_kNN(
         self,
