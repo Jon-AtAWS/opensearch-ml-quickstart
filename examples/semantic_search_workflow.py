@@ -266,7 +266,7 @@ def main():
     client = OsMlClientWrapper(get_client(host_type, use_request_signing=True))
     
     if args.delete_existing_index and args.no_load:
-        raise ValueError("Cannot use -d (delete) and --no_load together.")
+        raise ValueError("Cannot use -d (delete) and --no_load for this example.")
 
     if args.no_load:
         model_name = f"{host_type}_{model_host}"
@@ -286,7 +286,6 @@ def main():
             model_group_id=client.ml_model_group.model_group_id(),
         )
         model_id = ml_model.model_id()
-
     else:
         logging.info("Skipping data loading, per command line argument")
 
