@@ -15,9 +15,10 @@ from configs.configuration_manager import (
     get_config_for,
     get_base_mapping_path,
     get_qanda_file_reader_path,
-    config_override,
 )
+from connectors.helper import get_remote_connector_configs
 from mapping.helper import get_base_mapping
+from models import get_ml_model
 from data_process import QAndAFileReader
 
 
@@ -262,71 +263,96 @@ def main():
         "bulk_send_chunk_size": args.bulk_send_chunk_size,
     })
 
-    client = OsMlClientWrapper(get_client("aos", use_request_signing=True))
+    client = OsMlClientWrapper(get_client(host_type, use_request_signing=True))
+    
+    if args.delete_existing_index and args.no_load:
+        raise ValueError("Cannot use -d (delete) and --no_load together.")
 
-    # Create a combined role with both create connector and invoke model permissions
-    combined_role_name = "os_ml_qs_bedrock_combined_role"
-    combined_role_arn = create_combined_bedrock_role(combined_role_name)
-    logging.info(f"Using combined role ARN: {combined_role_arn}")
-    
-    region = get_raw_config_value("AWS_REGION")
-    
-    body = {
-        "create_connector.credential.roleArn": combined_role_arn,
-        "create_connector.region": region
-    }
-    
-    result = execute_workflow_and_monitor(client, "bedrock_titan_embedding_model_deploy", body)
-    
-    logging.info(f'Deploy model workflow completed. {json.dumps(result, indent=2)}')
-    
-    # Fix connector region if needed
-    connector_id = result.get("connector_id")
-    credential = boto3.Session(region_name=region).get_credentials()
-    credential = {
-        "access_key": credential.access_key,
-        "secret_key": credential.secret_key,
-        "session_token": credential.token
-    }
-    if connector_id:
-        fix_connector_region(client, connector_id, region, credential)
-    connector_id = result.get("connector_id")
-    model_id = result.get("model_id")
-    if not connector_id or not model_id:
-        raise ValueError("Failed to retrieve connector_id or model_id from workflow result.")
+    if args.no_load:
+        model_name = f"{host_type}_{model_host}"
+        model_config = get_remote_connector_configs(
+            host_type=host_type, connector_type=model_host
+        )
+        model_config["model_name"] = model_name
+        model_config["embedding_type"] = embedding_type
+        config.update(model_config)
 
-    logging.info(f'client: {client}, os_client: {client.os_client}')
-    if client.os_client.indices.exists(index=index_name):
-        if not args.delete_existing_index:
-            raise ValueError(f"Index {index_name} already exists. Please use -d to delete it or choose a different name.")
-        else:
-            logging.info(f"Deleting existing index {index_name}")
-            client.os_client.indices.delete(index=index_name)
+        ml_model = get_ml_model(
+            host_type=host_type,
+            model_host=model_host,
+            model_config=model_config,
+            os_client=client.os_client,
+            ml_commons_client=client.ml_commons_client,
+            model_group_id=client.ml_model_group.model_group_id(),
+        )
+        model_id = ml_model.model_id()
 
-    pipeline_field_map = get_pipeline_field_map()
-    body = {
-        "create_ingest_pipeline.pipeline_id": pipeline_name,
-        "create_ingest_pipeline.description": "A text embedding pipeline",
-        "create_ingest_pipeline.model_id": model_id,
-        "text_embedding.field_map.input": list(pipeline_field_map.keys())[0],
-        "text_embedding.field_map.output": list(pipeline_field_map.values())[0],
-        "create_index.name": index_name,
-        "create_index.settings.number_of_shards": "2",
-        "create_index.mappings.method.engine": "lucene",
-        "create_index.mappings.method.space_type": "l2",
-        "create_index.mappings.method.name": "hnsw",
-        "text_embedding.field_map.output.dimension": config["model"]["model_dimension"],    
-    }
-    result = execute_workflow_and_monitor(client, "semantic_search", body=body)
-    logging.info(f'Semantic search index setup workflow completed. {json.dumps(result, indent=2)}')
+    else:
+        logging.info("Skipping data loading, per command line argument")
 
-    mapping = get_base_mapping(get_base_mapping_path())['mappings']
-    try:
-        client.os_client.indices.put_mapping(index=index_name, body=mapping)
-        logging.info(f"Mapping updated for index {index_name}")
-    except Exception as e:
-        logging.error(f"Failed to update mapping for index {index_name}: {e}")
-        raise
+        # Create a combined role with both create connector and invoke model permissions
+        combined_role_name = "os_ml_qs_bedrock_combined_role"
+        combined_role_arn = create_combined_bedrock_role(combined_role_name)
+        logging.info(f"Using combined role ARN: {combined_role_arn}")
+        
+        region = get_raw_config_value("AWS_REGION")
+        
+        body = {
+            "create_connector.credential.roleArn": combined_role_arn,
+            "create_connector.region": region
+        }
+        
+        result = execute_workflow_and_monitor(client, "bedrock_titan_embedding_model_deploy", body)
+        
+        logging.info(f'Deploy model workflow completed. {json.dumps(result, indent=2)}')
+        
+        # Fix connector region if needed
+        connector_id = result.get("connector_id")
+        credential = boto3.Session(region_name=region).get_credentials()
+        credential = {
+            "access_key": credential.access_key,
+            "secret_key": credential.secret_key,
+            "session_token": credential.token
+        }
+        if connector_id:
+            fix_connector_region(client, connector_id, region, credential)
+        connector_id = result.get("connector_id")
+        model_id = result.get("model_id")
+        if not connector_id or not model_id:
+            raise ValueError("Failed to retrieve connector_id or model_id from workflow result.")
+
+        logging.info(f'client: {client}, os_client: {client.os_client}')
+        if client.os_client.indices.exists(index=index_name):
+            if not args.delete_existing_index:
+                raise ValueError(f"Index {index_name} already exists. Please use -d to delete it or choose a different name.")
+            else:
+                logging.info(f"Deleting existing index {index_name}")
+                client.os_client.indices.delete(index=index_name)
+
+        pipeline_field_map = get_pipeline_field_map()
+        body = {
+            "create_ingest_pipeline.pipeline_id": pipeline_name,
+            "create_ingest_pipeline.description": "A text embedding pipeline",
+            "create_ingest_pipeline.model_id": model_id,
+            "text_embedding.field_map.input": list(pipeline_field_map.keys())[0],
+            "text_embedding.field_map.output": list(pipeline_field_map.values())[0],
+            "create_index.name": index_name,
+            "create_index.settings.number_of_shards": "2",
+            "create_index.mappings.method.engine": "lucene",
+            "create_index.mappings.method.space_type": "l2",
+            "create_index.mappings.method.name": "hnsw",
+            "text_embedding.field_map.output.dimension": config["model"]["model_dimension"],    
+        }
+        result = execute_workflow_and_monitor(client, "semantic_search", body=body)
+        logging.info(f'Semantic search index setup workflow completed. {json.dumps(result, indent=2)}')
+
+        mapping = get_base_mapping(get_base_mapping_path())['mappings']
+        try:
+            client.os_client.indices.put_mapping(index=index_name, body=mapping)
+            logging.info(f"Mapping updated for index {index_name}")
+        except Exception as e:
+            logging.error(f"Failed to update mapping for index {index_name}: {e}")
+            raise
 
     pqa_reader = QAndAFileReader(
         directory=get_qanda_file_reader_path(),
