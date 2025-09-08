@@ -42,7 +42,7 @@ class TestHandleIndexCreation:
         assert mock_client.indices.exists.call_count >= 1
         mock_client.indices.exists.assert_any_call(index="test_index")
         mock_client.indices.create.assert_called_once_with(
-            "test_index", 
+            index="test_index", 
             body={"settings": {"number_of_shards": 1}}
         )
         mock_client.indices.delete.assert_not_called()
@@ -91,7 +91,7 @@ class TestHandleIndexCreation:
         assert mock_client.indices.exists.call_count == 2
         mock_client.indices.delete.assert_called_once_with(index="test_index")
         mock_client.indices.create.assert_called_once_with(
-            "test_index", 
+            index="test_index", 
             body={"settings": {"number_of_shards": 1}}
         )
 

@@ -212,7 +212,7 @@ class TestOsMlClientWrapper:
             ],
         }
         self.mock_os_client.ingest.put_pipeline.assert_called_once_with(
-            "test_pipeline",
+            id="test_pipeline",
             body=expected_pipeline_config
         )
 
@@ -249,7 +249,7 @@ class TestOsMlClientWrapper:
             ],
         }
         self.mock_os_client.ingest.put_pipeline.assert_called_once_with(
-            "test_pipeline",
+            id="test_pipeline",
             body=expected_pipeline_config
         )
 
@@ -283,7 +283,7 @@ class TestOsMlClientWrapper:
             ],
         }
         self.mock_os_client.ingest.put_pipeline.assert_called_once_with(
-            "test_pipeline",
+            id="test_pipeline",
             body=expected_pipeline_config
         )
 

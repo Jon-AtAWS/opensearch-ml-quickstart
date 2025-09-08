@@ -136,8 +136,9 @@ def create_connector_with_iam_roles(
             iam_client, connector_role_name, trust_policy, connector_role_inline_policy
         )
     else:
-        logging.info("Connector role exists, skip creating")
+        logging.info("Connector role exists, checking and updating policy if needed")
         connector_role_arn = _get_role_arn(iam_client, connector_role_name)
+        _update_role_policy_if_needed(iam_client, connector_role_name, connector_role_inline_policy)
 
     # Step 2: Configure IAM role in OpenSearch
     # 2.1 Create IAM role for signing create connector request
@@ -268,6 +269,97 @@ def _create_iam_role(iam_client, role_name: str, trust_policy_json: Dict, inline
     except Exception as e:
         logging.error(f"Error creating the role: {e}")
         raise
+
+
+def _update_role_policy_if_needed(iam_client, role_name: str, new_policy: dict):
+    """Update role policy if the new policy contains resources or actions not in the existing policy."""
+    try:
+        # Get existing policy
+        response = iam_client.get_role_policy(RoleName=role_name, PolicyName="InlinePolicy")
+        existing_policy = response['PolicyDocument']
+        
+        # Check if new policy statements are already in the existing policy
+        needs_update = False
+        
+        for new_statement in new_policy.get('Statement', []):
+            new_action = new_statement.get('Action')
+            new_resources = new_statement.get('Resource', [])
+            if isinstance(new_resources, str):
+                new_resources = [new_resources]
+            
+            # Check if this action+resource combination exists in existing policy
+            found_matching_statement = False
+            for existing_statement in existing_policy.get('Statement', []):
+                existing_action = existing_statement.get('Action')
+                existing_resources = existing_statement.get('Resource', [])
+                if isinstance(existing_resources, str):
+                    existing_resources = [existing_resources]
+                
+                # Check if action matches and all new resources are covered
+                if (existing_action == new_action and 
+                    all(resource in existing_resources for resource in new_resources)):
+                    found_matching_statement = True
+                    break
+            
+            if not found_matching_statement:
+                needs_update = True
+                break
+        
+        if needs_update:
+            logging.info(f"Updating role policy to include new statements")
+            
+            # Merge the existing policy with the new policy
+            merged_statements = []
+            
+            # Add existing statements
+            for statement in existing_policy.get('Statement', []):
+                merged_statements.append(statement)
+            
+            # Add new statements that weren't found in existing policy
+            for new_statement in new_policy.get('Statement', []):
+                new_action = new_statement.get('Action')
+                new_resources = new_statement.get('Resource', [])
+                if isinstance(new_resources, str):
+                    new_resources = [new_resources]
+                
+                # Check if this statement is already covered
+                found_matching = False
+                for existing_statement in existing_policy.get('Statement', []):
+                    existing_action = existing_statement.get('Action')
+                    existing_resources = existing_statement.get('Resource', [])
+                    if isinstance(existing_resources, str):
+                        existing_resources = [existing_resources]
+                    
+                    if (existing_action == new_action and 
+                        all(resource in existing_resources for resource in new_resources)):
+                        found_matching = True
+                        break
+                
+                if not found_matching:
+                    merged_statements.append(new_statement)
+            
+            # Create merged policy
+            merged_policy = {
+                "Version": "2012-10-17",
+                "Statement": merged_statements
+            }
+            
+            iam_client.put_role_policy(
+                RoleName=role_name,
+                PolicyName="InlinePolicy",
+                PolicyDocument=json.dumps(merged_policy)
+            )
+            logging.info(f"Updated role policy for {role_name}")
+        else:
+            logging.info("Role policy already contains all required statements")
+            
+    except iam_client.exceptions.NoSuchEntityException:
+        logging.info("No existing policy found, creating new one")
+        iam_client.put_role_policy(
+            RoleName=role_name,
+            PolicyName="InlinePolicy", 
+            PolicyDocument=json.dumps(new_policy)
+        )
 
 
 def _get_role_arn(iam_client, role_name: str) -> str:

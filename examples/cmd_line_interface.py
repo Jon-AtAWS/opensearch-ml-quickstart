@@ -15,6 +15,7 @@ import argparse
 import json
 import os
 import sys
+import time
 
 
 # Add parent directory to path for imports
@@ -81,7 +82,7 @@ def get_command_line_args():
         "-n",
         "--number-of-docs-per-category",
         type=int,
-        default=5000,
+        default=-1,
         help="Number of documents to load per category",
     )
     parser.add_argument(
@@ -457,6 +458,8 @@ def interactive_search_loop(
     while True:
         try:
             if question:
+                logging.info(f'Non-interactive mode: sleeping 3s before executing question "{question}"')
+                time.sleep(3)
                 query_text = question
             else:
                 query_text = print_search_prompt()

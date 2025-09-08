@@ -96,7 +96,7 @@ def load_dataset(
             },
         ],
     }
-    client.os_client.ingest.put_pipeline(pipeline_name, body=pipeline_config)
+    client.os_client.ingest.put_pipeline(id=pipeline_name, body=pipeline_config)
 
     index_utils.handle_index_creation(
         os_client=client.os_client,

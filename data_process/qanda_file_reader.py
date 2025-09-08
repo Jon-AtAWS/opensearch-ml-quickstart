@@ -224,8 +224,21 @@ class QAndAFileReader:
         self.fake = faker.Faker()
         self.max_number_of_docs = max_number_of_docs
 
+    def printable_category_names(self):
+        return ', '.join(
+            sorted(
+                map(
+                    lambda x: f"'{x}'",
+                    self.AMAZON_PQA_CATEGORY_MAP.keys()
+                )
+            )
+        )
+
     def amazon_pqa_category_name_to_constant(self, category_name):
-        return self.AMAZON_PQA_CATEGORY_MAP[category_name]
+        category_constant = self.AMAZON_PQA_CATEGORY_MAP.get(category_name, None)
+        if category_constant:
+            return category_constant
+        raise ValueError(f"Unknown category name {category_name}\nValid names: {self.printable_category_names()}")
 
     def amazon_pqa_constant_to_filename(self, constant_name):
         return self.AMAZON_PQA_FILENAME_MAP[constant_name]
