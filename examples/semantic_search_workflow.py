@@ -19,7 +19,7 @@ from configs.configuration_manager import (
 from connectors.helper import get_remote_connector_configs
 from mapping.helper import get_base_mapping
 from models import get_ml_model
-from data_process import QAndAFileReader
+from data_process.amazon_pqa_dataset import AmazonPQADataset
 
 
 logging.basicConfig(
@@ -353,17 +353,16 @@ def main():
             logging.error(f"Failed to update mapping for index {index_name}: {e}")
             raise
 
-    pqa_reader = QAndAFileReader(
-        directory=get_qanda_file_reader_path(),
-        max_number_of_docs=args.number_of_docs_per_category,
-    )
-
-    index_utils.handle_data_loading(
-        os_client=client.os_client,
-        pqa_reader=pqa_reader,
-        config=config,
-        no_load=getattr(args, "no_load", False),
-    )
+    # Load data using dataset abstraction
+    if not getattr(args, "no_load", False):
+        dataset = AmazonPQADataset(max_number_of_docs=args.number_of_docs_per_category)
+        total_docs = dataset.load_data(
+            os_client=client.os_client,
+            index_name=config["index_name"],
+            filter_criteria=args.categories,
+            bulk_chunk_size=args.bulk_send_chunk_size
+        )
+        print(f"Loaded {total_docs} documents")
 
     logging.info("Setup complete! Starting interactive search interface...")
 

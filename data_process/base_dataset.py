@@ -3,6 +3,7 @@
 
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Iterator, Tuple, Optional, Union
+import logging
 
 
 class BaseDataset(ABC):
@@ -95,22 +96,6 @@ class BaseDataset(ABC):
         """Optimal bulk indexing size."""
         pass
     
-    # Query Construction
-    @abstractmethod
-    def build_query(self, query_text: str, model_id: str, search_type: str) -> Dict[str, Any]:
-        """Dataset-appropriate queries."""
-        pass
-    
-    @abstractmethod
-    def get_supported_search_types(self) -> List[str]:
-        """Compatible search types (dense, sparse, etc.)."""
-        pass
-    
-    @abstractmethod
-    def get_default_search_fields(self) -> List[str]:
-        """Default fields to search."""
-        pass
-    
     # Display/UI
     @abstractmethod
     def format_search_result(self, document: Dict[str, Any], score: float) -> str:
@@ -152,3 +137,72 @@ class BaseDataset(ABC):
     def handle_search_error(self, error: Exception, query: Dict[str, Any]) -> str:
         """Dataset-specific error handling."""
         pass
+    
+    @abstractmethod
+    def load_data(self, os_client, index_name: str, filter_criteria: Optional[List[str]] = None, bulk_chunk_size: int = 100) -> int:
+        """Load dataset into OpenSearch index. Returns number of documents loaded."""
+        pass
+    
+    def create_index(self, os_client, index_name: str, delete_existing: bool = False, index_settings: Optional[Dict[str, Any]] = None) -> bool:
+        """Create OpenSearch index with appropriate mapping. Returns True if created/exists."""
+        logging.info(f"Handling index creation for {index_name}")
+        
+        index_exists = os_client.indices.exists(index=index_name)
+        logging.info(f"Index {index_name} exists: {index_exists}")
+        
+        if delete_existing and index_exists:
+            logging.info(f"Deleting existing index {index_name}")
+            os_client.indices.delete(index=index_name)
+            index_exists = False
+        
+        if index_exists:
+            logging.info(f'Index "{index_name}" exists. Skipping creation.')
+            return True
+        
+        try:
+            if index_settings is None:
+                index_settings = {"mappings": self.get_index_mapping()}
+            response = os_client.indices.create(index=index_name, body=index_settings)
+            logging.info(f"Created index {index_name}: {response}")
+            return True
+        except Exception as e:
+            logging.error(f"Error creating index {index_name}: {e}")
+            return False
+    
+    def update_mapping(self, base_mapping: Dict[str, Any], updates: Dict[str, Any]) -> None:
+        """Update mapping with additional fields (e.g., vector fields)."""
+        for key, value in updates.items():
+            if (
+                key in base_mapping
+                and isinstance(base_mapping[key], dict)
+                and isinstance(value, dict)
+            ):
+                self.update_mapping(base_mapping[key], value)
+            else:
+                base_mapping[key] = value
+    
+    def create_index(self, os_client, index_name: str, delete_existing: bool = False, index_settings: Optional[Dict[str, Any]] = None) -> bool:
+        """Create OpenSearch index with appropriate mapping. Returns True if created/exists."""
+        logging.info(f"Handling index creation for {index_name}")
+        
+        index_exists = os_client.indices.exists(index=index_name)
+        logging.info(f"Index {index_name} exists: {index_exists}")
+        
+        if delete_existing and index_exists:
+            logging.info(f"Deleting existing index {index_name}")
+            os_client.indices.delete(index=index_name)
+            index_exists = False
+        
+        if index_exists:
+            logging.info(f'Index "{index_name}" exists. Skipping creation.')
+            return True
+        
+        try:
+            if index_settings is None:
+                index_settings = {"mappings": self.get_index_mapping()}
+            response = os_client.indices.create(index=index_name, body=index_settings)
+            logging.info(f"Created index {index_name}: {response}")
+            return True
+        except Exception as e:
+            logging.error(f"Error creating index {index_name}: {e}")
+            return False

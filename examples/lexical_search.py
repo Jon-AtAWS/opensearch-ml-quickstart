@@ -23,13 +23,8 @@ import sys
 import cmd_line_interface
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from client import OsMlClientWrapper, get_client, index_utils
-from configs.configuration_manager import (
-    get_base_mapping_path,
-    get_qanda_file_reader_path,
-)
-from data_process import QAndAFileReader
-from mapping import get_base_mapping
+from client import OsMlClientWrapper, get_client
+from data_process.amazon_pqa_dataset import AmazonPQADataset
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
@@ -51,7 +46,7 @@ def build_lexical_query(query_text, **kwargs):
     """
     return {
         "size": 3,
-        "query": {"match": {"chunk": query_text}},
+        "query": {"match": {"chunk_text": query_text}},
     }
 
 
@@ -71,37 +66,26 @@ def main():
     # simplicity, use a fixed name here.
     index_name = "lexical_search"
 
-    # Initialize OpenSearch client and data reader
+    # Initialize OpenSearch client and dataset
     client = OsMlClientWrapper(get_client(args.opensearch_type))
-    pqa_reader = QAndAFileReader(
-        directory=get_qanda_file_reader_path(),
-        max_number_of_docs=args.number_of_docs_per_category,
-    )
+    dataset = AmazonPQADataset(max_number_of_docs=args.number_of_docs_per_category)
 
-    # Set the configuration
-    config = {
-        "categories": args.categories,
-        "index_name": index_name,
-        "index_settings": get_base_mapping(get_base_mapping_path()),
-        "delete_existing_index": args.delete_existing_index,
-        "bulk_send_chunk_size": args.bulk_send_chunk_size,
-    }
-
-    # Handle index creation ensures the index exists and creates and applies the
-    # mapping.
-    index_utils.handle_index_creation(
+    # Create index using dataset
+    dataset.create_index(
         os_client=client.os_client,
-        config=config,
-        delete_existing=config["delete_existing_index"],
+        index_name=index_name,
+        delete_existing=args.delete_existing_index
     )
 
-    # Load data into the index
-    index_utils.handle_data_loading(
-        os_client=client.os_client,
-        pqa_reader=pqa_reader,
-        config=config,
-        no_load=args.no_load,
-    )
+    # Load data using dataset
+    if not args.no_load:
+        total_docs = dataset.load_data(
+            os_client=client.os_client,
+            index_name=index_name,
+            filter_criteria=args.categories,
+            bulk_chunk_size=args.bulk_send_chunk_size
+        )
+        logging.info(f"Loaded {total_docs} documents")
 
     logging.info("Setup complete! Starting interactive search interface...")
 

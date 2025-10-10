@@ -18,9 +18,9 @@ from configs.configuration_manager import (
     get_pipeline_field_map,
     get_qanda_file_reader_path,
 )
+from data_process.amazon_pqa_dataset import AmazonPQADataset
 from connectors import LlmConnector
 from connectors.helper import get_remote_connector_configs, get_raw_config_value
-from data_process import QAndAFileReader
 from mapping import get_base_mapping, mapping_update
 from models import (
     MlModel,
@@ -67,12 +67,12 @@ def create_text_gen_model():
     from dataclasses import asdict
     llm_config = get_model_config("aos", "bedrock", "llm")
     connector_configs = asdict(llm_config)
-    
+
     logging.info(f"connector_configs:\n{connector_configs}")
     
     # Get AOS client configs for domain info
     aos_configs = get_client_configs("aos")
-    
+
     # Create the LLM connector
     llm_connector = LlmConnector(
         os_client=client.os_client,
@@ -188,14 +188,10 @@ def main():
         sys.exit(1)
 
     client = OsMlClientWrapper(get_client(host_type))
-    pqa_reader = QAndAFileReader(
-        directory=get_qanda_file_reader_path(),
-        max_number_of_docs=args.number_of_docs_per_category,
-    )
 
     config = {
         "with_knn": True,
-        "pipeline_field_map": get_pipeline_field_map(),
+        "pipeline_field_map": {"chunk_text": "chunk_embedding"},  # Use chunk_text for AmazonPQADataset
         "categories": args.categories,
         "index_name": index_name,
         "pipeline_name": ingest_pipeline_name,
@@ -243,12 +239,16 @@ def main():
         embedding_type=config["embedding_type"],
     )
 
-    index_utils.handle_data_loading(
-        os_client=client.os_client,
-        pqa_reader=pqa_reader,
-        config=config,
-        no_load=args.no_load,
-    )
+    # Load data using dataset abstraction
+    if not args.no_load:
+        dataset = AmazonPQADataset(max_number_of_docs=args.number_of_docs_per_category)
+        total_docs = dataset.load_data(
+            os_client=client.os_client,
+            index_name=config["index_name"],
+            filter_criteria=args.categories,
+            bulk_chunk_size=args.bulk_send_chunk_size
+        )
+        print(f"Loaded {total_docs} documents")
 
     # Create text generation model using the new universal LlmConnector
     text_gen_model_id = create_text_gen_model()
@@ -267,7 +267,7 @@ def main():
                         "context_field_list": [
                             "item_name",
                             "product_description",
-                            "chunk",
+                            "chunk_text",
                         ],
                         "system_prompt": "You are a helpful assistant",
                         "user_instructions": "Generate a concise and informative answer in less than 100 words for the given question",

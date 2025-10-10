@@ -225,12 +225,15 @@ class LlmConnector(MlConnector):
             raise ValueError("Connector role policy is only needed for AOS deployments")
         
         llm_arn = self._connector_configs["llm_arn"]
+        # Use wildcard for region to allow access to Bedrock in all regions
+        all_regions_arn = llm_arn.replace(f":{self._connector_configs.get('region')}:", ":*:")
+        
         return {
             "Version": "2012-10-17",
             "Statement": [
                 {
                     "Effect": "Allow",
-                    "Resource": [llm_arn],
+                    "Resource": [all_regions_arn],
                     "Action": ["bedrock:InvokeModel"],
                 }
             ],

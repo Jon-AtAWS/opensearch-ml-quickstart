@@ -23,16 +23,10 @@ import sys
 import cmd_line_interface
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from client import OsMlClientWrapper, get_client, index_utils
-from configs.configuration_manager import (
-    get_base_mapping_path,
-    get_pipeline_field_map,
-    get_qanda_file_reader_path,
-    get_client_configs,
-)
+from client import OsMlClientWrapper, get_client
+from configs.configuration_manager import get_client_configs
 from connectors import EmbeddingConnector
-from data_process import QAndAFileReader
-from mapping import get_base_mapping, mapping_update
+from data_process.amazon_pqa_dataset import AmazonPQADataset
 from models import get_ml_model
 
 logging.basicConfig(
@@ -42,36 +36,25 @@ logging.basicConfig(
 )
 
 
-def create_index_settings(base_mapping_path, index_config):
-    """
-    Create OpenSearch index settings for dense vector search.
-
-    Parameters:
-        base_mapping_path (str): Path to base mapping configuration
-        index_config (dict): Configuration containing pipeline and model settings
-
-    Returns:
-        dict: Updated index settings with k-NN vector configuration
-    """
-    settings = get_base_mapping(base_mapping_path)
-    pipeline_name = index_config["pipeline_name"]
-    model_dimension = index_config["model_dimensions"]
+def configure_index_for_dense_search(dataset, pipeline_name, model_dimensions):
+    """Configure index settings with kNN and vector fields."""
+    base_mapping = dataset.get_index_mapping()
     
-    # Configure k-NN settings for vector search
     knn_settings = {
         "settings": {"index": {"knn": True}, "default_pipeline": pipeline_name},
         "mappings": {
             "properties": {
-                "chunk": {"type": "text", "index": False},
                 "chunk_embedding": {
                     "type": "knn_vector",
-                    "dimension": model_dimension,
-                },
+                    "dimension": model_dimensions,
+                }
             }
-        },
+        }
     }
-    mapping_update(settings, knn_settings)
-    return settings
+    
+    index_settings = {"mappings": base_mapping}
+    dataset.update_mapping(index_settings, knn_settings)
+    return index_settings
 
 
 def build_dense_exact_query(query_text, model_id=None, **kwargs):
@@ -129,12 +112,9 @@ def main():
 
     logging.info(f"Initializing dense exact search with {provider.upper()} on {os_type.upper()}")
 
-    # Initialize OpenSearch client and data reader
+    # Initialize OpenSearch client and dataset
     client = OsMlClientWrapper(get_client(os_type))
-    pqa_reader = QAndAFileReader(
-        directory=get_qanda_file_reader_path(),
-        max_number_of_docs=args.number_of_docs_per_category,
-    )
+    dataset = AmazonPQADataset(max_number_of_docs=args.number_of_docs_per_category)
 
     # Get AOS client configs for domain info
     aos_configs = get_client_configs("aos")
@@ -174,7 +154,7 @@ def main():
     
     config = {
         "with_knn": True,
-        "pipeline_field_map": get_pipeline_field_map(),
+        "pipeline_field_map": {"chunk_text": "chunk_embedding"},  # Example-specific field mapping
         "categories": args.categories,
         "index_name": index_name,
         "pipeline_name": pipeline_name,
@@ -216,35 +196,37 @@ def main():
     
     config.update(model_config)
 
-    # Create index settings with k-NN configuration
-    config["index_settings"] = create_index_settings(
-        base_mapping_path=get_base_mapping_path(),
-        index_config=config,
+    # Configure index settings with kNN and vector fields
+    index_settings = configure_index_for_dense_search(
+        dataset, pipeline_name, embedding_connector.get_model_dimensions()
     )
 
-    # Handle index creation - ensures the index exists and creates/applies the mapping
-    index_utils.handle_index_creation(
+    # Create index using dataset with custom settings
+    dataset.create_index(
         os_client=client.os_client,
-        config=config,
-        delete_existing=config["delete_existing_index"],
+        index_name=index_name,
+        delete_existing=args.delete_existing_index,
+        index_settings=index_settings
     )
 
     # Set up k-NN pipeline for automatic embedding generation
     client.setup_for_kNN(
         ml_model=ml_model,
-        index_name=config["index_name"],
+        index_name=index_name,
         pipeline_name=pipeline_name,
         pipeline_field_map=config["pipeline_field_map"],
-        embedding_type=config["embedding_type"],
+        embedding_type=embedding_type,
     )
 
-    # Load data into the index
-    index_utils.handle_data_loading(
-        os_client=client.os_client,
-        pqa_reader=pqa_reader,
-        config=config,
-        no_load=args.no_load,
-    )
+    # Load data using dataset
+    if not args.no_load:
+        total_docs = dataset.load_data(
+            os_client=client.os_client,
+            index_name=index_name,
+            filter_criteria=args.categories,
+            bulk_chunk_size=args.bulk_send_chunk_size
+        )
+        logging.info(f"Loaded {total_docs} documents")
 
     logging.info("Setup complete! Starting interactive search interface...")
     logging.info(f"Using {provider.upper()} embeddings with {embedding_connector.get_model_dimensions()} dimensions")

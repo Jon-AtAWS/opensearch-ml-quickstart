@@ -6,7 +6,7 @@ Workflow Example Module
 
 This module demonstrates using OpenSearch's template API to create and execute
 workflows for automated index setup, then provides an interactive search interface.
-It integrates with existing MLModel classes and uses the index_utils.handle_data_loading function.
+It integrates with existing MLModel classes and uses the AmazonPQADataset for data loading.
 
 Features:
 1. Uses OpenSearch workflow templates for automated setup
@@ -26,16 +26,10 @@ import sys
 import cmd_line_interface
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from client import OsMlClientWrapper, get_client, index_utils
-from configs.configuration_manager import (
-    get_base_mapping_path,
-    get_pipeline_field_map,
-    get_qanda_file_reader_path,
-)
+from client import OsMlClientWrapper, get_client
 from connectors.helper import get_remote_connector_configs
-from data_process import QAndAFileReader
-from mapping import get_base_mapping, mapping_update
-from models import get_ml_model
+from data_process.amazon_pqa_dataset import AmazonPQADataset
+from models.helper import get_ml_model
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
@@ -45,29 +39,28 @@ logging.basicConfig(
 
 
 def create_workflow_template(
-    index_name, pipeline_name, model_id, model_dimension, base_mapping_path
+    index_name, pipeline_name, model_id, model_dimension, dataset
 ):
     """
     Create a workflow template for automated OpenSearch setup.
 
     This template automates the creation of:
-    - Index with dense vector configuration using base mapping
+    - Index with dense vector configuration using dataset mapping
     - Ingest pipeline for text embedding
-    - Proper mappings and settings from base mapping configuration
+    - Proper mappings and settings from dataset configuration
 
     Parameters:
         index_name (str): Name of the index to create
         pipeline_name (str): Name of the ingest pipeline
         model_id (str): ID of the ML model for embeddings
         model_dimension (int): Dimension of the embedding vectors
-        base_mapping_path (str): Path to base mapping configuration
+        dataset: Dataset instance for mapping configuration
 
     Returns:
         dict: Complete workflow template configuration
     """
-    # Create index settings using the same logic as create_index_settings
-    index_config = {"pipeline_name": pipeline_name, "model_dimensions": model_dimension}
-    index_settings = create_index_settings(base_mapping_path, index_config)
+    # Create index settings using dataset mapping
+    index_settings = create_index_settings(dataset, pipeline_name, model_dimension)
 
     return {
         "name": f"{index_name}_workflow_template",
@@ -97,7 +90,7 @@ def create_workflow_template(
                                     {
                                         "text_embedding": {
                                             "model_id": model_id,
-                                            "field_map": get_pipeline_field_map(),
+                                            "field_map": {"chunk_text": "chunk_embedding"},
                                         }
                                     }
                                 ],
@@ -110,22 +103,21 @@ def create_workflow_template(
     }
 
 
-def create_index_settings(base_mapping_path, index_config):
+def create_index_settings(dataset, pipeline_name, model_dimension):
     """
-    Create index settings by reading base mapping and updating with vector configuration.
+    Create index settings by using dataset mapping and updating with vector configuration.
 
     Parameters:
-        base_mapping_path (str): Path to base mapping configuration
-        index_config (dict): Index configuration parameters
+        dataset: Dataset instance for base mapping
+        pipeline_name (str): Name of the ingest pipeline
+        model_dimension (int): Dimension of the embedding vectors
 
     Returns:
         dict: Index settings with dense vector configuration
     """
-    # Read the base mapping from the specified path
-    settings = get_base_mapping(base_mapping_path)
-    pipeline_name = index_config["pipeline_name"]
-    model_dimension = index_config["model_dimensions"]
-
+    # Get base mapping from dataset
+    base_mapping = dataset.get_index_mapping()
+    
     # Create the vector field configuration to add to the base mapping
     dense_vector_settings = {
         "settings": {"index": {"knn": True}, "default_pipeline": pipeline_name},
@@ -137,7 +129,7 @@ def create_index_settings(base_mapping_path, index_config):
                     "method": {
                         "name": "hnsw",
                         "space_type": "l2",
-                        "engine": "nmslib",
+                        "engine": "lucene",  # Updated from nmslib to lucene for OpenSearch 3.0+
                         "parameters": {"ef_construction": 128, "m": 24},
                     },
                 }
@@ -145,9 +137,10 @@ def create_index_settings(base_mapping_path, index_config):
         },
     }
 
-    # Update the base mapping with the vector field configuration
-    mapping_update(settings, dense_vector_settings)
-    return settings
+    # Create index settings and update with vector configuration
+    index_settings = {"mappings": base_mapping}
+    dataset.update_mapping(index_settings, dense_vector_settings)
+    return index_settings
 
 
 def verify_index_creation(client, index_name):
@@ -284,7 +277,7 @@ def main():
     1. Sets up command line arguments and configuration
     2. Initializes OpenSearch client and ML model
     3. Creates workflow template for index setup
-    4. Loads data using existing index_utils.handle_data_loading
+    4. Loads data using AmazonPQADataset
     5. Provides interactive search interface
     """
     # Parse command line arguments
@@ -298,45 +291,28 @@ def main():
 
     # Configuration
     host_type = "aos"  # Amazon OpenSearch Service
-    model_host = "bedrock"   # Using Bedrock for ML model hosting
+    model_type = "bedrock"   # Using Bedrock for ML model hosting
     index_name = "workflow_dense"  # Required index name
-    embedding_type = "dense"
     pipeline_name = "workflow-dense-pipeline"
 
     logging.info(f"Starting workflow example with index: {index_name}")
 
-    # Initialize OpenSearch client and data reader
+    # Initialize OpenSearch client and dataset
     client = OsMlClientWrapper(get_client(host_type))
-    pqa_reader = QAndAFileReader(
-        directory=get_qanda_file_reader_path(),
-        max_number_of_docs=args.number_of_docs_per_category,
-    )
-
-    # Configuration dictionary
-    config = {
-        "with_knn": True,
-        "pipeline_field_map": get_pipeline_field_map(),
-        "index_name": index_name,
-        "pipeline_name": pipeline_name,
-        "embedding_type": embedding_type,
-        "categories": args.categories,
-        "delete_existing_index": args.delete_existing_index,
-        "bulk_send_chunk_size": args.bulk_send_chunk_size,
-    }
+    dataset = AmazonPQADataset(max_number_of_docs=args.number_of_docs_per_category)
 
     # Set up ML model using existing MLModel classes
-    model_name = f"{host_type}_{model_host}"
+    model_name = f"{host_type}_{model_type}"
     model_config = get_remote_connector_configs(
-        host_type=host_type, connector_type=model_host
+        host_type=host_type, connector_type=model_type
     )
     model_config["model_name"] = model_name
-    model_config["embedding_type"] = embedding_type
-    config.update(model_config)
+    model_config["embedding_type"] = "dense"
 
     logging.info("Initializing ML model...")
     ml_model = get_ml_model(
         host_type=host_type,
-        model_host=model_host,
+        model_host=model_type,
         model_config=model_config,
         os_client=client.os_client,
         ml_commons_client=client.ml_commons_client,
@@ -348,14 +324,14 @@ def main():
         index_name=index_name,
         pipeline_name=pipeline_name,
         model_id=ml_model.model_id(),
-        model_dimension=config["model_dimensions"],
-        base_mapping_path=get_base_mapping_path(),
+        model_dimension=model_config["model_dimensions"],
+        dataset=dataset,
     )
 
     # if the index already exists and the cmd line does not specify to delete
     # it, then the workflow provision fails when it tries to create the index.
     # So check for the existence, and if not deleting it, then don't run the
-    # workflow. This code can't use index_utils.handle_index_creation (which
+    # workflow. This code can't use dataset.create_index (which
     # does the above), since the workflow will create the index.
     index_exists = client.os_client.indices.exists(index=index_name)
     if index_exists and not args.delete_existing_index:
@@ -390,14 +366,16 @@ def main():
         logging.error("Failed to set up and execute the workflow template. Exiting")
         sys.exit(1)
 
-    # Load data using existing index_utils.handle_data_loading
+    # Load data using dataset
     logging.info("Loading data into the index...")
-    index_utils.handle_data_loading(
-        os_client=client.os_client,
-        pqa_reader=pqa_reader,
-        config=config,
-        no_load=getattr(args, "no_load", False),
-    )
+    if not getattr(args, "no_load", False):
+        total_docs = dataset.load_data(
+            os_client=client.os_client,
+            index_name=index_name,
+            filter_criteria=args.categories,
+            bulk_chunk_size=args.bulk_send_chunk_size
+        )
+        logging.info(f"Loaded {total_docs} documents")
 
     logging.info("Setup complete! Starting interactive search interface...")
 
