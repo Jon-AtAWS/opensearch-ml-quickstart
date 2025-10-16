@@ -46,7 +46,13 @@ def build_lexical_query(query_text, **kwargs):
     """
     return {
         "size": 3,
-        "query": {"match": {"chunk_text": query_text}},
+        # "query": {"match": {"chunk_text": query_text}},
+        "query": {
+            "simple_query_string": {
+                "query": query_text,
+                "fields": ["item_name^2", "product_description", "brand_name", "bullets"],
+            }
+        },
     }
 
 

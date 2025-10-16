@@ -12,20 +12,20 @@ Similar to OpenSearch's conversational agent but using the strands-agents framew
 """
 
 import argparse
-import json
 import logging
 import os
 import sys
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from dataclasses import dataclass
 
 # Add the opensearch-ml-quickstart path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from strands import Agent, tool
-from client import OsMlClientWrapper, get_client, index_utils
+from strands.models import BedrockModel
+from botocore.config import Config as BotocoreConfig
+from client import OsMlClientWrapper, get_client
 from configs.configuration_manager import (
-    get_client_configs,
     get_base_mapping_path,
     get_local_dense_embedding_model_name,
     get_local_dense_embedding_model_version,
@@ -327,31 +327,48 @@ class StrandsSearchAgent:
         
         # Agent system prompt similar to OpenSearch agent
         system_prompt = """
-You are a helpful assistant that can answer questions about products in your knowledge base.
+            You are a helpful assistant that can answer questions about products in your knowledge base.
 
-The knowledge base contains user questions and answers, with one search document per user question. 
-Each search document also contains product information such as item name, product description, and brand name.
+            The knowledge base contains user questions and answers, with one search document per user question. 
+            Each search document also contains product information such as item name, product description, and brand name.
 
-You have tools that search based on matching the user question to the question in the search result, 
-as well as lexical and semantic search against the product information.
+            You have tools that search based on matching the user question to the question in the search result, 
+            as well as lexical and semantic search against the product information.
 
-Because the knowledge base is organized by user questions, you may not get a broadly diverse range 
-of product information in the search results, so try variants of the user question to get a wider range of products.
+            Because the knowledge base is organized by user questions, you may not get a broadly diverse range 
+            of product information in the search results, so try variants of the user question to get a wider range of products.
 
-First evaluate whether the user is asking a broad question about products, or a specific question about a product. 
-If the question is broad, you will use the category, lexical, and semantic search tools to find products that 
-are similar to the user's query. If it seems that the user question is about product features or use, 
-you will use the Q&A search tool to find questions users have asked about products.
+            First evaluate whether the user is asking a broad question about products, or a specific question about a product. 
+            If the question is broad, you will use the category, lexical, and semantic search tools to find products that 
+            are similar to the user's query. If it seems that the user question is about product features or use, 
+            you will use the Q&A search tool to find questions users have asked about products.
 
-In summarizing the search results include whether you approached the question as a broad product search 
-or a specific product question.
+            In summarizing the search results include whether you approached the question as a broad product search 
+            or a specific product question.
 
-When summarizing search results from any of the tools, if there are search results, but none of them 
-are relevant to the user question, summarize the results, and include why none of them was relevant.
-"""
-        
+            When summarizing search results from any of the tools, if there are search results, but none of them 
+            are relevant to the user question, summarize the results, and include why none of them was relevant.
+            """
+
+        # Create a boto client config with custom settings
+        boto_config = BotocoreConfig(
+            retries={"max_attempts": 3, "mode": "standard"},
+            connect_timeout=5,
+            read_timeout=60
+        )
+
+        # Create a configured Bedrock model
+        bedrock_model = BedrockModel(
+            model_id="amazon.nova-lite-v1:0",
+            region_name="us-east-1",  # Specify a different region than the default
+            temperature=0.3,
+            top_p=0.8,
+            stop_sequences=["###", "END"],
+            boto_client_config=boto_config,
+        )
+
         # Create the strands Agent
-        self.agent = Agent(tools=tools, system_prompt=system_prompt)
+        self.agent = Agent(model=bedrock_model, tools=tools, system_prompt=system_prompt)
     
     def process_query(self, query: str) -> str:
         """
