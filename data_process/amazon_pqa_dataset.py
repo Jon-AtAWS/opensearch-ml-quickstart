@@ -406,6 +406,11 @@ Text: {source.get('chunk_text', 'N/A')[:200]}...
                 category_docs += 1
                 
                 if len(docs) >= bulk_chunk_size:
+                    # Check all docs for any keys with dots
+                    for i, d in enumerate(docs):
+                        dot_keys = [k for k in d.keys() if '.' in k]
+                        if dot_keys:
+                            logging.error(f"Doc {i} has dot keys: {dot_keys}, question_id: {d.get('question_id')}")
                     helpers.bulk(os_client, docs, chunk_size=bulk_chunk_size)
                     docs = []
             

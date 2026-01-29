@@ -1,0 +1,31 @@
+{
+  "name": "Bedrock embedding model",
+  "function_name": "remote",
+  "description": "Embedding model for memory",
+  "connector": {
+    "name": "Amazon Bedrock Converse",
+    "description": "Test connector for Amazon Converse",
+    "version": 1,
+    "protocol": "aws_sigv4",
+    "credential": {
+      "access_key": "{{access_key}}",
+      "secret_key": "{{secret_key}}"
+    },
+    "parameters": {
+      "region": "us-west-2",
+      "service_name": "bedrock",
+      "model": "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
+    },
+    "actions": [
+      {
+        "action_type": "predict",
+        "method": "POST",
+        "headers": {
+          "content-type": "application/json"
+        },
+        "url": "https://bedrock-runtime.${parameters.region}.amazonaws.com/model/${parameters.model}/converse",
+        "request_body": "{\"system\":[{\"text\": \"${parameters.system_prompt}\"}], \"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"${parameters.user_prompt}\"}]}]}"
+      }
+    ]
+  }
+}

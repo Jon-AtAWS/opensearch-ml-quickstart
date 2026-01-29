@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import sys
+import uuid
 
 import cmd_line_interface
 
@@ -27,12 +28,13 @@ import agent_tools
 from client import OsMlClientWrapper, get_client, index_utils
 from configs.configuration_manager import (
     get_base_mapping_path,
-    get_client_configs,
-    get_pipeline_field_map,
-    get_qanda_file_reader_path,
-    config_override,  # Add this import
+    get_local_dense_embedding_model_name,
+    get_local_dense_embedding_model_version,
+    get_local_dense_embedding_model_format,
+    get_local_dense_embedding_model_dimension,
+    config_override,
 )
-from connectors.helper import get_remote_connector_configs, get_raw_config_value
+from connectors.helper import get_remote_connector_configs
 from data_process.amazon_pqa_dataset import AmazonPQADataset
 from mapping import get_base_mapping, mapping_update
 from models import (
@@ -40,6 +42,7 @@ from models import (
     get_ml_model,
 )
 from connectors import LlmConnector
+
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
@@ -242,7 +245,7 @@ def build_agent_query(query_text, agent_id=None, **kwargs):
     Parameters:
         query_text (str): The user's question
         agent_id (str): ID of the conversational agent
-        **kwargs: Additional parameters (unused)
+        **kwargs: Additional parameters including memory_id
 
     Returns:
         dict: Agent execution request
@@ -250,12 +253,17 @@ def build_agent_query(query_text, agent_id=None, **kwargs):
     if not agent_id:
         raise ValueError("Agent ID must be provided for conversational agent.")
 
-    return {
+    query = {
         "parameters": {
             "question": query_text,
             "verbose": True
         }
     }
+    
+    if "memory_id" in kwargs:
+        query["parameters"]["memory_id"] = kwargs["memory_id"]
+    
+    return query
 
 
 def main():
@@ -298,8 +306,6 @@ def main():
     }
 
     # Create local dense embedding model for knowledge base using configuration
-    from configs.configuration_manager import get_local_dense_embedding_model_name, get_local_dense_embedding_model_version, get_local_dense_embedding_model_format, get_local_dense_embedding_model_dimension
-    
     model_name = get_local_dense_embedding_model_name()
     model_config = {
         "model_name": model_name,
@@ -372,7 +378,7 @@ def main():
         try:
             agent_query = build_agent_query(args.question, agent_id)
             results = execute_agent_query(client, agent_id, agent_query)
-            cmd_line_interface.process_and_print_agent_results(results)
+            cmd_line_interface.process_and_print_agent_response(results)
         except Exception as e:
             logging.error(f"Error executing query: {e}")
         return
@@ -381,6 +387,15 @@ def main():
         "Starting interactive agent interface..."
     )
 
+    # Create conversation memory
+    uuid_str = str(uuid.uuid4())[:8]
+    conversation_name = f"conversation-{uuid_str}"
+    response = client.os_client.transport.perform_request(
+        "POST", "/_plugins/_ml/memory/", body={"name": conversation_name}
+    )
+    memory_id = response["memory_id"]
+    logging.info(f"Conversation Memory ID: {memory_id}")
+
     # Start interactive agent loop using the generic function from cmd_line_interface
     cmd_line_interface.interactive_agent_loop(
         client=client,
@@ -388,6 +403,7 @@ def main():
         model_info=f"Agent: {agent_id}, LLM: {llm_model_id}, Embedding: {embedding_ml_model.model_id()}",
         build_agent_query_func=build_agent_query,
         agent_executor_func=execute_agent_query,
+        memory_id=memory_id,
     )
 
 

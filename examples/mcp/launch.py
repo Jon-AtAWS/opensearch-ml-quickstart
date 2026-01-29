@@ -20,8 +20,26 @@ logger = logging.getLogger(__name__)
 
 app = BedrockAgentCoreApp()
 
-# Initialize MCP server once
-mcp_server = OpenSearchMCPServer()
+# Initialize MCP server once at startup
+mcp_server = None
+
+async def initialize_server():
+    """Initialize the MCP server at startup"""
+    global mcp_server
+    import sys
+    
+    # Parse command line arguments for the server
+    from mcp_server import get_command_line_args
+    args = get_command_line_args()
+    
+    mcp_server = OpenSearchMCPServer(
+        categories=args.categories,
+        num_docs=args.number_of_docs_per_category,
+        delete_existing=args.delete_existing_index,
+        bulk_chunk_size=args.bulk_send_chunk_size,
+        no_load=args.no_load
+    )
+    await mcp_server.initialize()
 
 @app.route("/", methods=["POST"])
 async def mcp_endpoint(request):
@@ -34,11 +52,6 @@ async def mcp_endpoint(request):
         # Get JSON body from request
         request_data = await request.json()
         logger.info(f"Request data: {request_data}")
-        
-        # Initialize server if not already done
-        logger.info("Initializing MCP server...")
-        await mcp_server.initialize()
-        logger.info("MCP server initialized successfully")
         
         method = request_data.get("method")
         params = request_data.get("params", {})
@@ -82,6 +95,11 @@ if __name__ == "__main__":
     print("Available tools: semantic_search, lexical_search, qna_search, category_search")
     print("📍 Local endpoint: http://localhost:8000")
     print("Use with: python mcp_client_agent.py --mcp-endpoint http://localhost:8000")
+    
+    # Initialize server before starting the app
+    print("🔧 Initializing MCP server...")
+    asyncio.run(initialize_server())
+    print("✅ Server ready!")
     print("Press Ctrl+C to stop")
     
     app.run(host="localhost", port=8000, log_level="debug")

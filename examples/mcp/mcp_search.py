@@ -5,29 +5,11 @@ MCP Client Agent - Uses MCP tools deployed on AgentCore
 
 import argparse
 import logging
-import os
-import sys
-from typing import Dict, Any
 import json
 import requests
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-
 from strands import Agent, tool
 from strands.models import BedrockModel
-from botocore.config import Config as BotocoreConfig
-
-from client import OsMlClientWrapper, get_client, index_utils
-from configs.configuration_manager import (
-    get_base_mapping_path,
-    get_local_dense_embedding_model_name,
-    get_local_dense_embedding_model_version,
-    get_local_dense_embedding_model_format,
-    get_local_dense_embedding_model_dimension,
-)
-from data_process.amazon_pqa_dataset import AmazonPQADataset
-from mapping import get_base_mapping, mapping_update
-from models import get_ml_model
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -78,37 +60,15 @@ def display_search_results(tool_name: str, result_text: str):
         print(f"\n{YELLOW}Error displaying results: {e}{RESET}")
         print(f"Raw result: {result_text}")
 
-def create_index_settings(base_mapping_path, index_config):
-    """Create OpenSearch index settings"""
-    settings = get_base_mapping(base_mapping_path)
-    pipeline_name = index_config["pipeline_name"]
-    model_dimension = index_config["model_dimensions"]
-    knn_settings = {
-        "settings": {"index": {"knn": True}, "default_pipeline": pipeline_name},
-        "mappings": {
-            "properties": {
-                "chunk": {"type": "text", "index": False},
-                "chunk_embedding": {
-                    "type": "knn_vector",
-                    "dimension": model_dimension,
-                },
-            }
-        },
-    }
-    mapping_update(settings, knn_settings)
-    return settings
-
 class MCPClientAgent:
     """Agent that uses MCP tools via client connection"""
     
-    def __init__(self, mcp_server_endpoint: str, embedding_model_id: str):
+    def __init__(self, mcp_server_endpoint: str):
         self.mcp_server_endpoint = mcp_server_endpoint
-        self.embedding_model_id = embedding_model_id
         
         # Initialize Bedrock model
         self.model = BedrockModel(
-            model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-            config=BotocoreConfig(region_name="us-west-2")
+            model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0"
         )
         
         # Create agent with MCP tools
@@ -128,7 +88,7 @@ class MCPClientAgent:
             ]
         )
     
-    def _call_mcp_tool(self, tool_name: str, arguments: Dict[str, Any]) -> str:
+    def _call_mcp_tool(self, tool_name: str, arguments: dict) -> str:
         """Call MCP tool via HTTP request"""
         try:
             payload = {
@@ -160,8 +120,7 @@ class MCPClientAgent:
     def semantic_search(self, question: str) -> str:
         """Perform semantic search using dense vector embeddings"""
         result = self._call_mcp_tool("semantic_search", {
-            "question": question,
-            "embedding_model_id": self.embedding_model_id
+            "question": question
         })
         display_search_results("semantic_search", result)
         return result
@@ -208,34 +167,6 @@ def get_command_line_args():
         help="MCP server endpoint from AgentCore deployment"
     )
     parser.add_argument(
-        "-c", "--categories",
-        nargs="+",
-        default=["jeans"],
-        help="Categories to load"
-    )
-    parser.add_argument(
-        "-n", "--number-of-docs-per-category",
-        type=int,
-        default=100,
-        help="Number of documents per category"
-    )
-    parser.add_argument(
-        "-d", "--delete-existing-index",
-        action="store_true",
-        help="Delete existing index"
-    )
-    parser.add_argument(
-        "--no-load",
-        action="store_true",
-        help="Skip loading data"
-    )
-    parser.add_argument(
-        "-s", "--bulk-send-chunk-size",
-        type=int,
-        default=100,
-        help="Bulk send chunk size"
-    )
-    parser.add_argument(
         "-q", "--question",
         type=str,
         help="Single question to ask"
@@ -246,78 +177,8 @@ def main():
     """Main function"""
     args = get_command_line_args()
     
-    host_type = "os"
-    model_host = "local"
-    index_name = "mcp_client_knowledge_base"
-    embedding_type = "dense"
-    ingest_pipeline_name = "mcp-client-ingest-pipeline"
-    
-    # Initialize OpenSearch client
-    client = OsMlClientWrapper(get_client(host_type))
-    
-    config = {
-        "with_knn": True,
-        "pipeline_field_map": {"chunk_text": "chunk_embedding"},
-        "categories": args.categories,
-        "index_name": index_name,
-        "pipeline_name": ingest_pipeline_name,
-        "embedding_type": embedding_type,
-        "delete_existing_index": args.delete_existing_index,
-        "bulk_send_chunk_size": args.bulk_send_chunk_size,
-    }
-    
-    # Create embedding model
-    model_config = {
-        "model_name": get_local_dense_embedding_model_name(),
-        "model_version": get_local_dense_embedding_model_version(),
-        "model_dimensions": get_local_dense_embedding_model_dimension(),
-        "embedding_type": embedding_type,
-        "model_format": get_local_dense_embedding_model_format(),
-    }
-    
-    embedding_ml_model = get_ml_model(
-        host_type=host_type,
-        model_host=model_host,
-        model_config=model_config,
-        os_client=client.os_client,
-        ml_commons_client=client.ml_commons_client,
-        model_group_id=client.ml_model_group.model_group_id(),
-    )
-    
-    config.update(model_config)
-    config["index_settings"] = create_index_settings(
-        base_mapping_path=get_base_mapping_path(),
-        index_config=config,
-    )
-    
-    # Set up knowledge base
-    index_utils.handle_index_creation(
-        os_client=client.os_client,
-        config=config,
-        delete_existing=config["delete_existing_index"],
-    )
-    
-    client.setup_for_kNN(
-        ml_model=embedding_ml_model,
-        index_name=config["index_name"],
-        pipeline_name=ingest_pipeline_name,
-        pipeline_field_map=config["pipeline_field_map"],
-        embedding_type=config["embedding_type"],
-    )
-    
-    # Load data
-    if not args.no_load:
-        dataset = AmazonPQADataset(max_number_of_docs=args.number_of_docs_per_category)
-        total_docs = dataset.load_data(
-            os_client=client.os_client,
-            index_name=config["index_name"],
-            filter_criteria=args.categories,
-            bulk_chunk_size=args.bulk_send_chunk_size
-        )
-        print(f"Loaded {total_docs} documents")
-    
     # Create MCP client agent
-    agent = MCPClientAgent(args.mcp_endpoint, embedding_ml_model.model_id())
+    agent = MCPClientAgent(args.mcp_endpoint)
     
     # Handle single question
     if args.question:

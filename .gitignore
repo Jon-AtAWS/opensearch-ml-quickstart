@@ -6,3 +6,4 @@ datasets/
 .DS_Store
 examples/.ipynb_checkpoints/
 ignore-for-git/
+api-design/
