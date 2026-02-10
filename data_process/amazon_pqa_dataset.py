@@ -14,7 +14,7 @@ from .base_dataset import BaseDataset
 class AmazonPQADataset(BaseDataset):
     """Amazon Product Q&A dataset implementation."""
 
-    DATASET_PATH = "~/datasets/amazon_pqa"
+    DEFAULT_DATASET_PATH = "~/datasets/amazon_pqa"
 
     AMAZON_PQA_FILENAME_MAP = {
         "AMAZON_PQA_STREAMING_MEDIA_PLAYERS": "amazon_pqa_streaming_media_players.json",
@@ -222,9 +222,9 @@ class AmazonPQADataset(BaseDataset):
         "in-dash dvd and video receivers": "AMAZON_PQA_IN_DASH_DVD_AND_VIDEO_RECEIVERS",
     }
 
-    def __init__(self, max_number_of_docs: int = -1):
+    def __init__(self, dataset_path: str = DEFAULT_DATASET_PATH, max_number_of_docs: int = -1):
         # Use the class constant for dataset path
-        expanded_directory = os.path.expanduser(self.DATASET_PATH)
+        expanded_directory = os.path.expanduser(dataset_path)
         super().__init__(expanded_directory, max_number_of_docs)
         self.asins = set()
         self.questions = set()
