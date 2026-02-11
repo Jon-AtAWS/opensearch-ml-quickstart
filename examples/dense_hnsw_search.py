@@ -41,13 +41,10 @@ def configure_index_for_dense_search(dataset, pipeline_name, model_dimensions):
                     "method": {
                         "name": "hnsw",
                         "space_type": "l2",
-                        "engine": "lucene",
-                        "parameters": {
-                            "ef_construction": 128,
-                            "m": 24
-                        }
-                    }
-                }
+                        "engine": "faiss",
+                        "parameters": {"ef_construction": 128, "m": 24},
+                    },
+                },
             }
         }
     }
