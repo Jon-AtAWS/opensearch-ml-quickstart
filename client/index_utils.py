@@ -1,7 +1,7 @@
 import logging
 from typing import Dict
 from opensearchpy import helpers, OpenSearch
-from data_process import QAndAFileReader
+from data_process.base_dataset import BaseDataset
 
 
 SPACE_SEPARATOR = " "
@@ -48,18 +48,17 @@ def handle_index_creation(
 
 def handle_data_loading(
     os_client: OpenSearch,
-    pqa_reader: QAndAFileReader,
+    dataset: BaseDataset,
     config: Dict[str, str],
     no_load: bool = False,
-    enriched: bool = True,
 ):
     """
-    Handle data loading into OpenSearch index.
+    Handle data loading coordination using dataset's load_data method.
 
     Parameters:
-        client (OpenSearch): OpenSearch client instance
-        pqa_reader (QAndAFileReader): Reader for Amazon PQA dataset
-        config (Dict[str, str]): Configuration dictionary containing index settings and categories
+        os_client (OpenSearch): OpenSearch client instance
+        dataset (BaseDataset): Dataset reader instance
+        config (Dict[str, str]): Configuration dictionary containing index settings
 
     Returns:
         None
@@ -68,45 +67,18 @@ def handle_data_loading(
         logging.info("Skipping data loading, per command line argument")
         return
 
-    for category in config["categories"]:
-        load_category(
-            os_client=os_client,
-            pqa_reader=pqa_reader,
-            category=category,
-            config=config,
-            enriched=enriched,
-        )
-
-
-def load_category(os_client: OpenSearch, pqa_reader: QAndAFileReader, category, config, enriched=True):
-    logging.info(10*"=" + f'Loading category "{category}"')
-    docs = []
-    number_of_docs = 0
-    for doc in pqa_reader.questions_for_category(
-        pqa_reader.amazon_pqa_category_name_to_constant(category),
-        enriched=enriched
-    ):
-        doc["_index"] = config["index_name"]
-        doc["_id"] = doc["question_id"]
-        # TODO: Work on a much better way to handle the chunking
-        doc["chunk"] = SPACE_SEPARATOR.join(
-            [doc["product_description"], doc["brand_name"], doc["item_name"]]
-        )
-        # limit the document token count to 500 tokens from embedding models
-        doc["chunk"] = SPACE_SEPARATOR.join(doc["chunk"].split()[:500])
-        # documents less than 4 words are meaningless
-        if len(doc["chunk"]) <= 4:
-            logging.info(f"Empty chunk for {doc}")
-            continue
-        docs.append(doc)
-        number_of_docs += 1
-        if number_of_docs % 2000 == 0:
-            send_bulk_ignore_exceptions(os_client, config, docs)
-            docs = []
-    if len(docs) > 0:
-        logging.info(f'Finished reading "{category}" going to send remaining docs')
-        send_bulk_ignore_exceptions(os_client, config, docs)
-    logging.info(10*"=" + f'Finished loading category "{category}", sent {number_of_docs} documents')
+    filter_criteria = config.get("categories")  # Will be None for datasets without categories
+    bulk_chunk_size = config.get("bulk_send_chunk_size", 100)
+    index_name = config["index_name"]
+    
+    total_docs = dataset.load_data(
+        os_client=os_client,
+        index_name=index_name,
+        filter_criteria=filter_criteria,
+        bulk_chunk_size=bulk_chunk_size
+    )
+    
+    logging.info(f"Successfully loaded {total_docs} documents into index {index_name}")
 
 
 def send_bulk_ignore_exceptions(client: OpenSearch, config: Dict[str, str], docs):

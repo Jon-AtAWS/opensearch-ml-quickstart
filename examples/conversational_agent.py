@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import sys
+import uuid
 
 import cmd_line_interface
 
@@ -27,19 +28,21 @@ import agent_tools
 from client import OsMlClientWrapper, get_client, index_utils
 from configs.configuration_manager import (
     get_base_mapping_path,
-    get_client_configs,
-    get_pipeline_field_map,
-    get_qanda_file_reader_path,
-    config_override,  # Add this import
+    get_local_dense_embedding_model_name,
+    get_local_dense_embedding_model_version,
+    get_local_dense_embedding_model_format,
+    get_local_dense_embedding_model_dimension,
+    config_override,
 )
-from connectors.helper import get_remote_connector_configs, get_raw_config_value
-from data_process import QAndAFileReader
+from connectors.helper import get_remote_connector_configs
+from data_process.amazon_pqa_dataset import AmazonPQADataset
 from mapping import get_base_mapping, mapping_update
 from models import (
     RemoteMlModel,
     get_ml_model,
 )
 from connectors import LlmConnector
+
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
@@ -242,7 +245,7 @@ def build_agent_query(query_text, agent_id=None, **kwargs):
     Parameters:
         query_text (str): The user's question
         agent_id (str): ID of the conversational agent
-        **kwargs: Additional parameters (unused)
+        **kwargs: Additional parameters including memory_id
 
     Returns:
         dict: Agent execution request
@@ -250,12 +253,17 @@ def build_agent_query(query_text, agent_id=None, **kwargs):
     if not agent_id:
         raise ValueError("Agent ID must be provided for conversational agent.")
 
-    return {
+    query = {
         "parameters": {
             "question": query_text,
             "verbose": True
         }
     }
+    
+    if "memory_id" in kwargs:
+        query["parameters"]["memory_id"] = kwargs["memory_id"]
+    
+    return query
 
 
 def main():
@@ -283,17 +291,12 @@ def main():
     ingest_pipeline_name = "agent-dense-ingest-pipeline"
 
     # Conversational agent requires OpenSearch 3.1+
-    with config_override(MINIMUM_OPENSEARCH_VERSION="3.2.0"):
+    with config_override(MINIMUM_OPENSEARCH_VERSION="3.3.0"):
         client = OsMlClientWrapper(get_client(host_type))
-    
-    pqa_reader = QAndAFileReader(
-        directory=get_qanda_file_reader_path(),
-        max_number_of_docs=args.number_of_docs_per_category,
-    )
 
     config = {
         "with_knn": True,
-        "pipeline_field_map": get_pipeline_field_map(),
+        "pipeline_field_map": {"chunk_text": "chunk_embedding"},  # Use chunk_text for AmazonPQADataset
         "categories": args.categories,
         "index_name": index_name,
         "pipeline_name": ingest_pipeline_name,
@@ -303,8 +306,6 @@ def main():
     }
 
     # Create local dense embedding model for knowledge base using configuration
-    from configs.configuration_manager import get_local_dense_embedding_model_name, get_local_dense_embedding_model_version, get_local_dense_embedding_model_format, get_local_dense_embedding_model_dimension
-    
     model_name = get_local_dense_embedding_model_name()
     model_config = {
         "model_name": model_name,
@@ -344,13 +345,16 @@ def main():
         embedding_type=config["embedding_type"],
     )
 
-    # Load data into knowledge base
-    index_utils.handle_data_loading(
-        os_client=client.os_client,
-        pqa_reader=pqa_reader,
-        config=config,
-        no_load=args.no_load,
-    )
+    # Load data into knowledge base using dataset abstraction
+    if not args.no_load:
+        dataset = AmazonPQADataset(max_number_of_docs=args.number_of_docs_per_category)
+        total_docs = dataset.load_data(
+            os_client=client.os_client,
+            index_name=config["index_name"],
+            filter_criteria=args.categories,
+            bulk_chunk_size=args.bulk_send_chunk_size
+        )
+        print(f"Loaded {total_docs} documents")
 
     # Create LLM model for agent
     logging.info("Creating LLM model for conversational agent...")
@@ -374,7 +378,7 @@ def main():
         try:
             agent_query = build_agent_query(args.question, agent_id)
             results = execute_agent_query(client, agent_id, agent_query)
-            cmd_line_interface.process_and_print_agent_results(results)
+            cmd_line_interface.process_and_print_agent_response(results)
         except Exception as e:
             logging.error(f"Error executing query: {e}")
         return
@@ -383,6 +387,15 @@ def main():
         "Starting interactive agent interface..."
     )
 
+    # Create conversation memory
+    uuid_str = str(uuid.uuid4())[:8]
+    conversation_name = f"conversation-{uuid_str}"
+    response = client.os_client.transport.perform_request(
+        "POST", "/_plugins/_ml/memory/", body={"name": conversation_name}
+    )
+    memory_id = response["memory_id"]
+    logging.info(f"Conversation Memory ID: {memory_id}")
+
     # Start interactive agent loop using the generic function from cmd_line_interface
     cmd_line_interface.interactive_agent_loop(
         client=client,
@@ -390,6 +403,7 @@ def main():
         model_info=f"Agent: {agent_id}, LLM: {llm_model_id}, Embedding: {embedding_ml_model.model_id()}",
         build_agent_query_func=build_agent_query,
         agent_executor_func=execute_agent_query,
+        memory_id=memory_id,
     )
 
 

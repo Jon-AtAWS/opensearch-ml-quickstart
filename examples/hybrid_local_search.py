@@ -30,14 +30,8 @@ import sys
 import cmd_line_interface
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from client import OsMlClientWrapper, get_client, index_utils
-from configs.configuration_manager import (
-    get_base_mapping_path,
-    get_pipeline_field_map,
-    get_qanda_file_reader_path,
-)
-from data_process import QAndAFileReader
-from mapping import get_base_mapping, mapping_update
+from client import OsMlClientWrapper, get_client
+from data_process.amazon_pqa_dataset import AmazonPQADataset
 from models import get_ml_model
 
 logging.basicConfig(
@@ -51,33 +45,17 @@ LIGHT_RED_HEADER = "\033[1;31m"
 RESET = "\033[0m"
 
 
-def create_index_settings(base_mapping_path, index_config):
-    """
-    Create OpenSearch index settings for hybrid lexical and dense vector search.
-
-    Parameters:
-        base_mapping_path (str): Path to base mapping configuration
-        index_config (dict): Configuration containing pipeline and model settings
-
-    Returns:
-        dict: Updated index settings with k-NN vector configuration and text fields
-    """
-    settings = get_base_mapping(base_mapping_path)
-    pipeline_name = index_config["pipeline_name"]
-    model_dimension = index_config["model_dimensions"]
-
-    # Configure hybrid settings for both lexical and vector search
+def configure_index_for_hybrid_search(dataset, pipeline_name, model_dimensions):
+    """Configure index settings with kNN and vector fields for hybrid search."""
+    base_mapping = dataset.get_index_mapping()
+    
     hybrid_settings = {
         "settings": {"index": {"knn": True}, "default_pipeline": pipeline_name},
         "mappings": {
             "properties": {
-                "chunk": {
-                    "type": "text",
-                    "analyzer": "standard",  # Enable lexical search on chunk field
-                },
                 "chunk_embedding": {
                     "type": "knn_vector",
-                    "dimension": model_dimension,
+                    "dimension": model_dimensions,
                     "method": {
                         "name": "hnsw",
                         "space_type": "l2",
@@ -88,8 +66,10 @@ def create_index_settings(base_mapping_path, index_config):
             }
         },
     }
-    mapping_update(settings, hybrid_settings)
-    return settings
+    
+    index_settings = {"mappings": base_mapping}
+    dataset.update_mapping(index_settings, hybrid_settings)
+    return index_settings
 
 
 def build_hybrid_local_query(query_text, model_id=None, pipeline_config=None, **kwargs):
@@ -161,16 +141,13 @@ def main():
     ingest_pipeline_name = "hybrid-local-ingest-pipeline"
     search_pipeline_name = "hybrid-local-search-pipeline"
 
-    # Initialize OpenSearch client and data reader
+    # Initialize OpenSearch client and dataset
     client = OsMlClientWrapper(get_client(host_type))
-    pqa_reader = QAndAFileReader(
-        directory=get_qanda_file_reader_path(),
-        max_number_of_docs=args.number_of_docs_per_category,
-    )
+    dataset = AmazonPQADataset(max_number_of_docs=args.number_of_docs_per_category)
 
     config = {
         "with_knn": True,
-        "pipeline_field_map": get_pipeline_field_map(),
+        "pipeline_field_map": {"chunk_text": "chunk_embedding"},  # Example-specific field mapping
         "categories": args.categories,
         "index_name": index_name,
         "pipeline_name": ingest_pipeline_name,
@@ -203,34 +180,38 @@ def main():
     )
 
     config.update(model_config)
-    config["index_settings"] = create_index_settings(
-        base_mapping_path=get_base_mapping_path(),
-        index_config=config,
+    
+    # Configure index settings with hybrid search support
+    index_settings = configure_index_for_hybrid_search(
+        dataset, ingest_pipeline_name, model_config.get("model_dimensions", 384)
     )
 
-    # Handle index creation
-    index_utils.handle_index_creation(
+    # Create index using dataset with custom settings
+    dataset.create_index(
         os_client=client.os_client,
-        config=config,
-        delete_existing=config["delete_existing_index"],
+        index_name=index_name,
+        delete_existing=args.delete_existing_index,
+        index_settings=index_settings
     )
 
     logging.info("Setting up k-NN pipeline for dense embeddings")
     client.setup_for_kNN(
         ml_model=ml_model,
-        index_name=config["index_name"],
+        index_name=index_name,
         pipeline_name=ingest_pipeline_name,
         pipeline_field_map=config["pipeline_field_map"],
-        embedding_type=config["embedding_type"],
+        embedding_type=embedding_type,
     )
 
-    # Load data into the index
-    index_utils.handle_data_loading(
-        os_client=client.os_client,
-        pqa_reader=pqa_reader,
-        config=config,
-        no_load=args.no_load,
-    )
+    # Load data using dataset
+    if not args.no_load:
+        total_docs = dataset.load_data(
+            os_client=client.os_client,
+            index_name=index_name,
+            filter_criteria=args.categories,
+            bulk_chunk_size=args.bulk_send_chunk_size
+        )
+        logging.info(f"Loaded {total_docs} documents")
 
     # Create search pipeline for hybrid result combination
     logging.info(f"Creating hybrid search pipeline: {search_pipeline_name}")

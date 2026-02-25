@@ -7,24 +7,12 @@ import json
 import logging
 from typing import Dict
 
-
 import cmd_line_interface
 
-
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from configs.configuration_manager import (
-    get_base_mapping_path,
-    get_pipeline_field_map,
-    get_qanda_file_reader_path,
-)
 from connectors.helper import get_remote_connector_configs
-from client import (
-    OsMlClientWrapper,
-    get_client,
-    index_utils,
-)
-from data_process import QAndAFileReader
-from mapping import get_base_mapping, mapping_update
+from client import OsMlClientWrapper, get_client
+from data_process.amazon_pqa_dataset import AmazonPQADataset
 from models import get_ml_model, MlModel
 
 
@@ -46,37 +34,41 @@ LIGHT_YELLOW_HEADER = "\033[1;33m"
 LIGHT_PURPLE_HEADER = "\033[1;35m"
 
 
-def create_index_settings(base_mapping_path, index_config):
-    settings = get_base_mapping(base_mapping_path)
-    pipeline_name = index_config["pipeline_name"]
-    model_dimension = index_config["model_dimensions"]
-    knn_settings = {
+def configure_index_for_hybrid_search(dataset, pipeline_name, dense_model_dimensions):
+    """Configure index settings with both dense and sparse vector fields for hybrid search."""
+    base_mapping = dataset.get_index_mapping()
+    
+    hybrid_settings = {
         "settings": {"index": {"knn": True}, "default_pipeline": pipeline_name},
         "mappings": {
             "properties": {
-                "chunk": {"type": "text", "index": False},
                 "chunk_sparse_embedding": {
                     "type": "rank_features",
                 },
                 "chunk_dense_embedding": {
                     "type": "knn_vector",
-                    "dimension": model_dimension,
+                    "dimension": dense_model_dimensions,
                 },
             }
         },
     }
-    mapping_update(settings, knn_settings)
-    return settings
+    
+    index_settings = {"mappings": base_mapping}
+    dataset.update_mapping(index_settings, hybrid_settings)
+    return index_settings
 
 
 def load_dataset(
     client: OsMlClientWrapper,
     dense_ml_model: MlModel,
     sparse_ml_model: MlModel,
-    pqa_reader: QAndAFileReader,
-    config: Dict[str, str],
+    dataset: AmazonPQADataset,
+    index_name: str,
     pipeline_name: str,
-    args: str,
+    categories: list,
+    bulk_chunk_size: int,
+    delete_existing: bool,
+    no_load: bool,
 ):
     logging.info("Adding ingestion pipeline for hybrid search...")
     pipeline_config = {
@@ -85,31 +77,41 @@ def load_dataset(
             {
                 "sparse_encoding": {
                     "model_id": sparse_ml_model.model_id(),
-                    "field_map": {"chunk": "chunk_sparse_embedding"},
+                    "field_map": {"chunk_text": "chunk_sparse_embedding"},
                 }
             },
             {
                 "text_embedding": {
                     "model_id": dense_ml_model.model_id(),
-                    "field_map": {"chunk": "chunk_dense_embedding"},
+                    "field_map": {"chunk_text": "chunk_dense_embedding"},
                 }
             },
         ],
     }
     client.os_client.ingest.put_pipeline(id=pipeline_name, body=pipeline_config)
 
-    index_utils.handle_index_creation(
-        os_client=client.os_client,
-        config=config,
-        delete_existing=config["delete_existing_index"],
+    # Configure index settings for hybrid search
+    index_settings = configure_index_for_hybrid_search(
+        dataset, pipeline_name, 384  # Default dense model dimension
     )
 
-    index_utils.handle_data_loading(
+    # Create index using dataset
+    dataset.create_index(
         os_client=client.os_client,
-        pqa_reader=pqa_reader,
-        config=config,
-        no_load=args.no_load,
+        index_name=index_name,
+        delete_existing=delete_existing,
+        index_settings=index_settings
     )
+
+    # Load data using dataset
+    if not no_load:
+        total_docs = dataset.load_data(
+            os_client=client.os_client,
+            index_name=index_name,
+            filter_criteria=categories,
+            bulk_chunk_size=bulk_chunk_size
+        )
+        logging.info(f"Loaded {total_docs} documents")
 
 
 def build_hybrid_query(
@@ -178,20 +180,7 @@ def main():
     search_pipeline_name = "hybrid-search-pipeline"
 
     client = OsMlClientWrapper(get_client(host_type))
-    pqa_reader = QAndAFileReader(
-        directory=get_qanda_file_reader_path(),
-        max_number_of_docs=args.number_of_docs_per_category,
-    )
-
-    config = {
-        "with_knn": True,
-        "pipeline_field_map": get_pipeline_field_map(),
-        "categories": args.categories,
-        "index_name": index_name,
-        "pipeline_name": ingest_pipeline_name,
-        "delete_existing_index": args.delete_existing_index,
-        "bulk_send_chunk_size": args.bulk_send_chunk_size,
-    }
+    dataset = AmazonPQADataset(max_number_of_docs=args.number_of_docs_per_category)
 
     dense_model_name = f"{host_type}_{dense_model_host}"
     dense_model_config = get_remote_connector_configs(
@@ -223,20 +212,17 @@ def main():
         model_group_id=client.ml_model_group.model_group_id(),
     )
 
-    config["model_dimensions"] = dense_model_config["model_dimensions"]
-    config["index_settings"] = create_index_settings(
-        base_mapping_path=get_base_mapping_path(),
-        index_config=config,
-    )
-
     load_dataset(
         client,
         dense_ml_model,
         sparse_ml_model,
-        pqa_reader,
-        config,
-        pipeline_name=ingest_pipeline_name,
-        args=args,
+        dataset,
+        index_name,
+        ingest_pipeline_name,
+        args.categories,
+        args.bulk_send_chunk_size,
+        args.delete_existing_index,
+        args.no_load,
     )
 
     logging.info(f"Creating search pipeline {search_pipeline_name}")

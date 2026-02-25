@@ -421,12 +421,15 @@ class EmbeddingConnector(MlConnector):
         if not dense_arn:
             raise ValueError("dense_arn is required for AOS Bedrock connector")
         
+        # Use wildcard for region to allow access to Bedrock in all regions
+        all_regions_arn = dense_arn.replace(f":{self._connector_configs.get('region')}:", ":*:")
+        
         return {
             "Version": "2012-10-17",
             "Statement": [
                 {
                     "Effect": "Allow",
-                    "Resource": [dense_arn],
+                    "Resource": [all_regions_arn],
                     "Action": ["bedrock:InvokeModel"],
                 }
             ],

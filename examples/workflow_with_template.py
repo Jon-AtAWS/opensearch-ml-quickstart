@@ -7,7 +7,7 @@ Workflow with Template Module
 This module demonstrates using OpenSearch's built-in semantic_search workflow template
 to create and execute workflows for automated index setup, then provides an interactive 
 search interface. It integrates with existing MLModel classes and uses the 
-index_utils.handle_data_loading function.
+AmazonPQADataset for data loading.
 
 Features:
 1. Uses OpenSearch's built-in semantic_search workflow template
@@ -25,20 +25,13 @@ import os
 import sys
 from opensearchpy import OpenSearch
 
-
 import cmd_line_interface
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from client import OsMlClientWrapper, get_client, index_utils
-from configs.configuration_manager import (
-    get_base_mapping_path,
-    get_pipeline_field_map,
-    get_qanda_file_reader_path,
-)
+from client import OsMlClientWrapper, get_client
 from connectors.helper import get_remote_connector_configs
-from data_process import QAndAFileReader
-from mapping import get_base_mapping
-from models import get_ml_model
+from data_process.amazon_pqa_dataset import AmazonPQADataset
+from models.helper import get_ml_model
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
@@ -70,29 +63,29 @@ def semantic_search_workflow_parameters(
         "template.name": f"{index_name}_semantic_search_workflow",
         "template.description": f"Semantic search workflow for {index_name} using built-in template",
         "create_index.name": index_name,
-        "create_index.mappings.method.engine": "faiss",
+        "create_index.mappings.method.engine": "lucene",  # Updated from faiss to lucene
         "create_index.mappings.method.space_type": "l2",
         "create_index.mappings.method.name": "hnsw",
         "create_ingest_pipeline.pipeline_id": pipeline_name,
         "create_ingest_pipeline.description": f"Ingest pipeline for {index_name}",
-        "text_embedding.field_map.input": "chunk",
+        "text_embedding.field_map.input": "chunk_text",  # Updated to match dataset
         "text_embedding.field_map.output": "chunk_embedding",
         "create_ingest_pipeline.model_id": model_id,
         "text_embedding.field_map.output.dimension": model_dimension,
     }
 
 
-def add_additional_field_mappings(os_client: OpenSearch, index_name):
+def add_additional_field_mappings(os_client: OpenSearch, index_name, dataset):
     """
-    Get the base mapping and pull out the additional fields
+    Add additional field mappings from dataset to the index.
 
     Parameters:
+        os_client: OpenSearch client
         index_name (str): Name of the index
-        base_mapping_path (str): Path to base mapping configuration
-        index_config (dict): Index configuration parameters
+        dataset: Dataset instance for mapping configuration
 
     Returns:
-        dict: Index settings with dense vector configuration
+        bool: True if successful, False otherwise
     """
     logging.info(f"Adding additional field mappings to {index_name}")
 
@@ -101,19 +94,18 @@ def add_additional_field_mappings(os_client: OpenSearch, index_name):
         logging.error(f"Index {index_name} does not exist. Cannot add field mappings.")
         return False
 
-    # Read the base mapping from the specified path
-    index_config = get_base_mapping(get_base_mapping_path())
-    properties = index_config.get("mappings", None)
+    # Get the dataset mapping
+    properties = {"mappings": dataset.get_index_mapping()}
 
-    if not properties:
-        logging.warning("No mappings found in the base mapping, not adding any")
+    if not properties.get("mappings"):
+        logging.warning("No mappings found in the dataset, not adding any")
         return True
 
     logging.info(f"Adding {json.dumps(properties, indent=2)}")
     
     try:
         response = os_client.transport.perform_request(
-            "PUT", f"/{index_name}/_mapping", body=properties
+            "PUT", f"/{index_name}/_mapping", body=properties["mappings"]
         )
         if not response.get("acknowledged"):
             logging.error("Failed to add additional field mappings")
@@ -218,7 +210,7 @@ def provision_semantic_search_workflow(client, workflow_config):
                 f"/_plugins/_flow_framework/workflow/{workflow_id}/_status",
             )
 
-        return True, workflow_id  # Continue anyway, as resources might still be created
+        return True, workflow_id
 
     except Exception as e:
         logging.error(f"Semantic search workflow setup failed: {e}")
@@ -261,7 +253,7 @@ def main():
     1. Sets up command line arguments and configuration
     2. Initializes OpenSearch client and ML model
     3. Creates semantic search workflow using built-in template
-    4. Loads data using existing index_utils.handle_data_loading
+    4. Loads data using AmazonPQADataset
     5. Provides interactive search interface
     """
     # Parse command line arguments
@@ -275,45 +267,28 @@ def main():
 
     # Configuration using constants
     host_type = "aos"  # Amazon OpenSearch Service
-    model_host = "sagemaker"  # Use SageMaker for embeddings
+    model_type = "sagemaker"  # Use SageMaker for embeddings
     index_name = INDEX_NAME  # Use constant for index name
-    embedding_type = "dense"
     pipeline_name = PIPELINE_NAME  # Use constant for pipeline name
 
     logging.info(f"Starting workflow with template example using index: {index_name}")
 
-    # Initialize OpenSearch client and data reader
+    # Initialize OpenSearch client and dataset
     client = OsMlClientWrapper(get_client(host_type))
-    pqa_reader = QAndAFileReader(
-        directory=get_qanda_file_reader_path(),
-        max_number_of_docs=args.number_of_docs_per_category,
-    )
-
-    # Configuration dictionary
-    config = {
-        "with_knn": True,
-        "pipeline_field_map": get_pipeline_field_map(),
-        "index_name": index_name,
-        "pipeline_name": pipeline_name,
-        "embedding_type": embedding_type,
-        "categories": args.categories,
-        "delete_existing_index": args.delete_existing_index,
-        "bulk_send_chunk_size": args.bulk_send_chunk_size,
-    }
+    dataset = AmazonPQADataset(max_number_of_docs=args.number_of_docs_per_category)
 
     # Set up ML model using existing MLModel classes
-    model_name = f"{host_type}_{model_host}"
+    model_name = f"{host_type}_{model_type}"
     model_config = get_remote_connector_configs(
-        host_type=host_type, connector_type=model_host
+        host_type=host_type, connector_type=model_type
     )
     model_config["model_name"] = model_name
-    model_config["embedding_type"] = embedding_type
-    config.update(model_config)
+    model_config["embedding_type"] = "dense"
 
     logging.info("Initializing ML model...")
     ml_model = get_ml_model(
         host_type=host_type,
-        model_host=model_host,
+        model_host=model_type,
         model_config=model_config,
         os_client=client.os_client,
         ml_commons_client=client.ml_commons_client,
@@ -324,13 +299,13 @@ def main():
         index_name=index_name,
         pipeline_name=pipeline_name,
         model_id=ml_model.model_id(),
-        model_dimension=config["model_dimensions"],
+        model_dimension=model_config["model_dimensions"],
     )
 
     # if the index already exists and the cmd line does not specify to delete
     # it, then the workflow provision fails when it tries to create the index.
     # So check for the existence, and if not deleting it, then don't run the
-    # workflow. This code can't use index_utils.handle_index_creation (which
+    # workflow. This code can't use dataset.create_index (which
     # does the above), since the workflow will create the index.
     index_exists = client.os_client.indices.exists(index=index_name)
     template_success = False
@@ -360,7 +335,7 @@ def main():
             logging.info("Index and pipeline are ready for data loading")
             
             # Only add additional field mappings if the index exists and was created successfully
-            if not add_additional_field_mappings(client.os_client, index_name=index_name):
+            if not add_additional_field_mappings(client.os_client, index_name, dataset):
                 logging.warning("Continuing without additional field mappings")
         else:
             logging.warning(
@@ -370,14 +345,16 @@ def main():
         logging.error("Failed to set up and execute the semantic search workflow. Exiting")
         sys.exit(1)
 
-    # Load data using existing index_utils.handle_data_loading
+    # Load data using dataset
     logging.info("Loading data into the index...")
-    index_utils.handle_data_loading(
-        os_client=client.os_client,
-        pqa_reader=pqa_reader,
-        config=config,
-        no_load=getattr(args, "no_load", False),
-    )
+    if not getattr(args, "no_load", False):
+        total_docs = dataset.load_data(
+            os_client=client.os_client,
+            index_name=index_name,
+            filter_criteria=args.categories,
+            bulk_chunk_size=args.bulk_send_chunk_size
+        )
+        logging.info(f"Loaded {total_docs} documents")
 
     logging.info("Setup complete! Starting interactive search interface...")
 

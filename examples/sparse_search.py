@@ -8,16 +8,10 @@ import sys
 import cmd_line_interface
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from client import OsMlClientWrapper, get_client, index_utils
-from configs.configuration_manager import (
-    get_base_mapping_path,
-    get_pipeline_field_map,
-    get_qanda_file_reader_path,
-)
+from client import OsMlClientWrapper, get_client
 from connectors.helper import get_remote_connector_configs
-from data_process import QAndAFileReader
-from mapping import get_base_mapping, mapping_update
-from models import get_ml_model
+from data_process.amazon_pqa_dataset import AmazonPQADataset
+from models.helper import get_ml_model
 
 logging.basicConfig(
     format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
@@ -26,22 +20,69 @@ logging.basicConfig(
 )
 
 
-def create_index_settings(base_mapping_path, index_config):
-    settings = get_base_mapping(base_mapping_path)
-    pipeline_name = index_config["pipeline_name"]
-    knn_settings = {
+def configure_index_for_sparse_search(dataset, pipeline_name):
+    """Configure index settings with sparse vector field for neural sparse search."""
+    base_mapping = dataset.get_index_mapping()
+    
+    sparse_settings = {
         "settings": {"index": {"knn": True}, "default_pipeline": pipeline_name},
         "mappings": {
             "properties": {
-                "chunk": {"type": "text", "index": False},
-                "chunk_embedding": {
+                "chunk_sparse_embedding": {
                     "type": "rank_features",
                 },
             }
         },
     }
-    mapping_update(settings, knn_settings)
-    return settings
+    
+    index_settings = {"mappings": base_mapping}
+    dataset.update_mapping(index_settings, sparse_settings)
+    return index_settings
+
+
+def load_dataset(
+    client: OsMlClientWrapper,
+    ml_model,
+    dataset: AmazonPQADataset,
+    index_name: str,
+    pipeline_name: str,
+    categories: list,
+    bulk_chunk_size: int,
+    delete_existing: bool,
+    no_load: bool,
+):
+    logging.info("Adding ingestion pipeline for sparse search...")
+    
+    # Create ingest pipeline with sparse embedding
+    pipeline_config = {
+        "description": "Sparse embedding pipeline",
+        "processors": [
+            {
+                "sparse_encoding": {
+                    "model_id": ml_model.model_id(),
+                    "field_map": {"chunk_text": "chunk_sparse_embedding"}
+                }
+            }
+        ]
+    }
+    
+    client.os_client.ingest.put_pipeline(id=pipeline_name, body=pipeline_config)
+    
+    # Configure and create index
+    index_settings = configure_index_for_sparse_search(dataset, pipeline_name)
+    dataset.create_index(
+        client.os_client, index_name, delete_existing, index_settings
+    )
+    
+    # Load data using dataset
+    if not no_load:
+        total_docs = dataset.load_data(
+            os_client=client.os_client,
+            index_name=index_name,
+            filter_criteria=categories,
+            bulk_chunk_size=bulk_chunk_size
+        )
+        logging.info(f"Loaded {total_docs} documents")
 
 
 def build_sparse_query(query_text, model_id=None, **kwargs):
@@ -62,7 +103,7 @@ def build_sparse_query(query_text, model_id=None, **kwargs):
         "size": 3,
         "query": {
             "neural_sparse": {
-                "chunk_embedding": {
+                "chunk_sparse_embedding": {
                     "query_text": query_text,
                     "model_id": model_id,
                 }
@@ -80,76 +121,49 @@ def main():
         )
         sys.exit(1)
 
-    # This example uses a sparse model, hosted on Amazon SageMaker and an Amazon
-    # OpenSearch Service domain.
+    # Configuration
     host_type = "aos"
-    model_host = "sagemaker"
+    model_type = "sagemaker"
     index_name = "sparse_search"
-    embedding_type = "sparse"
-    pipeline_name = "sparse-ingest-pipeline"
+    ingest_pipeline_name = "sparse-ingest-pipeline"
 
+    # Initialize client and dataset
     client = OsMlClientWrapper(get_client(host_type))
-    pqa_reader = QAndAFileReader(
-        directory=get_qanda_file_reader_path(),
-        max_number_of_docs=args.number_of_docs_per_category,
-    )
+    dataset = AmazonPQADataset(max_number_of_docs=args.number_of_docs_per_category)
 
-    config = {
-        "with_knn": True,
-        "index_name": index_name,
-        "pipeline_name": pipeline_name,
-        "pipeline_field_map": get_pipeline_field_map(),
-        "embedding_type": embedding_type,
-        "categories": args.categories,
-        "delete_existing_index": args.delete_existing_index,
-        "bulk_send_chunk_size": args.bulk_send_chunk_size,
-    }
-
-    model_name = f"{host_type}_{model_host}"
+    # Get model configuration and create model
+    model_name = f"{host_type}_{model_type}"
     model_config = get_remote_connector_configs(
-        host_type=host_type, connector_type=model_host
+        host_type=host_type, connector_type=model_type
     )
     model_config["model_name"] = model_name
-    model_config["embedding_type"] = embedding_type
+    model_config["embedding_type"] = "sparse"
+    
     ml_model = get_ml_model(
         host_type=host_type,
-        model_host=model_host,
+        model_host=model_type,
         model_config=model_config,
         os_client=client.os_client,
         ml_commons_client=client.ml_commons_client,
         model_group_id=client.ml_model_group.model_group_id(),
     )
-    config.update(model_config)
-    config["index_settings"] = create_index_settings(
-        base_mapping_path=get_base_mapping_path(),
-        index_config=config,
-    )
 
-    index_utils.handle_index_creation(
-        os_client=client.os_client,
-        config=config,
-        delete_existing=config["delete_existing_index"],
-    )
-
-    logging.info("Setting up for KNN")
-    client.setup_for_kNN(
-        ml_model=ml_model,
-        index_name=config["index_name"],
-        pipeline_name=pipeline_name,
-        pipeline_field_map=config["pipeline_field_map"],
-        embedding_type=config["embedding_type"],
-    )
-
-    index_utils.handle_data_loading(
-        os_client=client.os_client,
-        pqa_reader=pqa_reader,
-        config=config,
-        no_load=args.no_load,
+    # Load dataset and setup index
+    load_dataset(
+        client,
+        ml_model,
+        dataset,
+        index_name,
+        ingest_pipeline_name,
+        args.categories,
+        args.bulk_send_chunk_size,
+        args.delete_existing_index,
+        args.no_load,
     )
 
     logging.info("Setup complete! Starting interactive search interface...")
 
-    # Start interactive search loop using the generic function
+    # Start interactive search loop
     cmd_line_interface.interactive_search_loop(
         client=client,
         index_name=index_name,

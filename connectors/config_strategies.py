@@ -98,6 +98,8 @@ class BedrockOSStrategy(ConnectorConfigStrategy):
             return get_raw_config_value("BEDROCK_LLM_PREDICT_PAYLOAD_FILE") or "bedrock_llm_predict.json"
         elif model_type == "llm_converse":
             return get_raw_config_value("BEDROCK_LLM_CONVERSE_PAYLOAD_FILE") or "bedrock_llm_converse.json"
+        elif model_type == "llm_memory":
+            return get_raw_config_value("BEDROCK_LLM_MEMORY_PAYLOAD_FILE") or "bedrock_llm_memory.json"
         elif model_type == "sparse":
             raise ValueError("Bedrock doesn't support sparse embeddings")
         return get_raw_config_value("BEDROCK_PAYLOAD_FILE") or "bedrock_dense.json"
@@ -125,6 +127,8 @@ class BedrockAOSStrategy(ConnectorConfigStrategy):
             return get_raw_config_value("BEDROCK_LLM_PREDICT_PAYLOAD_FILE") or "bedrock_llm_predict.json"
         elif model_type == "llm_converse":
             return get_raw_config_value("BEDROCK_LLM_CONVERSE_PAYLOAD_FILE") or "bedrock_llm_converse.json"
+        elif model_type == "llm_memory":
+            return get_raw_config_value("BEDROCK_LLM_MEMORY_PAYLOAD_FILE") or "bedrock_llm_memory.json"
         elif model_type == "sparse":
             raise ValueError("Bedrock doesn't support sparse embeddings")
         return get_raw_config_value("BEDROCK_PAYLOAD_FILE") or "bedrock_dense.json"

@@ -259,6 +259,52 @@ def print_empty_query_warning():
     print("Please enter a valid search query.")
 
 
+def dictify(obj):
+    if isinstance(obj, dict):
+        return {k: dictify(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [dictify(i) for i in obj]
+    elif isinstance(obj, str):
+        try:
+            # First try parsing as single JSON object
+            parsed = json.loads(obj)
+            return dictify(parsed)
+        except json.JSONDecodeError:
+            # Try JSON Lines format (multiple JSON objects separated by newlines)
+            try:
+                lines = obj.strip().split('\n')
+                parsed_lines = []
+                for line in lines:
+                    if line.strip():
+                        parsed_lines.append(json.loads(line))
+                return [dictify(line) for line in parsed_lines]
+            except json.JSONDecodeError:
+                # Regular string, don't try to parse
+                return obj
+    else:
+        return obj
+
+
+def safely_access_dict(d, keys, default=None):
+    """
+    Safely access nested dictionary keys.
+
+    Parameters:
+        d (dict): The dictionary to access
+        keys (list): List of keys representing the path to the desired value
+        default: Default value to return if any key is missing
+
+    Returns:
+        The value at the nested key path or the default value if any key is missing
+    """
+    for key in keys:
+        if isinstance(d, dict) and key in d:
+            d = d[key]
+        else:
+            return default
+    return d
+
+
 def extract_agent_response_text(agent_response):
     """
     Extract all response entries from agent results.
@@ -270,27 +316,51 @@ def extract_agent_response_text(agent_response):
         list: List of response entries with their types
     """
     responses = []
-    if "inference_results" in agent_response:
-        for result in agent_response["inference_results"]:
-            if "output" in result:
-                for output in result["output"]:
-                    if output.get("name") == "response" and "result" in output:
-                        response_text = output["result"]
-                        if response_text:
-                            # Try to parse as JSON first
-                            try:
-                                parsed_json = json.loads(response_text)
-                                responses.append({"type": "json", "content": parsed_json})
-                            except json.JSONDecodeError:
-                                # Check if it looks like search results
-                                if response_text.strip().startswith('{"_index"'):
-                                    responses.append({"type": "search_results", "content": response_text})
-                                else:
-                                    responses.append({"type": "text", "content": response_text})
+    dictified_response = dictify(agent_response)
+    # print(safely_access_dict(agent_response, ["inference_results"], []))
+    for inference_result in safely_access_dict(dictified_response, ["inference_results"], []):
+        # Inference results is an array, with one element (?), "output"
+        for output in safely_access_dict(inference_result, ["output"], []):
+            # Each output is a dict with 2 keys: name and result. The result
+            # can have various formats. If the name is other than "response",
+            # ignore it. These are admin messages, like the memory_id.
+            #
+            # If the name is "response", the result can be:
+            # response, result, output, message, content, []: LLM-generated message
+            # response, result, hits, aggregations: category aggregation
+            # response, result, _source: search hits
+            # response, result, <text>: final response text
+            if safely_access_dict(output, ["name"]) != "response":
+                # ignore non-LLM-generated responses 
+                continue
+            value = safely_access_dict(output, ["result", "output", "message", "content"], None)
+            if value:
+                responses.append({"type": "text",
+                                  "content": safely_access_dict(value[0], ["text"], "")})
+                continue
+            value = safely_access_dict(output, ["result", "aggregations", "categories", "buckets"], None)
+            if value:
+                buckets = [f'{bucket["key"]} ({bucket["doc_count"]})' for bucket in value]
+                responses.append({"type": "category_aggregation",
+                                  "content": '\n'.join(buckets)})
+                continue
+            value = safely_access_dict(output, ["result"], None)
+            if value:
+                # Handle search results that are now lists of dictionaries
+                if isinstance(value, list) and value and "_source" in value[0]:
+                    item_names = [item.get("_source", {}).get("item_name", "") for item in value if "_source" in item]
+                    responses.append({"type": "search_results",
+                                      "content": '\n'.join(item_names)})
+                    continue
+                # Handle final text responses
+                elif isinstance(value, str) and not value.startswith('{'):
+                    responses.append({"type": "final_response",
+                                      "content": value})
+                    continue
     return responses
 
 
-def process_and_print_agent_results(search_results, **kwargs):
+def process_and_print_agent_response(search_results, **kwargs):
     """
     Process and display conversational agent results with proper formatting for different response types.
     
@@ -298,48 +368,30 @@ def process_and_print_agent_results(search_results, **kwargs):
         search_results (dict): Agent execution response
         **kwargs: Additional parameters (unused)
     """
-    # print(f"Full agent results\n{json.dumps(search_results, indent=2)}")
     responses = extract_agent_response_text(search_results)
     
     if not responses:
         print(f"\n📄 No valid response found in agent results")
         return
     
-    for i, response in enumerate(responses):
-        if response["type"] == "json":
-            # Handle JSON responses (LLM messages with tool use)
-            content = response["content"]
-            if "output" in content and "message" in content["output"]:
-                message = content["output"]["message"]
-                if "content" in message:
-                    for msg_content in message["content"]:
-                        if "text" in msg_content:
-                            print(f"\n🤖 Agent: {msg_content['text']}")
-                        elif "toolUse" in msg_content:
-                            tool_use = msg_content["toolUse"]
-                            tool_name = tool_use.get('name', 'Unknown')
-                            tool_input = tool_use.get('input', {})
-                            print(f"\n🔧 Tool: {tool_name}")
-                            for key, value in tool_input.items():
-                                print(f"   {key}: {value}")
+    for response in responses:
+        if response["type"] == "text":
+            print(f"\n🤖 Agent: {response['content']}")
+        
+        elif response["type"] == "category_aggregation":
+            print(f"\n📊 Categories Found:")
+            for line in response["content"].split('\n'):
+                if line.strip():
+                    print(f"  • {line}")
         
         elif response["type"] == "search_results":
-            # Handle search results
-            print(f"\n📊 Search Results:")
-            lines = response["content"].strip().split('\n')
-            for line in lines:
+            print(f"\n🔍 Search Results:")
+            for line in response["content"].split('\n'):
                 if line.strip():
-                    try:
-                        result = json.loads(line)
-                        if "_source" in result and "chunk" in result["_source"]:
-                            score = result.get("_score", "N/A")
-                            print(f"  • {result['_source']['chunk']} (Score: {score})")
-                    except json.JSONDecodeError:
-                        print(f"  • {line}")
+                    print(f"  • {line}")
         
-        elif response["type"] == "text":
-            # Handle final text responses
-            print(f"\n💬 Final Response: {response['content']}")
+        elif response["type"] == "final_response":
+            print(f"\n💬 {response['content']}")
     
     print()
 
@@ -358,7 +410,7 @@ def print_agent_query(query_body):
     )
 
 
-def interactive_agent_loop(client, agent_id, model_info, build_agent_query_func, agent_executor_func):
+def interactive_agent_loop(client, agent_id, model_info, build_agent_query_func, agent_executor_func, **kwargs):
     """
     Interactive loop for conversational agent queries.
 
@@ -367,8 +419,9 @@ def interactive_agent_loop(client, agent_id, model_info, build_agent_query_func,
         agent_id (str): ID of the conversational agent
         model_info (str): Model information for display
         build_agent_query_func (callable): Function that builds agent query
-            from user input, takes (query_text, agent_id) and returns query dict
+            from user input, takes (query_text, agent_id, **kwargs) and returns query dict
         agent_executor_func (callable): Function that executes agent queries
+        **kwargs: Additional parameters to pass to build_agent_query_func (e.g., memory_id)
     """
     import logging
 
@@ -387,7 +440,7 @@ def interactive_agent_loop(client, agent_id, model_info, build_agent_query_func,
                 continue
 
             # Build agent query
-            query_body = build_agent_query_func(query_text, agent_id=agent_id)
+            query_body = build_agent_query_func(query_text, agent_id=agent_id, **kwargs)
 
             print_executing_search()
             print_agent_query(query_body)
@@ -396,7 +449,7 @@ def interactive_agent_loop(client, agent_id, model_info, build_agent_query_func,
             agent_response = agent_executor_func(client, agent_id, query_body)
 
             # Process and display results
-            process_and_print_agent_results(agent_response)
+            process_and_print_agent_response(agent_response)
 
         except KeyboardInterrupt:
             print_search_interrupted()

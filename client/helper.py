@@ -40,7 +40,12 @@ def get_client(host_type: str, use_request_signing=False) -> OpenSearch:
     if use_request_signing:
         logging.info("Using AWS Sig V4 request signing for authentication\n\n")
         region = get_raw_config_value("AWS_REGION")
-        credentials = boto3.Session(region_name=region).get_credentials()
+        access_key = get_raw_config_value("AWS_ACCESS_KEY_ID")
+        secret_key = get_raw_config_value("AWS_SECRET_ACCESS_KEY")
+        
+        # Create credentials from config values instead of using boto3 default chain
+        from botocore.credentials import Credentials
+        credentials = Credentials(access_key, secret_key)
         logging.info(f"Using AWS credentials: {credentials}")
         http_auth = AWSV4SignerAuth(credentials, region)
         client = OpenSearch(
@@ -161,23 +166,23 @@ def check_client_version(client: OpenSearch):
     """
     Checks if the given version is at least the minimum version
     """
-    info = client.info()
-    version = info["version"]["number"]
-    minimum_version = get_minimum_opensearch_version()
-    if parse_version(version) < parse_version(minimum_version):
-        raise ValueError(
-            f"The minimum required version for opensearch cluster is {minimum_version}"
-        )
-
-
-
-
-
-
-        # logging.info("Using AWS Sig V4 request signing for authentication")
-        # region = get_raw_config_value("AWS_REGION")
-        # logging.info(f"Region: {region}")
-        # sts = boto3.client('sts', region_name=region)
-        # response = sts.get_session_token()
-        # logging.info(f"Obtained temporary credentials from STS {response}")
-        # http_auth = AWSV4SignerAuth(credentials=response['Credentials'], region=region)
+    try:
+        info = client.info(request_timeout=5)  # Add 5 second timeout
+        version = info["version"]["number"]
+        minimum_version = get_minimum_opensearch_version()
+        if parse_version(version) < parse_version(minimum_version):
+            raise ValueError(
+                f"The minimum required version for opensearch cluster is {minimum_version}"
+            )
+    except Exception as e:
+        # Check for specific backend role authentication issue
+        error_text = f"{str(e)} {getattr(e, 'info', '')}"
+        if "backend_roles=[]" in error_text and "no permissions for [cluster:monitor/main]" in error_text:
+            raise ValueError(
+                f"Authentication failed: IAM user has empty backend_roles. "
+                f"To fix this issue, add the IAM user ARN directly as a user in OpenSearch Security, "
+                f"or configure the IAM user to assume a role that is mapped as a backend role. "
+                f"Original error: {e}"
+            )
+        logging.error(f"Failed to check OpenSearch version: {e}")
+        raise
