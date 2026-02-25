@@ -35,9 +35,6 @@ from configs.configuration_manager import (
 from data_process.amazon_pqa_dataset import AmazonPQADataset
 from mapping import get_base_mapping, mapping_update
 from models import get_ml_model
-from data_process.amazon_pqa_dataset import AmazonPQADataset
-from mapping import get_base_mapping, mapping_update
-from models import get_ml_model
 
 # Configure logging
 logging.basicConfig(
