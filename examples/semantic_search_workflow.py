@@ -362,7 +362,10 @@ def main():
 
     # Load data using dataset abstraction
     if not getattr(args, "no_load", False):
-        dataset = AmazonPQADataset(max_number_of_docs=args.number_of_docs_per_category)
+        dataset = AmazonPQADataset(
+            directory=get_qanda_file_reader_path(),
+            max_number_of_docs=args.number_of_docs_per_category
+        )
         total_docs = dataset.load_data(
             os_client=client.os_client,
             index_name=config["index_name"],

@@ -9,7 +9,7 @@ import cmd_line_interface
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from client import OsMlClientWrapper, get_client
-from configs.configuration_manager import get_client_configs
+from configs.configuration_manager import get_client_configs, get_qanda_file_reader_path
 from connectors.helper import get_remote_connector_configs
 from data_process.amazon_pqa_dataset import AmazonPQADataset
 from models import get_ml_model
@@ -101,7 +101,10 @@ def main():
     logging.info(f"Initializing dense HNSW search with {model_host.upper()} on {host_type.upper()}")
 
     client = OsMlClientWrapper(get_client(host_type))
-    dataset = AmazonPQADataset(max_number_of_docs=args.number_of_docs_per_category)
+    dataset = AmazonPQADataset(
+        directory=get_qanda_file_reader_path(),
+        max_number_of_docs=args.number_of_docs_per_category
+    )
 
     config = {
         "with_knn": True,

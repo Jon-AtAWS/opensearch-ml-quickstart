@@ -168,12 +168,6 @@ def check_client_version(client: OpenSearch):
     """
     try:
         info = client.info(request_timeout=5)  # Add 5 second timeout
-        version = info["version"]["number"]
-        minimum_version = get_minimum_opensearch_version()
-        if parse_version(version) < parse_version(minimum_version):
-            raise ValueError(
-                f"The minimum required version for opensearch cluster is {minimum_version}"
-            )
     except Exception as e:
         # Check for specific backend role authentication issue
         error_text = f"{str(e)} {getattr(e, 'info', '')}"
@@ -186,3 +180,10 @@ def check_client_version(client: OpenSearch):
             )
         logging.error(f"Failed to check OpenSearch version: {e}")
         raise
+    
+    version = info["version"]["number"]
+    minimum_version = get_minimum_opensearch_version()
+    if parse_version(version) < parse_version(minimum_version):
+        raise ValueError(
+            f"The minimum required version for opensearch cluster is {minimum_version}"
+        )

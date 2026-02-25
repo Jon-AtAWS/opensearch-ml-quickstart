@@ -32,6 +32,7 @@ from configs.configuration_manager import (
     get_local_dense_embedding_model_version,
     get_local_dense_embedding_model_format,
     get_local_dense_embedding_model_dimension,
+    get_qanda_file_reader_path,
     config_override,
 )
 from connectors.helper import get_remote_connector_configs
@@ -347,7 +348,10 @@ def main():
 
     # Load data into knowledge base using dataset abstraction
     if not args.no_load:
-        dataset = AmazonPQADataset(max_number_of_docs=args.number_of_docs_per_category)
+        dataset = AmazonPQADataset(
+            directory=get_qanda_file_reader_path(),
+            max_number_of_docs=args.number_of_docs_per_category
+        )
         total_docs = dataset.load_data(
             os_client=client.os_client,
             index_name=config["index_name"],
