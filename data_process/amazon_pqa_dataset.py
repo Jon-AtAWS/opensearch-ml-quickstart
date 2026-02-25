@@ -224,8 +224,7 @@ class AmazonPQADataset(BaseDataset):
 
     def __init__(self, max_number_of_docs: int = -1):
         # Use the class constant for dataset path
-        expanded_directory = os.path.expanduser(self.DATASET_PATH)
-        super().__init__(expanded_directory, max_number_of_docs)
+        super().__init__(os.path.expanduser(self.DATASET_PATH), max_number_of_docs)
         self.asins = set()
         self.questions = set()
         self.fake = faker.Faker()
