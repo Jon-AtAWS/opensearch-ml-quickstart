@@ -129,7 +129,7 @@ def create_index_settings(dataset, pipeline_name, model_dimension):
                     "method": {
                         "name": "hnsw",
                         "space_type": "l2",
-                        "engine": "lucene",  # Updated from nmslib to lucene for OpenSearch 3.0+
+                        "engine": "faiss",
                         "parameters": {"ef_construction": 128, "m": 24},
                     },
                 }

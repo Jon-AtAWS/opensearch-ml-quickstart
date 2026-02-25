@@ -103,50 +103,57 @@ def create_combined_bedrock_role(role_name):
 
 
 
-def fix_connector_region(client, connector_id, target_region, credential):
-    """Fix connector URL to match the target region."""
+def fix_connector_region(client, connector_id, model_id, target_region):
+    """Fix connector URL to match the target region by undeploying model, updating connector, and redeploying."""
     try:
-        # Get current connector
         connector = client.os_client.transport.perform_request(
             "GET", f"/_plugins/_ml/connectors/{connector_id}"
         )
         
-        # Check if URL needs fixing
         current_url = connector['actions'][0]['url']
+        
         if target_region not in current_url:
-            # Update URL to correct region
             new_url = f"https://bedrock-runtime.{target_region}.amazonaws.com/model/amazon.titan-embed-text-v1/invoke"
+            logging.info(f'Fixing connector URL from {current_url} to {new_url}')
 
+            # Undeploy model to release connector
+            try:
+                client.os_client.transport.perform_request(
+                    "POST", f"/_plugins/_ml/models/{model_id}/_undeploy"
+                )
+            except Exception as e:
+                logging.warning(f"Undeploy failed: {e}")
 
-                # "credential": credential,
-                # "actions": [{
-                #     "action_type": "PREDICT",
-                #     "method": "POST",
-                #     "url": new_url,
-                #     "headers": connector['actions'][0]['headers'],
-                #     "request_body": connector['actions'][0]['request_body'],
-                #     "pre_process_function": connector['actions'][0]['pre_process_function'],
-                #     "post_process_function": connector['actions'][0]['post_process_function']
-                # }]
-            # Create update body with only the actions field
-            
-            logging.info(f'Credential for fixing connector: {credential}')
+            # Update connector URL
             update_body = {
-                "credential": credential,
-                "description": "updated connector"
+                "description": "Connector with region-corrected URL",
+                "actions": [{
+                    "action_type": "PREDICT",
+                    "method": "POST",
+                    "url": new_url,
+                    "headers": connector['actions'][0]['headers'],
+                    "request_body": connector['actions'][0]['request_body'],
+                    "pre_process_function": connector['actions'][0]['pre_process_function'],
+                    "post_process_function": connector['actions'][0]['post_process_function']
+                }]
             }
             
-            # Update the connector
             client.os_client.transport.perform_request(
                 "PUT", f"/_plugins/_ml/connectors/{connector_id}",
                 body=update_body
             )
-            logging.info(f"Fixed connector {connector_id} URL to use region {target_region}")
+
+            # Redeploy model
+            client.os_client.transport.perform_request(
+                "POST", f"/_plugins/_ml/models/{model_id}/_deploy"
+            )
+            
+            logging.info(f"Successfully fixed connector {connector_id} to use region {target_region}")
         else:
             logging.info(f"Connector {connector_id} already uses correct region {target_region}")
             
     except Exception as e:
-        logging.warning(f"Could not fix connector region: {e}")
+        logging.error(f"Could not fix connector region: {e}")
 
 
 def get_role_arn(role_name):
@@ -307,14 +314,14 @@ def main():
         
         # Fix connector region if needed
         connector_id = result.get("connector_id")
-        credential = boto3.Session(region_name=region).get_credentials()
-        credential = {
-            "access_key": credential.access_key,
-            "secret_key": credential.secret_key,
-            "session_token": credential.token
-        }
-        if connector_id:
-            fix_connector_region(client, connector_id, region, credential)
+        model_id = result.get("model_id")
+        
+        if connector_id and model_id:
+            logging.info(f"Fixing connector {connector_id} region for model {model_id}...")
+            fix_connector_region(client, connector_id, model_id, region)
+        else:
+            logging.warning(f"Missing connector_id or model_id from workflow result, skipping region fix")
+        
         connector_id = result.get("connector_id")
         model_id = result.get("model_id")
         if not connector_id or not model_id:
