@@ -186,16 +186,3 @@ def check_client_version(client: OpenSearch):
             )
         logging.error(f"Failed to check OpenSearch version: {e}")
         raise
-
-
-
-
-
-
-        # logging.info("Using AWS Sig V4 request signing for authentication")
-        # region = get_raw_config_value("AWS_REGION")
-        # logging.info(f"Region: {region}")
-        # sts = boto3.client('sts', region_name=region)
-        # response = sts.get_session_token()
-        # logging.info(f"Obtained temporary credentials from STS {response}")
-        # http_auth = AWSV4SignerAuth(credentials=response['Credentials'], region=region)

@@ -291,7 +291,7 @@ def main():
     ingest_pipeline_name = "agent-dense-ingest-pipeline"
 
     # Conversational agent requires OpenSearch 3.1+
-    with config_override(MINIMUM_OPENSEARCH_VERSION="3.2.0"):
+    with config_override(MINIMUM_OPENSEARCH_VERSION="3.3.0"):
         client = OsMlClientWrapper(get_client(host_type))
 
     config = {

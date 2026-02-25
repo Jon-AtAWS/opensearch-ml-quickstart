@@ -241,6 +241,9 @@ def _role_exists(iam_client, role_name: str) -> bool:
         return True
     except iam_client.exceptions.NoSuchEntityException:
         return False
+    except Exception as e:
+        logging.error(f"Error checking if role {role_name} exists: {e}")
+        raise
 
 
 def _create_iam_role(iam_client, role_name: str, trust_policy_json: Dict, inline_policy_json: Dict) -> str:
@@ -277,89 +280,96 @@ def _update_role_policy_if_needed(iam_client, role_name: str, new_policy: dict):
         # Get existing policy
         response = iam_client.get_role_policy(RoleName=role_name, PolicyName="InlinePolicy")
         existing_policy = response['PolicyDocument']
-        
-        # Check if new policy statements are already in the existing policy
-        needs_update = False
-        
-        for new_statement in new_policy.get('Statement', []):
-            new_action = new_statement.get('Action')
-            new_resources = new_statement.get('Resource', [])
-            if isinstance(new_resources, str):
-                new_resources = [new_resources]
-            
-            # Check if this action+resource combination exists in existing policy
-            found_matching_statement = False
-            for existing_statement in existing_policy.get('Statement', []):
-                existing_action = existing_statement.get('Action')
-                existing_resources = existing_statement.get('Resource', [])
-                if isinstance(existing_resources, str):
-                    existing_resources = [existing_resources]
-                
-                # Check if action matches and all new resources are covered
-                if (existing_action == new_action and 
-                    all(resource in existing_resources for resource in new_resources)):
-                    found_matching_statement = True
-                    break
-            
-            if not found_matching_statement:
-                needs_update = True
-                break
-        
-        if needs_update:
-            logging.info(f"Updating role policy to include new statements")
-            
-            # Merge the existing policy with the new policy
-            merged_statements = []
-            
-            # Add existing statements
-            for statement in existing_policy.get('Statement', []):
-                merged_statements.append(statement)
-            
-            # Add new statements that weren't found in existing policy
-            for new_statement in new_policy.get('Statement', []):
-                new_action = new_statement.get('Action')
-                new_resources = new_statement.get('Resource', [])
-                if isinstance(new_resources, str):
-                    new_resources = [new_resources]
-                
-                # Check if this statement is already covered
-                found_matching = False
-                for existing_statement in existing_policy.get('Statement', []):
-                    existing_action = existing_statement.get('Action')
-                    existing_resources = existing_statement.get('Resource', [])
-                    if isinstance(existing_resources, str):
-                        existing_resources = [existing_resources]
-                    
-                    if (existing_action == new_action and 
-                        all(resource in existing_resources for resource in new_resources)):
-                        found_matching = True
-                        break
-                
-                if not found_matching:
-                    merged_statements.append(new_statement)
-            
-            # Create merged policy
-            merged_policy = {
-                "Version": "2012-10-17",
-                "Statement": merged_statements
-            }
-            
-            iam_client.put_role_policy(
-                RoleName=role_name,
-                PolicyName="InlinePolicy",
-                PolicyDocument=json.dumps(merged_policy)
-            )
-            logging.info(f"Updated role policy for {role_name}")
-        else:
-            logging.info("Role policy already contains all required statements")
-            
     except iam_client.exceptions.NoSuchEntityException:
         logging.info("No existing policy found, creating new one")
+        try:
+            iam_client.put_role_policy(
+                RoleName=role_name,
+                PolicyName="InlinePolicy", 
+                PolicyDocument=json.dumps(new_policy)
+            )
+        except Exception as e:
+            logging.error(f"Error creating new policy for role {role_name}: {e}")
+            raise
+        return
+    except Exception as e:
+        logging.error(f"Error getting existing policy for role {role_name}: {e}")
+        raise
+        
+    # Check if new policy statements are already in the existing policy
+    needs_update = False
+    
+    for new_statement in new_policy.get('Statement', []):
+        new_action = new_statement.get('Action')
+        new_resources = new_statement.get('Resource', [])
+        if isinstance(new_resources, str):
+            new_resources = [new_resources]
+        
+        # Check if this action+resource combination exists in existing policy
+        found_matching_statement = False
+        for existing_statement in existing_policy.get('Statement', []):
+            existing_action = existing_statement.get('Action')
+            existing_resources = existing_statement.get('Resource', [])
+            if isinstance(existing_resources, str):
+                existing_resources = [existing_resources]
+            
+            # Check if action matches and all new resources are covered
+            if (existing_action == new_action and 
+                all(resource in existing_resources for resource in new_resources)):
+                found_matching_statement = True
+                break
+        
+        if not found_matching_statement:
+            needs_update = True
+            break
+    
+    if not needs_update:
+        logging.info("Role policy already contains all required statements")
+        return
+    
+    # Merge policies if update is needed
+    logging.info(f"Updating role policy to include new statements")
+    merged_statements = list(existing_policy.get('Statement', []))
+    
+    # Add new statements that weren't found in existing policy
+    for new_statement in new_policy.get('Statement', []):
+        new_action = new_statement.get('Action')
+        new_resources = new_statement.get('Resource', [])
+        if isinstance(new_resources, str):
+            new_resources = [new_resources]
+        
+        # Check if this statement is already covered
+        found_matching = False
+        for existing_statement in existing_policy.get('Statement', []):
+            existing_action = existing_statement.get('Action')
+            existing_resources = existing_statement.get('Resource', [])
+            if isinstance(existing_resources, str):
+                existing_resources = [existing_resources]
+            
+            if (existing_action == new_action and 
+                all(resource in existing_resources for resource in new_resources)):
+                found_matching = True
+                break
+        
+        if not found_matching:
+            merged_statements.append(new_statement)
+    
+    # Create merged policy
+    merged_policy = {
+        "Version": "2012-10-17",
+        "Statement": merged_statements
+    }
+    
+    try:
         iam_client.put_role_policy(
             RoleName=role_name,
-            PolicyName="InlinePolicy", 
-            PolicyDocument=json.dumps(new_policy)
+            PolicyName="InlinePolicy",
+            PolicyDocument=json.dumps(merged_policy)
         )
+        logging.info(f"Updated role policy for {role_name}")
+    except Exception as e:
+        logging.error(f"Error updating role policy for {role_name}: {e}")
+        raise
 
 
 def _get_role_arn(iam_client, role_name: str) -> str:
@@ -437,28 +447,36 @@ def _create_connector_with_role_auth(
     role_session_name: str = "connector_creation_session"
 ) -> str:
     """Create a connector using assumed role authentication."""
-    # Assume role to get temporary credentials
-    assumed_role_object = sts_client.assume_role(
-        RoleArn=create_connector_role_arn,
-        RoleSessionName=role_session_name,
-    )
-    temp_credentials = assumed_role_object["Credentials"]
+    try:
+        # Assume role to get temporary credentials
+        assumed_role_object = sts_client.assume_role(
+            RoleArn=create_connector_role_arn,
+            RoleSessionName=role_session_name,
+        )
+        temp_credentials = assumed_role_object["Credentials"]
+    except Exception as e:
+        logging.error(f"Error assuming role {create_connector_role_arn}: {e}")
+        raise
     
-    # Create AWS4Auth with temporary credentials
-    awsauth = AWS4Auth(
-        temp_credentials["AccessKeyId"],
-        temp_credentials["SecretAccessKey"],
-        region,
-        "es",
-        session_token=temp_credentials["SessionToken"],
-    )
+    try:
+        # Create AWS4Auth with temporary credentials
+        awsauth = AWS4Auth(
+            temp_credentials["AccessKeyId"],
+            temp_credentials["SecretAccessKey"],
+            region,
+            "es",
+            session_token=temp_credentials["SessionToken"],
+        )
 
-    path = "/_plugins/_ml/connectors/_create"
-    url = opensearch_domain_url + path
-    headers = {"Content-Type": "application/json"}
+        path = "/_plugins/_ml/connectors/_create"
+        url = opensearch_domain_url + path
+        headers = {"Content-Type": "application/json"}
 
-    logging.info(f"Creating connector with payload: {json.dumps(payload, indent=2)}")
-    r = requests.post(url, auth=awsauth, json=payload, headers=headers)
+        logging.info(f"Creating connector with payload: {json.dumps(payload, indent=2)}")
+        r = requests.post(url, auth=awsauth, json=payload, headers=headers)
+    except Exception as e:
+        logging.error(f"Error making connector creation request: {e}")
+        raise
     
     # Debug: Log the response
     logging.info(f"Connector creation response status: {r.status_code}")
