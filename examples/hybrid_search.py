@@ -12,6 +12,7 @@ import cmd_line_interface
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from connectors.helper import get_remote_connector_configs
 from client import OsMlClientWrapper, get_client
+from configs.configuration_manager import get_qanda_file_reader_path
 from data_process.amazon_pqa_dataset import AmazonPQADataset
 from models import get_ml_model, MlModel
 
@@ -180,7 +181,10 @@ def main():
     search_pipeline_name = "hybrid-search-pipeline"
 
     client = OsMlClientWrapper(get_client(host_type))
-    dataset = AmazonPQADataset(max_number_of_docs=args.number_of_docs_per_category)
+    dataset = AmazonPQADataset(
+        directory=get_qanda_file_reader_path(),
+        max_number_of_docs=args.number_of_docs_per_category
+    )
 
     dense_model_name = f"{host_type}_{dense_model_host}"
     dense_model_config = get_remote_connector_configs(

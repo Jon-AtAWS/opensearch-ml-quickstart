@@ -222,9 +222,10 @@ class AmazonPQADataset(BaseDataset):
         "in-dash dvd and video receivers": "AMAZON_PQA_IN_DASH_DVD_AND_VIDEO_RECEIVERS",
     }
 
-    def __init__(self, max_number_of_docs: int = -1):
-        # Use the class constant for dataset path
-        super().__init__(os.path.expanduser(self.DATASET_PATH), max_number_of_docs)
+    def __init__(self, directory: Optional[str] = None, max_number_of_docs: int = -1):
+        # Use provided directory or fall back to class constant, then expand
+        expanded_directory = os.path.expanduser(directory if directory is not None else self.DATASET_PATH)
+        super().__init__(expanded_directory, max_number_of_docs)
         self.asins = set()
         self.questions = set()
         self.fake = faker.Faker()

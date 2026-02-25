@@ -10,7 +10,6 @@ from opensearchpy import OpenSearch, helpers
 from client.index_utils import (
     handle_index_creation,
     handle_data_loading,
-    load_category,
     send_bulk_ignore_exceptions,
     get_index_size,
     SPACE_SEPARATOR
@@ -140,172 +139,48 @@ class TestHandleIndexCreation:
 class TestHandleDataLoading:
     """Test cases for handle_data_loading function"""
 
-    @patch('client.index_utils.load_category')
-    def test_handle_data_loading_normal(self, mock_load_category):
+    def test_handle_data_loading_normal(self):
         """Test normal data loading"""
         # Setup mocks
         mock_client = Mock(spec=OpenSearch)
-        mock_reader = Mock(spec=QAndAFileReader)
+        mock_dataset = Mock()
+        
+        # Mock dataset to return document count
+        mock_dataset.load_data.return_value = 100
         
         config = {
-            "categories": ["category1", "category2"],
-            "index_name": "test_index"
+            "categories": ["category1"],
+            "index_name": "test_index",
+            "bulk_send_chunk_size": 1000
         }
         
         # Call function
-        handle_data_loading(mock_client, mock_reader, config, no_load=False)
+        handle_data_loading(mock_client, mock_dataset, config, no_load=False)
         
         # Assertions
-        expected_calls = [
-            call(os_client=mock_client, pqa_reader=mock_reader, category="category1", config=config, enriched=True),
-            call(os_client=mock_client, pqa_reader=mock_reader, category="category2", config=config, enriched=True)
-        ]
-        mock_load_category.assert_has_calls(expected_calls)
+        mock_dataset.load_data.assert_called_once_with(
+            os_client=mock_client,
+            index_name="test_index",
+            filter_criteria=["category1"],
+            bulk_chunk_size=1000
+        )
 
-    @patch('client.index_utils.load_category')
-    def test_handle_data_loading_no_load(self, mock_load_category):
+    def test_handle_data_loading_no_load(self):
         """Test data loading when no_load is True"""
         # Setup mocks
         mock_client = Mock(spec=OpenSearch)
-        mock_reader = Mock(spec=QAndAFileReader)
+        mock_dataset = Mock()
         
         config = {
-            "categories": ["category1", "category2"],
+            "categories": ["category1"],
             "index_name": "test_index"
         }
         
         # Call function
-        handle_data_loading(mock_client, mock_reader, config, no_load=True)
+        handle_data_loading(mock_client, mock_dataset, config, no_load=True)
         
-        # Assertions
-        mock_load_category.assert_not_called()
-
-
-class TestLoadCategory:
-    """Test cases for load_category function"""
-
-    @patch('client.index_utils.send_bulk_ignore_exceptions')
-    def test_load_category_small_batch(self, mock_send_bulk):
-        """Test loading a small batch of documents"""
-        # Setup mock client and reader
-        mock_client = Mock(spec=OpenSearch)
-        mock_reader = Mock(spec=QAndAFileReader)
-        
-        # Setup mock documents
-        mock_docs = [
-            {
-                "question_id": "1",
-                "product_description": "Great product",
-                "brand_name": "TestBrand",
-                "item_name": "TestItem"
-            },
-            {
-                "question_id": "2", 
-                "product_description": "Another product",
-                "brand_name": "TestBrand2",
-                "item_name": "TestItem2"
-            }
-        ]
-        
-        mock_reader.questions_for_category.return_value = mock_docs
-        mock_reader.amazon_pqa_category_name_to_constant.return_value = "TEST_CATEGORY"
-        
-        config = {
-            "index_name": "test_index",
-            "bulk_send_chunk_size": 1000
-        }
-        
-        # Call function
-        load_category(mock_client, mock_reader, "test_category", config)
-        
-        # Assertions
-        mock_reader.amazon_pqa_category_name_to_constant.assert_called_once_with("test_category")
-        mock_reader.questions_for_category.assert_called_once_with("TEST_CATEGORY", enriched=True)
-        
-        # Verify send_bulk was called once at the end
-        mock_send_bulk.assert_called_once()
-        
-        # Check the documents were processed correctly
-        call_args = mock_send_bulk.call_args[0]
-        processed_docs = call_args[2]  # Third argument is docs
-        
-        assert len(processed_docs) == 2
-        assert processed_docs[0]["_index"] == "test_index"
-        assert processed_docs[0]["_id"] == "1"
-        assert processed_docs[0]["chunk"] == "Great product TestBrand TestItem"
-
-    @patch('client.index_utils.send_bulk_ignore_exceptions')
-    def test_load_category_large_batch(self, mock_send_bulk):
-        """Test loading a large batch that triggers multiple sends"""
-        # Setup mock client and reader
-        mock_client = Mock(spec=OpenSearch)
-        mock_reader = Mock(spec=QAndAFileReader)
-        
-        # Create 2500 mock documents to trigger bulk send at 2000
-        mock_docs = []
-        for i in range(2500):
-            mock_docs.append({
-                "question_id": str(i),
-                "product_description": f"Product {i}",
-                "brand_name": f"Brand {i}",
-                "item_name": f"Item {i}"
-            })
-        
-        mock_reader.questions_for_category.return_value = mock_docs
-        mock_reader.amazon_pqa_category_name_to_constant.return_value = "TEST_CATEGORY"
-        
-        config = {
-            "index_name": "test_index",
-            "bulk_send_chunk_size": 1000
-        }
-        
-        # Call function
-        load_category(mock_client, mock_reader, "test_category", config)
-        
-        # Should be called twice: once at 2000 docs, once at the end for remaining 500
-        assert mock_send_bulk.call_count == 2
-
-    @patch('client.index_utils.send_bulk_ignore_exceptions')
-    def test_load_category_empty_chunks_filtered(self, mock_send_bulk):
-        """Test that documents with empty chunks are filtered out"""
-        # Setup mock client and reader
-        mock_client = Mock(spec=OpenSearch)
-        mock_reader = Mock(spec=QAndAFileReader)
-        
-        # Setup mock documents with some having empty content
-        mock_docs = [
-            {
-                "question_id": "1",
-                "product_description": "",
-                "brand_name": "",
-                "item_name": ""
-            },
-            {
-                "question_id": "2",
-                "product_description": "Good product",
-                "brand_name": "TestBrand",
-                "item_name": "TestItem"
-            }
-        ]
-        
-        mock_reader.questions_for_category.return_value = mock_docs
-        mock_reader.amazon_pqa_category_name_to_constant.return_value = "TEST_CATEGORY"
-        
-        config = {
-            "index_name": "test_index",
-            "bulk_send_chunk_size": 1000
-        }
-        
-        # Call function
-        load_category(mock_client, mock_reader, "test_category", config)
-        
-        # Should only process the non-empty document
-        mock_send_bulk.assert_called_once()
-        call_args = mock_send_bulk.call_args[0]
-        processed_docs = call_args[2]
-        
-        assert len(processed_docs) == 1
-        assert processed_docs[0]["_id"] == "2"
+        # Assertions - should not attempt to load data
+        mock_dataset.load_data.assert_not_called()
 
 
 class TestSendBulkIgnoreExceptions:
