@@ -143,32 +143,6 @@ class BaseDataset(ABC):
         """Load dataset into OpenSearch index. Returns number of documents loaded."""
         pass
     
-    def create_index(self, os_client, index_name: str, delete_existing: bool = False, index_settings: Optional[Dict[str, Any]] = None) -> bool:
-        """Create OpenSearch index with appropriate mapping. Returns True if created/exists."""
-        logging.info(f"Handling index creation for {index_name}")
-        
-        index_exists = os_client.indices.exists(index=index_name)
-        logging.info(f"Index {index_name} exists: {index_exists}")
-        
-        if delete_existing and index_exists:
-            logging.info(f"Deleting existing index {index_name}")
-            os_client.indices.delete(index=index_name)
-            index_exists = False
-        
-        if index_exists:
-            logging.info(f'Index "{index_name}" exists. Skipping creation.')
-            return True
-        
-        try:
-            if index_settings is None:
-                index_settings = {"mappings": self.get_index_mapping()}
-            response = os_client.indices.create(index=index_name, body=index_settings)
-            logging.info(f"Created index {index_name}: {response}")
-            return True
-        except Exception as e:
-            logging.error(f"Error creating index {index_name}: {e}")
-            return False
-    
     def update_mapping(self, base_mapping: Dict[str, Any], updates: Dict[str, Any]) -> None:
         """Update mapping with additional fields (e.g., vector fields)."""
         for key, value in updates.items():
