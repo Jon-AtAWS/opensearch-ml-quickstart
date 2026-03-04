@@ -143,16 +143,17 @@ class MlConnector(ABC):
         stop=stop_after_attempt(get_delete_resource_retry_time()),
         wait=wait_fixed(get_delete_resource_wait_time()),
     )
-    def _delete_connector(self, connector_id):
-        user_input = (
-            input(f"Do you want to delete the connector {connector_id}? (y/n): ")
-            .strip()
-            .lower()
-        )
+    def _delete_connector(self, connector_id, confirm=True):
+        if confirm:
+            user_input = (
+                input(f"Do you want to delete the connector {connector_id}? (y/n): ")
+                .strip()
+                .lower()
+            )
 
-        if user_input != "y":
-            logging.info("Delete connector canceled.")
-            return
+            if user_input != "y":
+                logging.info("Delete connector canceled.")
+                return
 
         try:
             logging.info(f"Deleting connector {connector_id}")

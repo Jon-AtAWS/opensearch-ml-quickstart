@@ -7,10 +7,8 @@ from opensearch_py_ml.ml_commons import MLCommonClient
 from models import MlModel, MlModelGroup
 
 import os
-import sys
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-import index_utils
+from . import index_utils
 
 
 class OsMlClientWrapper:
@@ -125,9 +123,15 @@ class OsMlClientWrapper:
         """
         self.delete_then_create_index(index_name=index_name, settings=index_settings)
 
-    def cleanup_kNN(self, ml_model=None, index_name=None, pipeline_name=None):
+    def cleanup_kNN(self, ml_model=None, index_name=None, pipeline_name=None, confirm=True):
         """
         Cleans up the knn model, model_group, pipeline and index.
+        
+        Args:
+            ml_model: Optional ML model to clean up
+            index_name: Name of the index to delete
+            pipeline_name: Name of the pipeline to delete
+            confirm: If True, prompts for confirmation before deletion. If False, deletes without prompting.
         """
         if ml_model:
             self.ml_model = ml_model
@@ -136,34 +140,38 @@ class OsMlClientWrapper:
         self.ml_model = None
         self.ml_model_group.clean_up()
 
-        user_input = (
-            input(f"Do you want to delete the pipeline {pipeline_name}? (y/n): ")
-            .strip()
-            .lower()
-        )
-        if user_input == "y":
-            logging.info(f"Deleting pipeline {pipeline_name}")
-            try:
-                self.os_client.ingest.delete_pipeline(pipeline_name)
-                logging.info(f"Deleted pipeline {pipeline_name}")
-            except Exception as e:
-                logging.info(
-                    f"Deleting pipeline {pipeline_name} failed due to exception {e}"
-                )
-        else:
-            logging.info("Delete pipeline canceled.")
+        if confirm:
+            user_input = (
+                input(f"Do you want to delete the pipeline {pipeline_name}? (y/n): ")
+                .strip()
+                .lower()
+            )
+            if user_input != "y":
+                logging.info("Delete pipeline canceled.")
+                return
+        
+        logging.info(f"Deleting pipeline {pipeline_name}")
+        try:
+            self.os_client.ingest.delete_pipeline(pipeline_name)
+            logging.info(f"Deleted pipeline {pipeline_name}")
+        except Exception as e:
+            logging.info(
+                f"Deleting pipeline {pipeline_name} failed due to exception {e}"
+            )
 
-        user_input = (
-            input(f"Do you want to delete the index {index_name}? (y/n): ")
-            .strip()
-            .lower()
-        )
-        if user_input == "y":
-            logging.info(f"Deleting index {index_name}")
-            try:
-                self.os_client.indices.delete(index_name)
-                logging.info(f"Deleted index {index_name}")
-            except Exception as e:
-                logging.info(f"Deleting index {index_name} failed due to exception {e}")
-        else:
-            logging.info("Delete index canceled.")
+        if confirm:
+            user_input = (
+                input(f"Do you want to delete the index {index_name}? (y/n): ")
+                .strip()
+                .lower()
+            )
+            if user_input != "y":
+                logging.info("Delete index canceled.")
+                return
+        
+        logging.info(f"Deleting index {index_name}")
+        try:
+            self.os_client.indices.delete(index_name)
+            logging.info(f"Deleted index {index_name}")
+        except Exception as e:
+            logging.info(f"Deleting index {index_name} failed due to exception {e}")

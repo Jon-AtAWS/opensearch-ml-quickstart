@@ -116,16 +116,17 @@ class MlModel(ABC):
         stop=stop_after_attempt(get_delete_resource_retry_time()),
         wait=wait_fixed(get_delete_resource_wait_time()),
     )
-    def _undeploy_and_delete_model(self, model_id):
-        user_input = (
-            input(f"Do you want to undeploy and delete the model {model_id}? (y/n): ")
-            .strip()
-            .lower()
-        )
+    def _undeploy_and_delete_model(self, model_id, confirm=True):
+        if confirm:
+            user_input = (
+                input(f"Do you want to undeploy and delete the model {model_id}? (y/n): ")
+                .strip()
+                .lower()
+            )
 
-        if user_input != "y":
-            logging.info("Undeploy and delete model canceled.")
-            return
+            if user_input != "y":
+                logging.info("Undeploy and delete model canceled.")
+                return
 
         try:
             logging.info(f"Undeploying model {model_id}")
