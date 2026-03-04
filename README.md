@@ -44,11 +44,32 @@ Getting started with OpenSearch ML Quickstart requires setting up your developme
 
 Begin by cloning the repository and setting up a Python virtual environment to isolate dependencies. 
 
-`gh repo clone Jon-AtAWS/opensearch-ml-quickstart`
-`cd opensearch-ml-quickstart`
-`python -m venv .venv`
-`source .venv/bin/activate` (or `.venv\Scripts\activate` on Windows)  
-`pip install -r requirements.txt`  
+```bash
+gh repo clone Jon-AtAWS/opensearch-ml-quickstart
+cd opensearch-ml-quickstart
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### Set up Python path
+
+To avoid import issues, add the project root to your Python path. You have two options:
+
+**Option 1: Set PYTHONPATH environment variable (recommended)**
+```bash
+# Add to your shell profile (~/.bashrc, ~/.zshrc, etc.) or run before each session
+export PYTHONPATH="${PYTHONPATH}:/path/to/opensearch-ml-quickstart"
+
+# Or set it when running scripts:
+PYTHONPATH=/path/to/opensearch-ml-quickstart python examples/dense_hnsw_search.py
+```
+
+**Option 2: Add to your IDE/editor settings**
+- VS Code: Add to `settings.json`: `"python.analysis.extraPaths": ["${workspaceFolder}"]`
+- PyCharm: Mark the project root as "Sources Root"
+
+This eliminates the need for `sys.path.append` in every file.  
 
 ### Set up OpenSearch
 

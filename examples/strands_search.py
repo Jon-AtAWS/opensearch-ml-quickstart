@@ -19,7 +19,6 @@ from typing import Dict, List, Any
 from dataclasses import dataclass
 
 # Add the opensearch-ml-quickstart path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from strands import Agent, tool
 from strands.models import BedrockModel

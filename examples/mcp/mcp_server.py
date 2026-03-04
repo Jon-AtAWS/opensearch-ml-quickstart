@@ -9,8 +9,10 @@ import logging
 import os
 import sys
 from typing import Any, Dict
+from pathlib import Path
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from mcp.server import Server
 from mcp.server.models import InitializationOptions
