@@ -5,6 +5,8 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Iterator, Tuple, Optional, Union
 import logging
 
+from mapping.helper import mapping_update
+
 
 class BaseDataset(ABC):
     """Abstract base class for dataset readers with preprocessing, indexing, and search capabilities."""
