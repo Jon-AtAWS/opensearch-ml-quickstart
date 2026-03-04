@@ -658,7 +658,6 @@ def get_pipeline_field_map() -> Dict[str, str]:
     """Get the pipeline field mapping."""
     return get_raw_config_value("PIPELINE_FIELD_MAP", {"chunk": "chunk_embedding"})
 
-
 def get_client_configs(host_type: str) -> Dict[str, str]:
     """
     Get client configuration for OpenSearch connection.
