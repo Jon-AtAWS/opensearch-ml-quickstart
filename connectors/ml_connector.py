@@ -143,7 +143,7 @@ class MlConnector(ABC):
         stop=stop_after_attempt(get_delete_resource_retry_time()),
         wait=wait_fixed(get_delete_resource_wait_time()),
     )
-    def _delete_connector(self, connector_id, confirm=True):
+    def _delete_connector(self, connector_id, confirm=False):
         if confirm:
             user_input = (
                 input(f"Do you want to delete the connector {connector_id}? (y/n): ")

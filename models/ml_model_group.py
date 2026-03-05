@@ -89,7 +89,7 @@ class MlModelGroup:
         stop=stop_after_attempt(get_delete_resource_retry_time()),
         wait=wait_fixed(get_delete_resource_wait_time()),
     )
-    def _delete_model_group(self, model_group_id, confirm=True):
+    def _delete_model_group(self, model_group_id, confirm=False):
         if confirm:
             user_input = (
                 input(f"Do you want to delete the model group {model_group_id}? (y/n): ")

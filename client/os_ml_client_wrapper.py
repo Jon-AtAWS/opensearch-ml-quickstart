@@ -123,7 +123,7 @@ class OsMlClientWrapper:
         """
         self.delete_then_create_index(index_name=index_name, settings=index_settings)
 
-    def cleanup_kNN(self, ml_model=None, index_name=None, pipeline_name=None, confirm=True):
+    def cleanup_kNN(self, ml_model=None, index_name=None, pipeline_name=None, confirm=False):
         """
         Cleans up the knn model, model_group, pipeline and index.
         
@@ -131,7 +131,7 @@ class OsMlClientWrapper:
             ml_model: Optional ML model to clean up
             index_name: Name of the index to delete
             pipeline_name: Name of the pipeline to delete
-            confirm: If True, prompts for confirmation before deletion. If False, deletes without prompting.
+            confirm: If True, prompts for confirmation before deletion. If False (default), deletes without prompting.
         """
         if ml_model:
             self.ml_model = ml_model
