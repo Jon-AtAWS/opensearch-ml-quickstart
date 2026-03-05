@@ -22,7 +22,6 @@ import sys
 
 import cmd_line_interface
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from client import OsMlClientWrapper, get_client
 from configs.configuration_manager import get_client_configs, get_qanda_file_reader_path
 from connectors import EmbeddingConnector

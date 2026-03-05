@@ -9,7 +9,6 @@ from typing import Dict
 
 import cmd_line_interface
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from connectors.helper import get_remote_connector_configs
 from client import OsMlClientWrapper, get_client
 from configs.configuration_manager import get_qanda_file_reader_path

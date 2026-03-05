@@ -19,7 +19,7 @@ import time
 
 
 # Add parent directory to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from data_process import QAndAFileReader
 
 
