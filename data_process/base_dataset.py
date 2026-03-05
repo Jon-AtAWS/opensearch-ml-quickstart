@@ -5,6 +5,8 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Iterator, Tuple, Optional, Union
 import logging
 
+from mapping.helper import mapping_update
+
 
 class BaseDataset(ABC):
     """Abstract base class for dataset readers with preprocessing, indexing, and search capabilities."""
@@ -144,16 +146,11 @@ class BaseDataset(ABC):
         pass
     
     def update_mapping(self, base_mapping: Dict[str, Any], updates: Dict[str, Any]) -> None:
-        """Update mapping with additional fields (e.g., vector fields)."""
-        for key, value in updates.items():
-            if (
-                key in base_mapping
-                and isinstance(base_mapping[key], dict)
-                and isinstance(value, dict)
-            ):
-                self.update_mapping(base_mapping[key], value)
-            else:
-                base_mapping[key] = value
+        """Update mapping with additional fields (e.g., vector fields).
+        
+        This is a convenience wrapper around mapping.helper.mapping_update.
+        """
+        mapping_update(base_mapping, updates)
 
     def create_index(self, os_client, index_name: str, delete_existing: bool = False, index_settings: Optional[Dict[str, Any]] = None) -> bool:
         """Create OpenSearch index with appropriate mapping. Returns True if created/exists."""
