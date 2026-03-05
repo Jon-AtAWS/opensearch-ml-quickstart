@@ -1,7 +1,13 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "opensearch-ml-quickstart"
 version = "0.1.0"
 description = "OpenSearch ML Quickstart Examples"
+readme = "README.md"
+requires-python = ">=3.10"
 
-[tool.setuptools]
-py-modules = []
+[tool.setuptools.packages.find]
+include = ["client*", "configs*", "connectors*", "data_process*", "mapping*", "models*"]

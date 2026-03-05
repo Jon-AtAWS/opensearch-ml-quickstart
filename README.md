@@ -50,19 +50,20 @@ cd opensearch-ml-quickstart
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+pip install -e .
 ```
+
+The `pip install -e .` command installs the project in "editable" mode, which makes all the library modules (`client`, `models`, `connectors`, etc.) importable from anywhere without path manipulation.
 
 ### Running Examples
 
-The project uses proper Python package structure with `__init__.py` files and `pyproject.toml`, so you can run examples directly from the project root without any path configuration:
+After installation, you can run examples directly:
 
 ```bash
-# Simply run from the project root directory
-cd opensearch-ml-quickstart
 python examples/dense_hnsw_search.py
 ```
 
-No PYTHONPATH setup or sys.path manipulation is needed - Python will automatically find all modules when you run scripts from the project root.
+The editable install ensures all imports work correctly without any PYTHONPATH configuration or sys.path manipulation.
 
 ### Set up OpenSearch
 
