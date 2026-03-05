@@ -1,0 +1,7 @@
+[project]
+name = "opensearch-ml-quickstart"
+version = "0.1.0"
+description = "OpenSearch ML Quickstart Examples"
+
+[tool.setuptools]
+py-modules = []
