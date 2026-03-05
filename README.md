@@ -52,24 +52,17 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### Set up Python path
+### Running Examples
 
-To avoid import issues, add the project root to your Python path. You have two options:
+The project uses proper Python package structure with `__init__.py` files and `pyproject.toml`, so you can run examples directly from the project root without any path configuration:
 
-**Option 1: Set PYTHONPATH environment variable (recommended)**
 ```bash
-# Add to your shell profile (~/.bashrc, ~/.zshrc, etc.) or run before each session
-export PYTHONPATH="${PYTHONPATH}:/path/to/opensearch-ml-quickstart"
-
-# Or set it when running scripts:
-PYTHONPATH=/path/to/opensearch-ml-quickstart python examples/dense_hnsw_search.py
+# Simply run from the project root directory
+cd opensearch-ml-quickstart
+python examples/dense_hnsw_search.py
 ```
 
-**Option 2: Add to your IDE/editor settings**
-- VS Code: Add to `settings.json`: `"python.analysis.extraPaths": ["${workspaceFolder}"]`
-- PyCharm: Mark the project root as "Sources Root"
-
-This eliminates the need for `sys.path.append` in every file.  
+No PYTHONPATH setup or sys.path manipulation is needed - Python will automatically find all modules when you run scripts from the project root.
 
 ### Set up OpenSearch
 
