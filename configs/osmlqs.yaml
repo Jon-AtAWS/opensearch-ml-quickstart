@@ -81,9 +81,9 @@ SAGEMAKER_DENSE_MODEL_DIMENSION:
 # =============================================================================
 
 # Bedrock LLM Model
-BEDROCK_LLM_URL: https://bedrock-runtime.us-west-2.amazonaws.com/model/anthropic.claude-3-5-sonnet-20241022-v2:0/invoke
-BEDROCK_LLM_MODEL_NAME: anthropic.claude-3-5-sonnet-20241022-v2:0
-BEDROCK_LLM_ARN: arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0
+BEDROCK_LLM_URL: https://bedrock-runtime.us-west-2.amazonaws.com/model/us.anthropic.claude-sonnet-4-20250514-v1:0/invoke
+BEDROCK_LLM_MODEL_NAME: us.anthropic.claude-sonnet-4-20250514-v1:0
+BEDROCK_LLM_ARN: arn:aws:bedrock:*:428712108407:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0
 BEDROCK_LLM_MAX_TOKENS: 8000
 BEDROCK_LLM_TEMPERATURE: 0.1
 
