@@ -10,7 +10,6 @@ import cmd_line_interface
 from client import OsMlClientWrapper, get_client, index_utils
 from configs.configuration_manager import (
     get_raw_config_value,
-    get_pipeline_field_map,
     get_config_for,
     get_base_mapping_path,
     get_qanda_file_reader_path,
@@ -260,7 +259,7 @@ def main():
     config = get_config_for(host_type, provider=model_host, model_type='embedding')
     config.update({
         "with_knn": True,
-        "pipeline_field_map": get_pipeline_field_map(),
+        "pipeline_field_map": {"chunk_text": "chunk_embedding"},
         "index_name": index_name,
         "pipeline_name": pipeline_name,
         "embedding_type": embedding_type,
@@ -334,13 +333,12 @@ def main():
                 logging.info(f"Deleting existing index {index_name}")
                 client.os_client.indices.delete(index=index_name)
 
-        pipeline_field_map = get_pipeline_field_map()
         body = {
             "create_ingest_pipeline.pipeline_id": pipeline_name,
             "create_ingest_pipeline.description": "A text embedding pipeline",
             "create_ingest_pipeline.model_id": model_id,
-            "text_embedding.field_map.input": list(pipeline_field_map.keys())[0],
-            "text_embedding.field_map.output": list(pipeline_field_map.values())[0],
+            "text_embedding.field_map.input": "chunk_text",
+            "text_embedding.field_map.output": "chunk_embedding",
             "create_index.name": index_name,
             "create_index.settings.number_of_shards": "2",
             "create_index.mappings.method.engine": "lucene",

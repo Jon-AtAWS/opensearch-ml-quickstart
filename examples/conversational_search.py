@@ -14,7 +14,6 @@ from client import OsMlClientWrapper, get_client, index_utils
 from configs.configuration_manager import (
     get_base_mapping_path,
     get_client_configs,
-    get_pipeline_field_map,
     get_qanda_file_reader_path,
 )
 from data_process.amazon_pqa_dataset import AmazonPQADataset
@@ -240,7 +239,10 @@ def main():
 
     # Load data using dataset abstraction
     if not args.no_load:
-        dataset = AmazonPQADataset(max_number_of_docs=args.number_of_docs_per_category)
+        dataset = AmazonPQADataset(
+            directory=get_qanda_file_reader_path(),
+            max_number_of_docs=args.number_of_docs_per_category
+        )
         total_docs = dataset.load_data(
             os_client=client.os_client,
             index_name=config["index_name"],
