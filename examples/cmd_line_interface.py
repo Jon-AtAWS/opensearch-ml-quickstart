@@ -163,7 +163,7 @@ def print_hit(hit_id, hit):
 
 def print_query(query):
     print(f"{LIGHT_GREEN_HEADER}Search query:{RESET}")
-    print(json.dumps(query, indent=4))
+    print(json.dumps(query, indent=4, ensure_ascii=False))
     print(
         "--------------------------------------------------------------------------------"
     )
