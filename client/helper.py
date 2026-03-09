@@ -5,9 +5,7 @@ import boto3
 import logging
 from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
 import os
-import sys
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from configs.configuration_manager import (
     get_opensearch_config,
     get_minimum_opensearch_version,

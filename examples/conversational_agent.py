@@ -23,7 +23,6 @@ import uuid
 
 import cmd_line_interface
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import agent_tools
 from client import OsMlClientWrapper, get_client, index_utils
 from configs.configuration_manager import (

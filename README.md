@@ -44,11 +44,26 @@ Getting started with OpenSearch ML Quickstart requires setting up your developme
 
 Begin by cloning the repository and setting up a Python virtual environment to isolate dependencies. 
 
-`gh repo clone Jon-AtAWS/opensearch-ml-quickstart`
-`cd opensearch-ml-quickstart`
-`python -m venv .venv`
-`source .venv/bin/activate` (or `.venv\Scripts\activate` on Windows)  
-`pip install -r requirements.txt`  
+```bash
+gh repo clone Jon-AtAWS/opensearch-ml-quickstart
+cd opensearch-ml-quickstart
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+pip install -e .
+```
+
+The `pip install -e .` command installs the project in "editable" mode, which makes all the library modules (`client`, `models`, `connectors`, etc.) importable from anywhere without path manipulation.
+
+### Running Examples
+
+After installation, you can run examples directly:
+
+```bash
+python examples/dense_hnsw_search.py
+```
+
+The editable install ensures all imports work correctly without any PYTHONPATH configuration or sys.path manipulation.
 
 ### Set up OpenSearch
 
