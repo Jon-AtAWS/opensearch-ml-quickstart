@@ -63,8 +63,8 @@ LOCAL_DENSE_EMBEDDING_NAME: paraphrase-multilingual-MiniLM-L12-v2
 LOCAL_DENSE_EMBEDDING_FORMAT: TORCH_SCRIPT
 
 # Bedrock Embedding Model
-BEDROCK_EMBEDDING_URL: https://bedrock-runtime.us-west-2.amazonaws.com/model/amazon.titan-embed-text-v1/invoke
-BEDROCK_MODEL_DIMENSION: 1536
+BEDROCK_EMBEDDING_URL: https://bedrock-runtime.us-west-2.amazonaws.com/model/amazon.titan-embed-text-v2:0/invoke
+BEDROCK_MODEL_DIMENSION: 1024
 BEDROCK_ARN: arn:aws:bedrock:*::foundation-model/*
 BEDROCK_CONNECTOR_VERSION: 1.0
 
