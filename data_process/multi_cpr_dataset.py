@@ -36,7 +36,16 @@ class MultiCPRDataset(BaseDataset):
     }
 
     def __init__(self, directory: Optional[str] = None, max_number_of_docs: int = -1):
-        expanded = os.path.expanduser(directory if directory is not None else self.DATASET_PATH)
+        # Try to get path from configuration first, then environment variable, then provided directory, then default
+        if directory is None:
+            try:
+                from configs.configuration_manager import get_multi_cpr_path
+                directory = get_multi_cpr_path()
+            except ImportError:
+                # Fallback to environment variable if config not available
+                directory = os.environ.get("MULTI_CPR_PATH", self.DATASET_PATH)
+        
+        expanded = os.path.expanduser(directory)
         super().__init__(expanded, max_number_of_docs)
 
     # ── helpers ──────────────────────────────────────────────────────────

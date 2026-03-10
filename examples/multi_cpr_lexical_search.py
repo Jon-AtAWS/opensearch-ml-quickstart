@@ -23,6 +23,7 @@ import sys
 import cmd_line_interface
 
 from client import OsMlClientWrapper, get_client
+from configs.configuration_manager import get_multi_cpr_path
 from data_process.multi_cpr_dataset import MultiCPRDataset
 
 logging.basicConfig(
@@ -31,7 +32,11 @@ logging.basicConfig(
     level=logging.INFO,
 )
 
-MULTI_CPR_PATH = os.environ.get("MULTI_CPR_PATH", "~/datasets/multi_cpr")
+try:
+    MULTI_CPR_PATH = get_multi_cpr_path()
+except:
+    # Fallback to environment variable if config fails
+    MULTI_CPR_PATH = os.environ.get("MULTI_CPR_PATH", "~/datasets/multi_cpr")
 INDEX_NAME = "multi_cpr_lexical"
 
 

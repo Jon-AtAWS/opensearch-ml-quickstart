@@ -33,7 +33,13 @@ logging.basicConfig(
 
 # Default dataset path – override via MULTI_CPR_PATH env var or osmlqs.yaml
 import os
-MULTI_CPR_PATH = os.environ.get("MULTI_CPR_PATH", "~/datasets/multi_cpr")
+from configs.configuration_manager import get_multi_cpr_path
+
+try:
+    MULTI_CPR_PATH = get_multi_cpr_path()
+except:
+    # Fallback to environment variable if config fails
+    MULTI_CPR_PATH = os.environ.get("MULTI_CPR_PATH", "~/datasets/multi_cpr")
 
 INDEX_NAME = "multi_cpr_dense"
 PIPELINE_NAME = "multi-cpr-dense-ingest-pipeline"
