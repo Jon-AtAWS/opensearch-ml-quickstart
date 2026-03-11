@@ -298,13 +298,23 @@ opensearch-ml-quickstart/
 │   ├── cmd_line_interface.py         # Unified CLI and interface utilities
 │   ├── dense_exact_search.py         # Dense vector search (exact k-NN)
 │   ├── dense_hnsw_search.py          # Dense vector search (HNSW)
+│   ├── dense_vs_lexical.ipynb        # Dense vs lexical comparison notebook
 │   ├── sparse_search.py              # Neural sparse search
 │   ├── hybrid_search.py              # Hybrid dense + sparse search
+│   ├── hybrid_local_search.py        # Hybrid search with local models
 │   ├── lexical_search.py             # Traditional keyword search
 │   ├── conversational_search.py      # RAG-powered conversational AI
 │   ├── conversational_agent.py       # AI agents for complex search tasks
+│   ├── agent_tools.py                # Agent tool definitions
+│   ├── strands_search.py             # Strands agent search example
+│   ├── twitter_cases.py              # Twitter case search example
+│   ├── semantic_search_workflow.py   # Semantic search workflow
 │   ├── workflow_example.py           # Custom workflow templates
-│   └── workflow_with_template.py     # Built-in workflow templates
+│   ├── workflow_with_template.py     # Built-in workflow templates
+│   └── mcp/                          # MCP server integration
+│       ├── launch.py                 # MCP server launcher
+│       ├── mcp_search.py             # MCP search implementation
+│       └── mcp_server.py             # MCP server definition
 ├── models/                           # ML model abstraction layer
 │   ├── ml_model.py                   # Abstract base class for all models
 │   ├── local_ml_model.py             # Local model implementations
@@ -315,8 +325,16 @@ opensearch-ml-quickstart/
 │   ├── ml_connector.py               # Abstract base connector class
 │   ├── embedding_connector.py        # Embedding model connectors
 │   ├── llm_connector.py              # LLM model connectors
+│   ├── config_strategies.py          # Connector configuration strategies
 │   ├── helper.py                     # Connector configuration utilities
 │   └── connector_payloads/           # Connector payload templates
+│       ├── bedrock_dense.json
+│       ├── bedrock_llm_converse.json
+│       ├── bedrock_llm_memory.json
+│       ├── bedrock_llm_predict.json
+│       ├── claude_3.5_sonnet_v2.json
+│       ├── sagemaker_dense.json
+│       └── sagemaker_sparse.json
 ├── client/                           # OpenSearch client wrappers
 │   ├── helper.py                     # Client factory and utilities
 │   ├── os_ml_client_wrapper.py       # ML Commons client wrapper
@@ -324,14 +342,32 @@ opensearch-ml-quickstart/
 ├── configs/                          # Configuration management system
 │   ├── __init__.py                   # Configuration module interface
 │   ├── configuration_manager.py      # Core configuration logic
-│   ├── osmlqs.yaml                   # Main configuration file
-│   └── tasks.py                      # Task definitions
+│   └── osmlqs.yaml                   # Main configuration file
 ├── data_process/                     # Data processing utilities
-│   └── qanda_file_reader.py          # Amazon PQA dataset reader
+│   ├── base_dataset.py               # Abstract base dataset class
+│   ├── amazon_pqa_dataset.py         # Amazon PQA dataset implementation
+│   ├── qanda_file_reader.py          # Amazon PQA file reader
+│   └── twitter_case_reader.py        # Twitter case data reader
 ├── mapping/                          # Index mapping utilities
-│   └── base_mapping.json             # Base index mapping template
-└── datasets/                         # Sample data storage
-    └── amazon_pqa/                   # Amazon PQA dataset
+│   ├── base_mapping.json             # Base index mapping template
+│   └── helper.py                     # Mapping utility functions
+├── tests/                            # Test suite
+│   ├── conftest.py                   # Pytest configuration and fixtures
+│   ├── test_config.yaml              # Test configuration
+│   ├── run_all_examples.sh           # Script to run all examples
+│   └── unit/                         # Unit tests
+│       ├── client/                   # Client module tests
+│       ├── configs/                  # Configuration module tests
+│       ├── connectors/               # Connector module tests
+│       ├── data_process/             # Data processing tests
+│       ├── mapping/                  # Mapping module tests
+│       └── models/                   # Model module tests
+├── datasets/                         # Sample data storage
+│   └── README.md                     # Dataset download instructions
+├── docker-compose.yml                # Local OpenSearch cluster setup
+├── pyproject.toml                    # Python package configuration
+├── pytest.ini                        # Pytest settings
+└── requirements.txt                  # Python dependencies
 ```
 
 ## 🏗️ Architecture Overview
