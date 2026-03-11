@@ -102,7 +102,7 @@ def create_llm_model(client: OsMlClientWrapper):
         os_type="os",
         connector_configs=connector_configs,
         llm_type="converse",  # Use converse API for agent workflows
-        model_name="us.anthropic.claude-3-7-sonnet-20250219-v1:0",  # Claude 3.5 Sonnet v2
+        model_name="us.anthropic.claude-sonnet-4-20250514-v1:0",  # Claude Sonnet 4
     )
 
     logging.info(f"LLM connector ID: {llm_connector.connector_id()}")
