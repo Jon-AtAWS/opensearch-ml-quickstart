@@ -45,7 +45,7 @@ class LlmConnector(MlConnector):
         connector_description: Optional[str] = None,
         connector_configs: Optional[Dict[str, Any]] = None,
         llm_type: str = "predict",
-        model_name: str = "anthropic.claude-3-5-sonnet-20241022-v2:0",
+        model_name: str = "us.anthropic.claude-sonnet-4-20250514-v1:0",
     ) -> None:
         """
         Initialize the LLM connector for Bedrock.

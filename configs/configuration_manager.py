@@ -619,6 +619,10 @@ def get_qanda_file_reader_path() -> str:
     """Get the path to the Q&A dataset."""
     return get_raw_config_value("QANDA_FILE_READER_PATH", "./datasets/amazon_pqa")
 
+def get_multi_cpr_path() -> str:
+    """Get the path to the Multi-CPR dataset."""
+    return get_raw_config_value("MULTI_CPR_PATH", "~/datasets/multi_cpr")
+
 def get_minimum_opensearch_version() -> str:
     """Get the minimum required OpenSearch version."""
     return get_raw_config_value("MINIMUM_OPENSEARCH_VERSION", "2.13.0")

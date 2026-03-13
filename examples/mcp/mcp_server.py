@@ -290,7 +290,7 @@ class OpenSearchMCPServer:
                 os_type="os",
                 connector_configs=connector_configs,
                 llm_type="memory",
-                model_name="us.anthropic.claude-3-7-sonnet-20250219-v1:0"
+                model_name="us.anthropic.claude-sonnet-4-20250514-v1:0"
             )
             logger.info("Created LLM connector for memory operations")
             
